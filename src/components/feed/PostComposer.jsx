@@ -1,5 +1,5 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,15 @@ import { useToast } from "@/components/ui/toast";
 import { compressImage, formatFileSize } from "@/lib/compress-image";
 import { ImagePlus, X, Hash, LoaderCircle } from "lucide-react";
 import { LIMITS } from "@/lib/constants";
+
+/**
+ * Extract hashtags from body text. Matches #word patterns.
+ */
+function extractHashtagsFromText(text) {
+  const matches = text.match(/#([a-zA-Z0-9_]+)/g);
+  if (!matches) return [];
+  return [...new Set(matches.map((m) => m.slice(1).toLowerCase()))];
+}
 
 export function PostComposer() {
   const router = useRouter();
@@ -22,23 +31,41 @@ export function PostComposer() {
   const [uploadStatus, setUploadStatus] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  const handleAddTag = () => {
-    const clean = tagInput.trim().replace(/^#/, "").toLowerCase();
+  const handleAddTag = useCallback((tagName) => {
+    const clean = (tagName || tagInput).trim().replace(/^#/, "").toLowerCase();
     if (!clean) return;
     if (tags.length >= LIMITS.POST_MAX_TAGS) {
       addToast(`Maximum ${LIMITS.POST_MAX_TAGS} tags allowed.`, "error");
       return;
     }
     if (tags.includes(clean)) {
-      setTagInput("");
+      if (!tagName) setTagInput("");
       return;
     }
-    setTags([...tags, clean]);
-    setTagInput("");
-  };
+    setTags((prev) => [...prev, clean]);
+    if (!tagName) setTagInput("");
+  }, [tagInput, tags, addToast]);
 
   const handleRemoveTag = (t) => {
     setTags(tags.filter((item) => item !== t));
+  };
+
+  // Auto-detect hashtags in body when user types space after #word
+  const handleBodyChange = (e) => {
+    const val = e.target.value;
+    setBody(val);
+
+    // Check if the last character typed is a space and the word before it starts with #
+    if (val.endsWith(" ") || val.endsWith("\n")) {
+      const words = val.trimEnd().split(/\s+/);
+      const lastWord = words[words.length - 1];
+      if (lastWord && /^#[a-zA-Z0-9_]{1,}$/.test(lastWord)) {
+        const tagName = lastWord.slice(1).toLowerCase();
+        if (!tags.includes(tagName) && tags.length < LIMITS.POST_MAX_TAGS) {
+          setTags((prev) => [...prev, tagName]);
+        }
+      }
+    }
   };
 
   const handleFileUpload = async (e) => {
@@ -88,12 +115,16 @@ export function PostComposer() {
       return;
     }
 
+    // Merge tags from body with manually added tags
+    const bodyTags = extractHashtagsFromText(body);
+    const allTags = [...new Set([...tags, ...bodyTags])].slice(0, LIMITS.POST_MAX_TAGS);
+
     startTransition(async () => {
       const res = await createPostAction({
         title: title.trim() || undefined,
         body: body.trim(),
         imageUrl: imageUrl.trim() || undefined,
-        tags,
+        tags: allTags,
       });
 
       if (res.ok) {
@@ -135,13 +166,14 @@ export function PostComposer() {
             rows={5}
             value={body}
             maxLength={LIMITS.POST_BODY_MAX}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Write your news update, opinion, or story..."
+            onChange={handleBodyChange}
+            placeholder="Write your news update, opinion, or story... Use #hashtags to tag your post"
             required
             className="w-full px-3 py-2 text-sm border border-[var(--line)] rounded-lg bg-[var(--surface)] text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:bg-[var(--bg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
           />
-          <div className="flex justify-end text-xs text-[var(--ink-muted)] tabular-nums">
-            {body.length} / {LIMITS.POST_BODY_MAX}
+          <div className="flex justify-between text-xs text-[var(--ink-muted)] tabular-nums">
+            <span className="text-[var(--accent)]">Tip: Type #tag then space to auto-add hashtags</span>
+            <span>{body.length} / {LIMITS.POST_BODY_MAX}</span>
           </div>
         </div>
 
@@ -216,11 +248,11 @@ export function PostComposer() {
                     handleAddTag();
                   }
                 }}
-                placeholder="news, politics, tech..."
+                placeholder="Or add manually: news, politics, tech..."
                 className="w-full pl-8 pr-3 py-2 text-sm border border-[var(--line)] rounded-lg bg-[var(--surface)] text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:bg-[var(--bg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
               />
             </div>
-            <Button variant="secondary" type="button" onClick={handleAddTag}>
+            <Button variant="secondary" type="button" onClick={() => handleAddTag()}>
               Add Tag
             </Button>
           </div>

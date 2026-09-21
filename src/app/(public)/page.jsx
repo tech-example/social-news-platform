@@ -58,6 +58,7 @@ export default async function HomeFeedPage({ searchParams }) {
         )}
 
         <FeedList
+          key={filter}
           initialPosts={feedData.posts}
           initialCursor={feedData.nextCursor}
           filter={filter}

@@ -10,6 +10,7 @@ export function Button({
   disabled = false,
   type = "button",
   className = "",
+  asChild,
   ...props
 }) {
   const baseStyles =

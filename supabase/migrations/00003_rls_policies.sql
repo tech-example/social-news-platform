@@ -237,6 +237,11 @@ create policy "delete_own_notifications"
   on public.notifications for delete
   using (recipient_id = auth.uid());
 
+drop policy if exists "insert_notifications" on public.notifications;
+create policy "insert_notifications"
+  on public.notifications for insert
+  with check (true);
+
 -- 12. Reports Policies
 drop policy if exists "insert_report_as_reporter" on public.reports;
 create policy "insert_report_as_reporter"

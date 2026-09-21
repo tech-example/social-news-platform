@@ -1,34 +1,36 @@
 "use client";
-import { useOptimistic, useTransition } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toggleFollowAction } from "@/server/actions/interactions";
 import { useToast } from "@/components/ui/toast";
 
 export function FollowButton({ targetUserId, initialFollowing = false }) {
-  const [isPending, startTransition] = useTransition();
+  const [following, setFollowing] = useState(initialFollowing);
   const { addToast } = useToast();
 
-  const [following, setFollowing] = useOptimistic(
-    initialFollowing,
-    (state) => !state
-  );
-
   const handleToggle = () => {
-    startTransition(async () => {
-      setFollowing(!following);
-      const res = await toggleFollowAction(targetUserId);
-      if (!res.ok) {
-        addToast(res.error || "Failed to update follow status.", "error");
-      }
-    });
+    const nextState = !following;
+    setFollowing(nextState);
+
+    toggleFollowAction(targetUserId)
+      .then((res) => {
+        if (!res?.ok) {
+          setFollowing(!nextState);
+          addToast(res?.error || "Failed to update follow status.", "error");
+        }
+      })
+      .catch((err) => {
+        console.error("Follow error:", err);
+        setFollowing(!nextState);
+        addToast("Network error updating follow status.", "error");
+      });
   };
 
   return (
     <Button
       variant={following ? "secondary" : "primary"}
       onClick={handleToggle}
-      disabled={isPending}
-      className="text-xs h-8 px-4"
+      className="text-xs h-8 px-4 font-semibold transition-all cursor-pointer"
     >
       {following ? "Following" : "Follow"}
     </Button>

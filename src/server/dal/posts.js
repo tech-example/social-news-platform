@@ -40,18 +40,29 @@ export async function getFeedPosts({
     query = query.lt("created_at", cursor);
   }
 
-  if (filter === "following" && viewerId) {
-    // Subquery / join via follows
-    const { data: followRecords } = await supabase
+  if (filter === "following") {
+    if (!viewerId) {
+      return { posts: [], nextCursor: null };
+    }
+    const adminClient = getAdminClient();
+    const { data: followRecords, error: followErr } = await adminClient
       .from("follows")
       .select("following_id")
       .eq("follower_id", viewerId);
 
-    const followingIds = (followRecords || []).map((f) => f.following_id);
+    if (followErr) {
+      console.error("Error querying follows:", followErr);
+      return { posts: [], nextCursor: null };
+    }
+
+    const followingIds = (followRecords || [])
+      .map((f) => f.following_id)
+      .filter((id) => id && id !== viewerId);
+
     if (followingIds.length === 0) {
       return { posts: [], nextCursor: null };
     }
-    query = query.in("author_id", followingIds);
+    query = query.in("author_id", followingIds).neq("author_id", viewerId);
   }
 
   const { data: rawPosts, error } = await query;

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { sharePostAction } from "@/server/actions/interactions";
@@ -8,21 +8,26 @@ import { LIMITS } from "@/lib/constants";
 
 export function ShareDialog({ open, onClose, postId, postTitle, onShareSuccess }) {
   const [note, setNote] = useState("");
-  const [isPending, startTransition] = useTransition();
   const { addToast } = useToast();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    startTransition(async () => {
-      const res = await sharePostAction(postId, note);
-      if (res.ok) {
-        addToast("Post shared to your profile.");
-        setNote("");
-        onClose();
-        if (onShareSuccess) onShareSuccess();
-      } else {
-        addToast(res.error || "Failed to share post.", "error");
+    const shareNote = note.trim();
+    
+    // Close modal and update UI instantly
+    setNote("");
+    onClose();
+    if (onShareSuccess) onShareSuccess();
+    addToast("Post shared to your profile.");
+
+    // Sync in background
+    sharePostAction(postId, shareNote).then((res) => {
+      if (!res?.ok) {
+        addToast(res?.error || "Failed to share post.", "error");
       }
+    }).catch((err) => {
+      console.error("Share error:", err);
+      addToast("Network error sharing post.", "error");
     });
   };
 
@@ -52,11 +57,11 @@ export function ShareDialog({ open, onClose, postId, postTitle, onShareSuccess }
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2 border-t border-[var(--line)]">
-          <Button variant="ghost" type="button" onClick={onClose} disabled={isPending}>
+          <Button variant="ghost" type="button" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isPending}>
-            {isPending ? "Sharing..." : "Share Now"}
+          <Button type="submit">
+            Share Now
           </Button>
         </div>
       </form>

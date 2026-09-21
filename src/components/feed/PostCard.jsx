@@ -4,10 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { InteractiveActions } from "@/components/feed/InteractiveActions";
+import { InlineCommentInput } from "@/components/feed/InlineCommentInput";
 import { formatRelativeTime } from "@/lib/format";
 
 export function PostCard({ post, currentUserId = null }) {
   const [expanded, setExpanded] = useState(false);
+  const [localComments, setLocalComments] = useState(post.recentComments || []);
+  const [localCommentsCount, setLocalCommentsCount] = useState(post.commentsCount || 0);
+  const [isDeleted, setIsDeleted] = useState(false);
 
   const author = post.author || {
     id: post.user_id,
@@ -17,6 +21,38 @@ export function PostCard({ post, currentUserId = null }) {
   };
 
   const isAuthor = currentUserId === (post.author?.id || post.user_id);
+
+  const handleCommentPosted = (comment) => {
+    setLocalComments((prev) => [...prev, comment]);
+    setLocalCommentsCount((prev) => prev + 1);
+  };
+
+  const handleDelete = () => {
+    setIsDeleted(true);
+  };
+
+  if (isDeleted) return null;
+
+  // Render body with hashtag highlighting
+  const renderBody = (text) => {
+    if (!text) return null;
+    const parts = text.split(/(#[a-zA-Z0-9_]+)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("#")) {
+        const tag = part.slice(1).toLowerCase();
+        return (
+          <Link
+            key={i}
+            href={`/tag/${tag}`}
+            className="text-[var(--accent)] font-medium hover:underline"
+          >
+            {part}
+          </Link>
+        );
+      }
+      return part;
+    });
+  };
 
   return (
     <article className="border-b border-[var(--line)] bg-[var(--bg)] py-4 flex flex-col gap-3">
@@ -79,7 +115,7 @@ export function PostCard({ post, currentUserId = null }) {
             <span className="font-semibold mr-2 text-[var(--ink)]">{author.username}</span>
           )}
           <span className={expanded ? "break-words" : "line-clamp-3 break-words text-[var(--ink)]"}>
-            {post.body}
+            {renderBody(post.body)}
           </span>
           {post.body && post.body.length > 140 && !expanded && (
             <button
@@ -115,20 +151,45 @@ export function PostCard({ post, currentUserId = null }) {
           postTitle={post.title || post.body?.slice(0, 40)}
           initialLiked={post.isLiked || false}
           initialLikesCount={post.likesCount || 0}
-          commentsCount={post.commentsCount || 0}
+          commentsCount={localCommentsCount}
           sharesCount={post.sharesCount || 0}
           isAuthor={isAuthor}
-          commentHref={`/p/${post.id}`}
+          onDelete={handleDelete}
         />
 
-        {/* Link to post detail if comments exist */}
-        {post.commentsCount > 0 && (
+        {/* Recent Comments Preview */}
+        {localComments.length > 0 && (
+          <div className="mt-2 space-y-1">
+            {localComments.slice(-2).map((c) => (
+              <div key={c.id} className="text-sm">
+                <Link
+                  href={`/u/${c.author?.username}`}
+                  className="font-semibold text-[var(--ink)] hover:underline mr-1.5"
+                >
+                  {c.author?.username}
+                </Link>
+                <span className="text-[var(--ink)]">{c.body}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* View all comments link */}
+        {localCommentsCount > 2 && (
           <Link
             href={`/p/${post.id}`}
             className="block text-xs text-[var(--ink-muted)] hover:underline mt-1.5"
           >
-            View all {post.commentsCount} comments
+            View all {localCommentsCount} comments
           </Link>
+        )}
+
+        {/* Inline Comment Input */}
+        {currentUserId && (
+          <InlineCommentInput
+            postId={post.id}
+            onCommentPosted={handleCommentPosted}
+          />
         )}
       </div>
     </article>

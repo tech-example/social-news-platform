@@ -1,5 +1,5 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -14,37 +14,81 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
   const [comments, setComments] = useState(initialComments);
   const [text, setText] = useState("");
   const [replyingTo, setReplyingTo] = useState(null);
-  const [isPending, startTransition] = useTransition();
   const { addToast } = useToast();
 
   const handlePostComment = (e) => {
     e.preventDefault();
-    if (!text.trim()) return;
+    const commentBody = text.trim();
+    if (!commentBody) return;
 
-    startTransition(async () => {
-      const res = await createCommentAction(postId, text, replyingTo?.id);
-      if (res.ok && res.comment) {
-        setComments((prev) => [...prev, res.comment]);
-        setText("");
-        setReplyingTo(null);
-        addToast("Comment posted.");
-      } else {
-        addToast(res.error || "Failed to post comment.", "error");
-      }
-    });
+    const parent = replyingTo;
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    
+    // Create optimistic comment
+    const optimisticComment = {
+      id: tempId,
+      postId,
+      parentId: parent?.id || null,
+      body: commentBody,
+      createdAt: new Date().toISOString(),
+      isOptimistic: true,
+      author: {
+        username: "you",
+        display_name: "You",
+        avatar_url: null,
+      },
+    };
+
+    // Update UI instantly
+    setComments((prev) => [...prev, optimisticComment]);
+    setText("");
+    setReplyingTo(null);
+
+    // Sync in background
+    createCommentAction(postId, commentBody, parent?.id)
+      .then((res) => {
+        if (res?.ok && res.comment) {
+          // Replace temp comment with permanent comment
+          setComments((prev) =>
+            prev.map((c) => (c.id === tempId ? res.comment : c))
+          );
+        } else {
+          // Rollback on error
+          setComments((prev) => prev.filter((c) => c.id !== tempId));
+          setText(commentBody);
+          if (parent) setReplyingTo(parent);
+          addToast(res?.error || "Failed to post comment.", "error");
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to post comment:", err);
+        setComments((prev) => prev.filter((c) => c.id !== tempId));
+        setText(commentBody);
+        if (parent) setReplyingTo(parent);
+        addToast("Network error posting comment.", "error");
+      });
   };
 
   const handleDeleteComment = (commentId) => {
     if (window.confirm("Are you sure you want to delete this comment?")) {
-      startTransition(async () => {
-        const res = await deleteCommentAction(commentId, postId);
-        if (res.ok) {
-          setComments((prev) => prev.filter((c) => c.id !== commentId && c.parentId !== commentId));
-          addToast("Comment deleted.");
-        } else {
-          addToast(res.error || "Failed to delete comment.", "error");
-        }
-      });
+      // Optimistically remove comment
+      const prevComments = comments;
+      setComments((prev) => prev.filter((c) => c.id !== commentId && c.parentId !== commentId));
+      
+      deleteCommentAction(commentId, postId)
+        .then((res) => {
+          if (res?.ok) {
+            addToast("Comment deleted.");
+          } else {
+            setComments(prevComments);
+            addToast(res?.error || "Failed to delete comment.", "error");
+          }
+        })
+        .catch((err) => {
+          console.error("Delete error:", err);
+          setComments(prevComments);
+          addToast("Network error deleting comment.", "error");
+        });
     }
   };
 
@@ -64,7 +108,7 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
           rootComments.map((comment) => {
             const replies = getReplies(comment.id);
             return (
-              <div key={comment.id} className="space-y-2">
+              <div key={comment.id} className="space-y-2 animate-fadeIn">
                 <div className="flex items-start justify-between gap-3 group">
                   <div className="flex items-start gap-2.5 min-w-0">
                     <Link href={`/u/${comment.author?.username}`}>
@@ -99,7 +143,7 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
                     </div>
                   </div>
 
-                  {(currentUserId === comment.userId || comment.isOwner) && (
+                  {(currentUserId === (comment.authorId || comment.author?.id) || comment.isOwner) && (
                     <IconButton
                       label="Delete comment"
                       onClick={() => handleDeleteComment(comment.id)}
@@ -114,7 +158,7 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
                 {replies.length > 0 && (
                   <div className="pl-8 space-y-2 border-l-2 border-[var(--surface-strong)] ml-3">
                     {replies.map((reply) => (
-                      <div key={reply.id} className="flex items-start justify-between gap-2 group">
+                      <div key={reply.id} className="flex items-start justify-between gap-2 group animate-fadeIn">
                         <div className="flex items-start gap-2 min-w-0">
                           <Link href={`/u/${reply.author?.username}`}>
                             <Avatar
@@ -137,7 +181,7 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
                           </div>
                         </div>
 
-                        {(currentUserId === reply.userId || reply.isOwner) && (
+                        {(currentUserId === (reply.authorId || reply.author?.id) || reply.isOwner) && (
                           <IconButton
                             label="Delete reply"
                             onClick={() => handleDeleteComment(reply.id)}
@@ -185,10 +229,10 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
           />
           <Button
             type="submit"
-            disabled={!text.trim() || isPending}
+            disabled={!text.trim()}
             className="shrink-0 text-sm"
           >
-            {isPending ? "Posting..." : "Post"}
+            Post
           </Button>
         </div>
       </form>
