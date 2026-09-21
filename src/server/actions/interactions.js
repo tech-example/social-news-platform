@@ -53,7 +53,7 @@ export async function createCommentAction(postId, body, parentId = null) {
     .from("comments")
     .insert({
       post_id: postId,
-      user_id: session.user.id,
+      author_id: session.user.id,
       parent_id: parentId || null,
       body: parsed.data.body,
       status: "published",
@@ -61,12 +61,12 @@ export async function createCommentAction(postId, body, parentId = null) {
     .select(`
       id,
       post_id,
-      user_id,
+      author_id,
       parent_id,
       body,
       status,
       created_at,
-      author:profiles!comments_user_id_fkey(
+      author:profiles!comments_author_id_fkey(
         id,
         username,
         display_name,
@@ -89,13 +89,13 @@ export async function deleteCommentAction(commentId, postId) {
 
   const { data: comment } = await supabase
     .from("comments")
-    .select("id, user_id")
+    .select("id, author_id")
     .eq("id", commentId)
     .single();
 
   if (!comment) return { ok: false, error: "Comment not found." };
 
-  const isOwner = comment.user_id === session.user.id;
+  const isOwner = comment.author_id === session.user.id;
   const isStaff = session.profile.role === "moderator" || session.profile.role === "admin";
 
   if (!isOwner && !isStaff) {

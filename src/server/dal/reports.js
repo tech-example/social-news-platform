@@ -78,14 +78,14 @@ export async function getReportById(reportId) {
   if (report.target_type === "post") {
     const { data: post } = await adminSupabase
       .from("posts")
-      .select("id, title, body, image_url, status, user_id, author:profiles!posts_user_id_fkey(id, username, display_name)")
+      .select("id, title, body, image_url, status, author_id, author:profiles!posts_author_id_fkey(id, username, display_name)")
       .eq("id", report.target_id)
       .maybeSingle();
     targetDetails = post;
   } else if (report.target_type === "comment") {
     const { data: comment } = await adminSupabase
       .from("comments")
-      .select("id, body, status, post_id, user_id, author:profiles!comments_user_id_fkey(id, username, display_name)")
+      .select("id, body, status, post_id, author_id, author:profiles!comments_author_id_fkey(id, username, display_name)")
       .eq("id", report.target_id)
       .maybeSingle();
     targetDetails = comment;

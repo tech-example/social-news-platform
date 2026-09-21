@@ -18,7 +18,7 @@ export async function createPostAction(input) {
   const { data: newPost, error: postError } = await supabase
     .from("posts")
     .insert({
-      user_id: session.user.id,
+      author_id: session.user.id,
       title: title || null,
       body,
       image_url: imageUrl || null,
@@ -61,12 +61,12 @@ export async function editPostAction(postId, input) {
   // Verify ownership
   const { data: existingPost } = await supabase
     .from("posts")
-    .select("id, user_id")
+    .select("id, author_id")
     .eq("id", postId)
     .single();
 
   if (!existingPost) return { ok: false, error: "Post not found." };
-  if (existingPost.user_id !== session.user.id && session.profile.role !== "admin") {
+  if (existingPost.author_id !== session.user.id && session.profile.role !== "admin") {
     return { ok: false, error: "You are not authorized to edit this post." };
   }
 
@@ -102,13 +102,13 @@ export async function deletePostAction(postId) {
 
   const { data: post } = await supabase
     .from("posts")
-    .select("id, user_id")
+    .select("id, author_id")
     .eq("id", postId)
     .single();
 
   if (!post) return { ok: false, error: "Post not found." };
 
-  const isOwner = post.user_id === session.user.id;
+  const isOwner = post.author_id === session.user.id;
   const isStaff = session.profile.role === "moderator" || session.profile.role === "admin";
 
   if (!isOwner && !isStaff) {

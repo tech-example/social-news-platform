@@ -13,13 +13,13 @@ export default async function ContentReviewPage() {
   const [{ data: hiddenPosts }, { data: hiddenComments }] = await Promise.all([
     adminSupabase
       .from("posts")
-      .select("id, title, body, status, created_at, author:profiles!posts_user_id_fkey(username)")
+      .select("id, title, body, status, created_at, author:profiles!posts_author_id_fkey(username)")
       .eq("status", "hidden")
       .order("updated_at", { ascending: false })
       .limit(30),
     adminSupabase
       .from("comments")
-      .select("id, post_id, body, status, created_at, author:profiles!comments_user_id_fkey(username)")
+      .select("id, post_id, body, status, created_at, author:profiles!comments_author_id_fkey(username)")
       .eq("status", "hidden")
       .order("updated_at", { ascending: false })
       .limit(30),

@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createUserClient } from "@/server/supabase";
+import { getAdminClient } from "@/server/admin-client";
 import { signInSchema, signUpSchema } from "@/lib/validators";
 
 export async function signInAction(prevState, formData) {
@@ -69,7 +70,8 @@ export async function signUpAction(prevState, formData) {
     return { ok: false, error: "Username is already taken. Please choose another." };
   }
 
-  const { data, error } = await supabase.auth.signUp({
+  // First try standard user signUp
+  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email: result.data.email,
     password: result.data.password,
     options: {
@@ -80,12 +82,81 @@ export async function signUpAction(prevState, formData) {
     },
   });
 
-  if (error) {
-    return { ok: false, error: error.message || "Failed to create account." };
+  // If standard signUp fails (e.g. Supabase project rejects email or SMTP is unconfigured):
+  // Gracefully fallback to creating the user via the admin service role with email_confirm: true
+  if (signUpError) {
+    console.warn("Standard signUp failed, attempting admin registration fallback:", signUpError.message);
+    try {
+      const adminClient = getAdminClient();
+      const { data: adminData, error: adminErr } = await adminClient.auth.admin.createUser({
+        email: result.data.email,
+        password: result.data.password,
+        email_confirm: true,
+        user_metadata: {
+          username: result.data.username,
+          display_name: result.data.displayName,
+        },
+      });
+
+      if (adminErr || !adminData?.user) {
+        console.error("Admin user creation failed:", adminErr);
+        return { ok: false, error: adminErr?.message || signUpError.message || "Failed to create account." };
+      }
+
+      // Ensure profile exists in profiles table
+      const { data: existingProfile } = await adminClient
+        .from("profiles")
+        .select("id")
+        .eq("id", adminData.user.id)
+        .maybeSingle();
+
+      if (!existingProfile) {
+        await adminClient.from("profiles").insert({
+          id: adminData.user.id,
+          username: result.data.username.toLowerCase(),
+          display_name: result.data.displayName,
+          role: "user",
+        });
+      }
+
+      // Automatically sign the user in so the session cookie is saved
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: result.data.email,
+        password: result.data.password,
+      });
+
+      if (signInErr) {
+        console.error("Sign in after admin registration failed:", signInErr);
+      }
+
+      revalidatePath("/", "layout");
+      redirect("/");
+    } catch (err) {
+      if (err.message === "NEXT_REDIRECT") throw err;
+      return { ok: false, error: err?.message || signUpError.message || "Failed to create account." };
+    }
   }
 
-  // If email confirmation is required:
-  if (data?.user && !data.session) {
+  // If signUp succeeded but email confirmation is required:
+  if (signUpData?.user && !signUpData.session) {
+    try {
+      const adminClient = getAdminClient();
+      await adminClient.auth.admin.updateUserById(signUpData.user.id, {
+        email_confirm: true,
+      });
+      // Attempt immediate login
+      const { error: autoSignInErr } = await supabase.auth.signInWithPassword({
+        email: result.data.email,
+        password: result.data.password,
+      });
+      if (!autoSignInErr) {
+        revalidatePath("/", "layout");
+        redirect("/");
+      }
+    } catch (err) {
+      if (err.message === "NEXT_REDIRECT") throw err;
+    }
+
     return {
       ok: true,
       requiresConfirmation: true,

@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createUserClient } from "@/server/supabase";
+import { getAdminClient } from "@/server/admin-client";
 import { ROLE_RANK } from "@/lib/constants";
 
 export class AuthError extends Error {
@@ -18,16 +19,42 @@ export const getSession = cache(async () => {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) return null;
 
-    const { data: profile, error: profileError } = await supabase
+    let { data: profile } = await supabase
       .from("profiles")
       .select("id, username, display_name, avatar_url, role, is_suspended")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (profileError || !profile || profile.is_suspended) return null;
+    if (!profile) {
+      // Auto-heal missing profile record if user exists in auth.users
+      const rawUser = user.user_metadata?.username || user.email?.split("@")[0] || `user_${user.id.slice(0, 6)}`;
+      const cleanUsername = rawUser.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20) || `user_${user.id.slice(0, 6)}`;
+      const displayName = user.user_metadata?.display_name || user.user_metadata?.full_name || cleanUsername;
+
+      const adminSupabase = getAdminClient();
+      const { data: createdProfile } = await adminSupabase
+        .from("profiles")
+        .insert({
+          id: user.id,
+          username: cleanUsername,
+          display_name: displayName.slice(0, 60),
+          role: "user",
+        })
+        .select("id, username, display_name, avatar_url, role, is_suspended")
+        .maybeSingle();
+
+      if (createdProfile) {
+        profile = createdProfile;
+      } else {
+        return null;
+      }
+    }
+
+    if (profile.is_suspended) return null;
 
     return { user, profile };
-  } catch {
+  } catch (err) {
+    console.error("Error in getSession:", err);
     return null;
   }
 });

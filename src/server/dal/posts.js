@@ -22,7 +22,7 @@ export async function getFeedPosts({
       comments_count,
       shares_count,
       created_at,
-      author:profiles!posts_user_id_fkey(
+      author:profiles!posts_author_id_fkey(
         id,
         username,
         display_name,
@@ -51,7 +51,7 @@ export async function getFeedPosts({
     if (followingIds.length === 0) {
       return { posts: [], nextCursor: null };
     }
-    query = query.in("user_id", followingIds);
+    query = query.in("author_id", followingIds);
   }
 
   const { data: rawPosts, error } = await query;
@@ -110,7 +110,7 @@ export async function getPostById(postId, viewerId = null) {
       comments_count,
       shares_count,
       created_at,
-      author:profiles!posts_user_id_fkey(
+      author:profiles!posts_author_id_fkey(
         id,
         username,
         display_name,
@@ -161,12 +161,12 @@ export async function getCommentsForPost(postId, viewerId = null) {
     .select(`
       id,
       post_id,
-      user_id,
+      author_id,
       parent_id,
       body,
       status,
       created_at,
-      author:profiles!comments_user_id_fkey(
+      author:profiles!comments_author_id_fkey(
         id,
         username,
         display_name,
@@ -182,12 +182,12 @@ export async function getCommentsForPost(postId, viewerId = null) {
   return comments.map((c) => ({
     id: c.id,
     postId: c.post_id,
-    userId: c.user_id,
+    userId: c.author_id,
     parentId: c.parent_id,
     body: c.body,
     createdAt: c.created_at,
     author: c.author,
-    isOwner: viewerId ? c.user_id === viewerId : false,
+    isOwner: viewerId ? c.author_id === viewerId : false,
   }));
 }
 
@@ -215,7 +215,7 @@ export async function getUserPosts({
           comments_count,
           shares_count,
           created_at,
-          author:profiles!posts_user_id_fkey(
+          author:profiles!posts_author_id_fkey(
             id,
             username,
             display_name,
@@ -266,7 +266,7 @@ export async function getUserPosts({
       shares_count,
       created_at
     `)
-    .eq("user_id", userId)
+    .eq("author_id", userId)
     .eq("status", "published")
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -320,7 +320,7 @@ export async function getTagPosts({
         shares_count,
         created_at,
         status,
-        author:profiles!posts_user_id_fkey(
+        author:profiles!posts_author_id_fkey(
           id,
           username,
           display_name,
@@ -367,7 +367,7 @@ export async function getExplorePosts({ limit = 18 } = {}) {
       comments_count,
       shares_count,
       created_at,
-      author:profiles!posts_user_id_fkey(
+      author:profiles!posts_author_id_fkey(
         id,
         username,
         display_name,
@@ -416,7 +416,7 @@ export async function searchPosts(searchQuery, limit = 20) {
         comments_count,
         shares_count,
         created_at,
-        author:profiles!posts_user_id_fkey(
+        author:profiles!posts_author_id_fkey(
           id,
           username,
           display_name,
