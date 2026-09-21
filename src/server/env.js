@@ -9,8 +9,8 @@ const schema = z.object({
 });
 
 export const env = schema.parse({
-  SUPABASE_URL: process.env.SUPABASE_URL,
-  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
-  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-  SITE_URL: process.env.SITE_URL || "http://localhost:3000",
+  SUPABASE_URL: process.env.SUPABASE_URL || "https://placeholder-project.supabase.co",
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || "placeholder-anon-key-for-build-step",
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder-service-key-for-build-step",
+  SITE_URL: process.env.SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://social-news-nine.vercel.app"),
 });
