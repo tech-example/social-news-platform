@@ -49,12 +49,24 @@ export async function signInAction(prevState, formData) {
 export async function signUpAction(prevState, formData) {
   const email = formData.get("email");
   const password = formData.get("password");
+  const confirmPassword = formData.get("confirmPassword");
   const username = formData.get("username");
   const displayName = formData.get("displayName");
 
-  const result = signUpSchema.safeParse({ email, password, username, displayName });
+  const result = signUpSchema.safeParse({ email, password, confirmPassword, username, displayName });
   if (!result.success) {
-    return { ok: false, error: result.error.issues[0]?.message || "Invalid input." };
+    const fieldErrors = {};
+    for (const issue of result.error.issues) {
+      const field = issue.path[0];
+      if (field && !fieldErrors[field]) {
+        fieldErrors[field] = issue.message;
+      }
+    }
+    return {
+      ok: false,
+      error: result.error.issues[0]?.message || "Invalid input.",
+      fieldErrors,
+    };
   }
 
   const supabase = await createUserClient();

@@ -117,21 +117,27 @@ export const signInSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-export const signUpSchema = z.object({
-  email: z.string().trim().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  username: z
-    .string()
-    .trim()
-    .min(LIMITS.PROFILE_USERNAME_MIN, `Username must be at least ${LIMITS.PROFILE_USERNAME_MIN} characters`)
-    .max(LIMITS.PROFILE_USERNAME_MAX, `Username must be ${LIMITS.PROFILE_USERNAME_MAX} characters or fewer`)
-    .regex(/^[a-z0-9_.]+$/i, "Username can only contain letters, numbers, periods, and underscores"),
-  displayName: z
-    .string()
-    .trim()
-    .min(LIMITS.PROFILE_DISPLAY_NAME_MIN, "Display name is required")
-    .max(LIMITS.PROFILE_DISPLAY_NAME_MAX, `Display name must be ${LIMITS.PROFILE_DISPLAY_NAME_MAX} characters or fewer`),
-});
+export const signUpSchema = z
+  .object({
+    email: z.string().trim().email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+    username: z
+      .string()
+      .trim()
+      .min(LIMITS.PROFILE_USERNAME_MIN, `Username must be at least ${LIMITS.PROFILE_USERNAME_MIN} characters`)
+      .max(LIMITS.PROFILE_USERNAME_MAX, `Username must be ${LIMITS.PROFILE_USERNAME_MAX} characters or fewer`)
+      .regex(/^[a-z0-9_.]+$/i, "Username can only contain letters, numbers, periods, and underscores"),
+    displayName: z
+      .string()
+      .trim()
+      .min(LIMITS.PROFILE_DISPLAY_NAME_MIN, "Display name is required")
+      .max(LIMITS.PROFILE_DISPLAY_NAME_MAX, `Display name must be ${LIMITS.PROFILE_DISPLAY_NAME_MAX} characters or fewer`),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 export const roleUpdateSchema = z.object({
   targetUserId: z.string().uuid("Invalid user ID"),
