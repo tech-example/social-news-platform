@@ -1,18 +1,17 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { transitionReportAction } from "@/server/actions/reports";
 import { hidePostAction, restorePostAction, hideCommentAction, restoreCommentAction } from "@/server/actions/moderation";
 import { useToast } from "@/components/ui/toast";
 import { ShieldCheck, EyeOff, Eye, ArrowUpRight, CheckCircle2, XCircle } from "lucide-react";
 
-export function ModeratorActionPanel({ report, currentRole = "moderator" }) {
-  const router = useRouter();
+export function ModeratorActionPanel({ report: initialReport, currentRole = "moderator", onStatusChange }) {
   const { addToast } = useToast();
   const [note, setNote] = useState("");
   const [actionTaken, setActionTaken] = useState("content_hidden");
   const [isPending, startTransition] = useTransition();
+  const [report, setReport] = useState(initialReport);
 
   const handleTransition = (nextStatus) => {
     startTransition(async () => {
@@ -25,7 +24,8 @@ export function ModeratorActionPanel({ report, currentRole = "moderator" }) {
 
       if (res.ok) {
         addToast(`Report marked as ${nextStatus.replace("_", " ")}.`);
-        router.refresh();
+        setReport((prev) => ({ ...prev, status: nextStatus }));
+        if (onStatusChange) onStatusChange(report.id, nextStatus);
       } else {
         addToast(res.error || "Failed to update report.", "error");
       }
@@ -43,7 +43,6 @@ export function ModeratorActionPanel({ report, currentRole = "moderator" }) {
 
       if (res?.ok) {
         addToast(hide ? "Content hidden from public view." : "Content restored.");
-        router.refresh();
       } else {
         addToast(res?.error || "Failed to update content status.", "error");
       }

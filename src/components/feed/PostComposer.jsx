@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { createPostAction } from "@/server/actions/posts";
 import { useToast } from "@/components/ui/toast";
+import { compressImage, formatFileSize } from "@/lib/compress-image";
 import { ImagePlus, X, Hash, LoaderCircle } from "lucide-react";
 import { LIMITS } from "@/lib/constants";
 
@@ -18,6 +19,7 @@ export function PostComposer() {
   const [tags, setTags] = useState([]);
   const [imageUrl, setImageUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const handleAddTag = () => {
@@ -45,8 +47,13 @@ export function PostComposer() {
 
     setIsUploading(true);
     try {
+      // Compress image before uploading
+      setUploadStatus("Compressing...");
+      const { file: compressedFile, originalSize, compressedSize } = await compressImage(file);
+
+      setUploadStatus("Uploading...");
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressedFile);
 
       const res = await fetch("/api/upload-url", {
         method: "POST",
@@ -56,7 +63,12 @@ export function PostComposer() {
       const data = await res.json();
       if (res.ok && data.url) {
         setImageUrl(data.url);
-        addToast("Image uploaded successfully.");
+        if (compressedSize < originalSize) {
+          const reduction = Math.round((1 - compressedSize / originalSize) * 100);
+          addToast(`Image compressed: ${formatFileSize(originalSize)} to ${formatFileSize(compressedSize)} (${reduction}% smaller)`);
+        } else {
+          addToast("Image uploaded successfully.");
+        }
       } else {
         addToast(data.error || "Failed to upload image.", "error");
       }
@@ -65,6 +77,7 @@ export function PostComposer() {
       addToast("Error uploading file.", "error");
     } finally {
       setIsUploading(false);
+      setUploadStatus("");
     }
   };
 
@@ -164,7 +177,7 @@ export function PostComposer() {
                 ) : (
                   <ImagePlus size={18} strokeWidth={1.75} aria-hidden="true" />
                 )}
-                <span>{isUploading ? "Uploading..." : "Upload Image"}</span>
+                <span>{isUploading ? (uploadStatus || "Processing...") : "Upload Image"}</span>
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"

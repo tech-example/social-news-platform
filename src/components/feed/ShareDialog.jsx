@@ -6,7 +6,7 @@ import { sharePostAction } from "@/server/actions/interactions";
 import { useToast } from "@/components/ui/toast";
 import { LIMITS } from "@/lib/constants";
 
-export function ShareDialog({ open, onClose, postId, postTitle }) {
+export function ShareDialog({ open, onClose, postId, postTitle, onShareSuccess }) {
   const [note, setNote] = useState("");
   const [isPending, startTransition] = useTransition();
   const { addToast } = useToast();
@@ -19,6 +19,7 @@ export function ShareDialog({ open, onClose, postId, postTitle }) {
         addToast("Post shared to your profile.");
         setNote("");
         onClose();
+        if (onShareSuccess) onShareSuccess();
       } else {
         addToast(res.error || "Failed to share post.", "error");
       }

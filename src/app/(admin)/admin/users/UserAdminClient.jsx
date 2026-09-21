@@ -1,6 +1,5 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { updateUserRoleAction, setUserSuspendedAction } from "@/server/actions/admin";
 import { Avatar } from "@/components/ui/avatar";
@@ -11,18 +10,25 @@ import { useToast } from "@/components/ui/toast";
 import { formatCompactNumber, formatRelativeTime } from "@/lib/format";
 import { Ban, CheckCircle2, Shield } from "lucide-react";
 
-export function UserAdminClient({ users = [], total = 0, currentAdminId }) {
-  const router = useRouter();
+export function UserAdminClient({ users: initialUsers = [], total = 0, currentAdminId }) {
   const { addToast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [users, setUsers] = useState(initialUsers);
 
   const handleRoleChange = (userId, newRole) => {
+    // Optimistically update local state
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+    );
     startTransition(async () => {
       const res = await updateUserRoleAction(userId, newRole);
       if (res.ok) {
         addToast(`Role updated to ${newRole}.`);
-        router.refresh();
       } else {
+        // Revert on failure
+        setUsers((prev) =>
+          prev.map((u) => (u.id === userId ? { ...u, role: u.role } : u))
+        );
         addToast(res.error || "Failed to update role.", "error");
       }
     });
@@ -35,12 +41,19 @@ export function UserAdminClient({ users = [], total = 0, currentAdminId }) {
       : "Restore user account access?";
 
     if (window.confirm(msg)) {
+      // Optimistically update local state
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, is_suspended: nextState } : u))
+      );
       startTransition(async () => {
         const res = await setUserSuspendedAction(userId, nextState);
         if (res.ok) {
           addToast(nextState ? "User suspended." : "User restored.");
-          router.refresh();
         } else {
+          // Revert on failure
+          setUsers((prev) =>
+            prev.map((u) => (u.id === userId ? { ...u, is_suspended: currentSuspended } : u))
+          );
           addToast(res.error || "Failed to update suspension status.", "error");
         }
       });

@@ -1,6 +1,5 @@
 "use client";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { restorePostAction, restoreCommentAction } from "@/server/actions/moderation";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -8,18 +7,19 @@ import { useToast } from "@/components/ui/toast";
 import { formatRelativeTime } from "@/lib/format";
 import { Eye, FileText, MessageSquare } from "lucide-react";
 
-export function ContentReviewClient({ hiddenPosts = [], hiddenComments = [] }) {
-  const router = useRouter();
+export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComments: initialComments = [] }) {
   const { addToast } = useToast();
   const [tab, setTab] = useState("posts");
   const [isPending, startTransition] = useTransition();
+  const [posts, setPosts] = useState(initialPosts);
+  const [comments, setComments] = useState(initialComments);
 
   const handleRestorePost = (postId) => {
     startTransition(async () => {
       const res = await restorePostAction(postId);
       if (res.ok) {
+        setPosts((prev) => prev.filter((p) => p.id !== postId));
         addToast("Post restored to public view.");
-        router.refresh();
       } else {
         addToast(res.error || "Failed to restore post.", "error");
       }
@@ -30,8 +30,8 @@ export function ContentReviewClient({ hiddenPosts = [], hiddenComments = [] }) {
     startTransition(async () => {
       const res = await restoreCommentAction(commentId);
       if (res.ok) {
+        setComments((prev) => prev.filter((c) => c.id !== commentId));
         addToast("Comment restored to public view.");
-        router.refresh();
       } else {
         addToast(res.error || "Failed to restore comment.", "error");
       }
@@ -51,7 +51,7 @@ export function ContentReviewClient({ hiddenPosts = [], hiddenComments = [] }) {
           }`}
         >
           <FileText size={15} strokeWidth={2} aria-hidden="true" />
-          <span>Hidden Posts ({hiddenPosts.length})</span>
+          <span>Hidden Posts ({posts.length})</span>
         </button>
         <button
           type="button"
@@ -63,13 +63,13 @@ export function ContentReviewClient({ hiddenPosts = [], hiddenComments = [] }) {
           }`}
         >
           <MessageSquare size={15} strokeWidth={2} aria-hidden="true" />
-          <span>Hidden Comments ({hiddenComments.length})</span>
+          <span>Hidden Comments ({comments.length})</span>
         </button>
       </div>
 
       {tab === "posts" && (
         <div className="bg-[var(--bg)] border border-[var(--line)] rounded-xl overflow-hidden shadow-xs">
-          {hiddenPosts.length === 0 ? (
+          {posts.length === 0 ? (
             <p className="py-12 text-center text-sm text-[var(--ink-muted)]">
               No hidden posts. Content is healthy.
             </p>
@@ -84,7 +84,7 @@ export function ContentReviewClient({ hiddenPosts = [], hiddenComments = [] }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {hiddenPosts.map((p) => (
+                {posts.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="text-xs font-semibold">
                       @{p.author?.username || "anonymous"}
@@ -117,7 +117,7 @@ export function ContentReviewClient({ hiddenPosts = [], hiddenComments = [] }) {
 
       {tab === "comments" && (
         <div className="bg-[var(--bg)] border border-[var(--line)] rounded-xl overflow-hidden shadow-xs">
-          {hiddenComments.length === 0 ? (
+          {comments.length === 0 ? (
             <p className="py-12 text-center text-sm text-[var(--ink-muted)]">
               No hidden comments.
             </p>
@@ -132,7 +132,7 @@ export function ContentReviewClient({ hiddenPosts = [], hiddenComments = [] }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {hiddenComments.map((c) => (
+                {comments.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="text-xs font-semibold">
                       @{c.author?.username || "anonymous"}

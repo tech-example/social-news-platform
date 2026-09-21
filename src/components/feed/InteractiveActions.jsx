@@ -16,14 +16,17 @@ export function InteractiveActions({
   initialLiked = false,
   initialLikesCount = 0,
   commentsCount = 0,
-  sharesCount = 0,
+  sharesCount: initialSharesCount = 0,
   isAuthor = false,
   commentHref = null,
+  onDelete = null,
 }) {
   const [shareOpen, setShareOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [localSharesCount, setLocalSharesCount] = useState(initialSharesCount);
+  const [isDeleted, setIsDeleted] = useState(false);
   const { addToast } = useToast();
 
   const [optimisticState, setOptimisticState] = useOptimistic(
@@ -59,16 +62,33 @@ export function InteractiveActions({
 
   const handleDelete = () => {
     if (window.confirm("Are you sure you want to delete this post?")) {
+      // Optimistically hide the post
+      setIsDeleted(true);
       startTransition(async () => {
         const res = await deletePostAction(postId);
         if (res.ok) {
           addToast("Post deleted.");
+          if (onDelete) onDelete(postId);
         } else {
+          // Revert optimistic delete
+          setIsDeleted(false);
           addToast(res.error || "Failed to delete post.", "error");
         }
       });
     }
   };
+
+  const handleShareSuccess = () => {
+    setLocalSharesCount((prev) => prev + 1);
+  };
+
+  if (isDeleted) {
+    return (
+      <div className="py-4 text-center text-xs text-[var(--ink-muted)] italic animate-fadeIn">
+        Post deleted.
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -165,9 +185,9 @@ export function InteractiveActions({
             {formatCompactNumber(commentsCount)} comments
           </span>
         )}
-        {sharesCount > 0 && (
+        {localSharesCount > 0 && (
           <span className="text-[var(--ink-muted)] font-normal">
-            {formatCompactNumber(sharesCount)} shares
+            {formatCompactNumber(localSharesCount)} shares
           </span>
         )}
       </div>
@@ -177,6 +197,7 @@ export function InteractiveActions({
         onClose={() => setShareOpen(false)}
         postId={postId}
         postTitle={postTitle}
+        onShareSuccess={handleShareSuccess}
       />
 
       <ReportDialog
