@@ -2,6 +2,8 @@ import "./globals.css";
 import { MotionProvider } from "@/components/motion/motion-provider";
 import { AppShell } from "@/components/layout/AppShell";
 
+import { ToastProvider } from "@/components/ui/toast";
+
 export const metadata = {
   title: "SocialNews - Social News and Content Platform",
   description: "A social format web application for content management and following news.",
@@ -27,9 +29,11 @@ export default function RootLayout({ children }) {
         >
           Skip to main content
         </a>
-        <MotionProvider>
-          <AppShell>{children}</AppShell>
-        </MotionProvider>
+        <ToastProvider>
+          <MotionProvider>
+            <AppShell>{children}</AppShell>
+          </MotionProvider>
+        </ToastProvider>
       </body>
     </html>
   );

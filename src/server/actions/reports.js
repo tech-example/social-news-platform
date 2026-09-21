@@ -1,0 +1,71 @@
+"use server";
+import { revalidatePath } from "next/cache";
+import { requireRole } from "@/server/auth";
+import { createUserClient } from "@/server/supabase";
+import { getAdminClient } from "@/server/admin-client";
+import { reportSchema } from "@/lib/validators";
+
+export async function createReportAction(input) {
+  const session = await requireRole("user");
+  const parsed = reportSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message || "Invalid report input." };
+  }
+
+  const { targetType, targetId, reason, details } = parsed.data;
+  const supabase = await createUserClient();
+
+  const { data: newReport, error } = await supabase
+    .from("reports")
+    .insert({
+      reporter_id: session.user.id,
+      target_type: targetType,
+      target_id: targetId,
+      reason,
+      details: details || null,
+      status: "pending",
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    return { ok: false, error: error.message || "Failed to submit report." };
+  }
+
+  return { ok: true, reportId: newReport.id };
+}
+
+export async function transitionReportAction({ reportId, nextStatus, actionTaken, note }) {
+  const session = await requireRole("moderator");
+  const adminSupabase = getAdminClient();
+
+  // Call the atomic report transition RPC from migration 00002
+  const { error } = await adminSupabase.rpc("report_transition", {
+    p_report_id: reportId,
+    p_next_status: nextStatus,
+    p_actor_id: session.user.id,
+    p_action_taken: actionTaken || null,
+    p_note: note || null,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message || "Failed to update report status." };
+  }
+
+  // Audit log
+  await adminSupabase.from("audit_logs").insert({
+    actor_id: session.user.id,
+    action: `report_transition_to_${nextStatus}`,
+    target_type: "report",
+    target_id: reportId,
+    details: { nextStatus, actionTaken, note },
+  });
+
+  revalidatePath("/moderation");
+  revalidatePath("/moderation/reports");
+  revalidatePath(`/moderation/reports/${reportId}`);
+  revalidatePath("/admin");
+  revalidatePath("/admin/reports");
+  return { ok: true };
+}

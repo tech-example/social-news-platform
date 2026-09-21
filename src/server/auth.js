@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { redirect } from "next/navigation";
 import { createUserClient } from "@/server/supabase";
 import { ROLE_RANK } from "@/lib/constants";
 
@@ -32,6 +33,20 @@ export const getSession = cache(async () => {
 });
 
 export async function requireRole(minRole = "user") {
+  const session = await getSession();
+  if (!session) {
+    redirect("/sign-in");
+  }
+  const userRank = ROLE_RANK[session.profile.role] || 0;
+  const requiredRank = ROLE_RANK[minRole] || 1;
+
+  if (userRank < requiredRank) {
+    redirect("/");
+  }
+  return session;
+}
+
+export async function requireRoleOrThrow(minRole = "user") {
   const session = await getSession();
   if (!session) {
     throw new AuthError("UNAUTHENTICATED", "You must be signed in to perform this action.");
