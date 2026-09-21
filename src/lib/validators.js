@@ -113,8 +113,8 @@ export const profileUpdateSchema = z.object({
 });
 
 export const signInSchema = z.object({
-  email: z.string().trim().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  email: z.string().trim().min(1, "Email is required").email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
 });
 
 export const signUpSchema = z.object({

@@ -19,6 +19,7 @@
 }
 
 :root {
+  color-scheme: light;
   --bg: #FFFFFF;
   --surface: #FAFAFA;
   --surface-strong: #EFEFEF;
@@ -35,8 +36,8 @@
 }
 
 body {
-  background-color: var(--bg);
-  color: var(--ink);
+  background-color: var(--bg, #FFFFFF);
+  color: var(--ink, #262626);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

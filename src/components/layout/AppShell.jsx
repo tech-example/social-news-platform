@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   Settings,
   LogIn,
+  UserPlus,
   X,
 } from "lucide-react";
 import { COPY } from "@/lib/copy";
@@ -147,7 +148,15 @@ export function AppShell({ children }) {
                 className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
               >
                 <LogIn size={18} strokeWidth={1.75} aria-hidden="true" />
-                <span>Sign In / Switch</span>
+                <span>Sign In</span>
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setMoreOpen(false)}
+                className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
+              >
+                <UserPlus size={18} strokeWidth={1.75} aria-hidden="true" />
+                <span>Register</span>
               </Link>
             </div>
           )}
@@ -199,6 +208,14 @@ export function AppShell({ children }) {
           >
             <LogIn size={18} strokeWidth={1.75} aria-hidden="true" />
             <span>Sign In</span>
+          </Link>
+          <Link
+            href="/register"
+            onClick={() => setMoreOpen(false)}
+            className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink-muted)] hover:bg-[var(--surface)]"
+          >
+            <UserPlus size={18} strokeWidth={1.75} aria-hidden="true" />
+            <span>Register</span>
           </Link>
         </div>
       )}

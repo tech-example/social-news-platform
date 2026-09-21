@@ -27,11 +27,12 @@ export function SearchInput({ initialQuery = "", initialType = "accounts" }) {
         className="absolute left-3.5 text-[var(--ink-muted)] pointer-events-none"
       />
       <input
-        type="search"
+        type="text"
+        inputMode="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search accounts, tags, or news keywords..."
-        className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:bg-[var(--bg)] focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
+        className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:bg-[var(--bg)] focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)] [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
       />
       {query && (
         <div className="absolute right-2">

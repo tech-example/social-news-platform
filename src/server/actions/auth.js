@@ -11,7 +11,18 @@ export async function signInAction(prevState, formData) {
 
   const result = signInSchema.safeParse({ email, password });
   if (!result.success) {
-    return { ok: false, error: result.error.issues[0]?.message || "Invalid credentials." };
+    const issues = result.error.issues;
+    const emailIssue = issues.find((i) => i.path[0] === "email");
+    const passwordIssue = issues.find((i) => i.path[0] === "password");
+
+    return {
+      ok: false,
+      error: emailIssue?.message || passwordIssue?.message || "Invalid credentials.",
+      fieldErrors: {
+        email: emailIssue?.message,
+        password: passwordIssue?.message,
+      },
+    };
   }
 
   const supabase = await createUserClient();
@@ -21,7 +32,13 @@ export async function signInAction(prevState, formData) {
   });
 
   if (error) {
-    return { ok: false, error: error.message || "Failed to sign in." };
+    return {
+      ok: false,
+      error: "Incorrect email or password. Please check your credentials.",
+      fieldErrors: {
+        password: "Incorrect password",
+      },
+    };
   }
 
   revalidatePath("/", "layout");
