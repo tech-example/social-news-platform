@@ -1,25 +1,48 @@
 "use client";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
-import { Heart, MessageCircle, Send, Ellipsis, Link as LinkIcon, Flag, Trash2, Repeat } from "lucide-react";
+import { Heart, MessageCircle, Send, Ellipsis, Link as LinkIcon, Flag, Trash2, Repeat, Pencil } from "lucide-react";
 import { IconButton } from "@/components/ui/icon-button";
 import { ShareDialog } from "@/components/feed/ShareDialog";
 import { ReportDialog } from "@/components/moderation/ReportDialog";
+import { EditPostDialog } from "@/components/feed/EditPostDialog";
 import { toggleLikeAction, sharePostAction } from "@/server/actions/interactions";
 import { deletePostAction } from "@/server/actions/posts";
 import { formatCompactNumber } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
 
+/**
+ * Checks a server action result for UNAUTHENTICATED and shows a sign-in toast.
+ */
+function useAuthGuard() {
+  const { addToast } = useToast();
+  const guard = useCallback(
+    (res) => {
+      if (res?.code === "UNAUTHENTICATED" || res?.error === "UNAUTHENTICATED") {
+        addToast("กรุณาเข้าสู่ระบบเพื่อดำเนินการต่อ (Please sign in to continue)", "error");
+        return true;
+      }
+      return false;
+    },
+    [addToast],
+  );
+  return guard;
+}
+
 export function InteractiveActions({
   postId,
   postTitle = "",
+  post = null,
   initialLiked = false,
   initialLikesCount = 0,
   commentsCount = 0,
   sharesCount: initialSharesCount = 0,
   isAuthor = false,
   commentHref = null,
+  onCommentClick = null,
   onDelete = null,
+  onPostUpdated = null,
+  currentUserId = null,
 }) {
   const [likeState, setLikeState] = useState({
     isLiked: initialLiked,
@@ -30,11 +53,19 @@ export function InteractiveActions({
   const [shareOpen, setShareOpen] = useState(false);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
   const { addToast } = useToast();
+  const authGuard = useAuthGuard();
 
   const handleLike = () => {
+    // Client-side pre-check: if not logged in, prompt user immediately
+    if (!currentUserId) {
+      addToast("กรุณาเข้าสู่ระบบเพื่อกดถูกใจ (Please sign in to like)", "error");
+      return;
+    }
+
     const willBeLiked = !likeState.isLiked;
     const newCount = willBeLiked
       ? likeState.count + 1
@@ -51,7 +82,10 @@ export function InteractiveActions({
     toggleLikeAction(postId)
       .then((res) => {
         if (!res?.ok) {
-          // Revert on error
+          if (authGuard(res)) {
+            setLikeState({ isLiked: !willBeLiked, count: willBeLiked ? Math.max(0, newCount - 1) : newCount + 1 });
+            return;
+          }
           setLikeState({
             isLiked: !willBeLiked,
             count: willBeLiked ? Math.max(0, newCount - 1) : newCount + 1,
@@ -70,6 +104,12 @@ export function InteractiveActions({
   };
 
   const handleQuickShare = () => {
+    if (!currentUserId) {
+      addToast("กรุณาเข้าสู่ระบบเพื่อแชร์โพสต์", "error");
+      setShareMenuOpen(false);
+      return;
+    }
+
     setShareMenuOpen(false);
     setLocalSharesCount((prev) => prev + 1);
     addToast("Post shared to your profile.");
@@ -77,6 +117,7 @@ export function InteractiveActions({
     sharePostAction(postId).then((res) => {
       if (!res?.ok) {
         setLocalSharesCount((prev) => Math.max(0, prev - 1));
+        if (authGuard(res)) return;
         addToast(res?.error || "Failed to share post.", "error");
       }
     }).catch((err) => {
@@ -109,6 +150,7 @@ export function InteractiveActions({
           if (onDelete) onDelete(postId);
         } else {
           setIsDeleted(false);
+          if (authGuard(res)) return;
           addToast(res?.error || "Failed to delete post.", "error");
         }
       }).catch((err) => {
@@ -156,7 +198,14 @@ export function InteractiveActions({
           </IconButton>
 
           {/* Comment */}
-          {commentHref ? (
+          {onCommentClick ? (
+            <IconButton
+              label="Comment on post"
+              onClick={onCommentClick}
+            >
+              <MessageCircle size={24} strokeWidth={1.75} aria-hidden="true" />
+            </IconButton>
+          ) : commentHref ? (
             <Link
               href={commentHref}
               className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-[var(--ink)] hover:bg-[var(--surface)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
@@ -168,6 +217,10 @@ export function InteractiveActions({
             <IconButton
               label="Comment on post"
               onClick={() => {
+                if (!currentUserId) {
+                  addToast("กรุณาเข้าสู่ระบบเพื่อแสดงความคิดเห็น", "error");
+                  return;
+                }
                 const el = document.getElementById(`comment-input-${postId}`);
                 if (el) el.focus();
               }}
@@ -199,6 +252,10 @@ export function InteractiveActions({
                   type="button"
                   onClick={() => {
                     setShareMenuOpen(false);
+                    if (!currentUserId) {
+                      addToast("กรุณาเข้าสู่ระบบเพื่อแชร์โพสต์", "error");
+                      return;
+                    }
                     setShareOpen(true);
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer"
@@ -239,6 +296,10 @@ export function InteractiveActions({
                 type="button"
                 onClick={() => {
                   setMenuOpen(false);
+                  if (!currentUserId) {
+                    addToast("กรุณาเข้าสู่ระบบเพื่อรายงานโพสต์", "error");
+                    return;
+                  }
                   setReportOpen(true);
                 }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer"
@@ -247,14 +308,27 @@ export function InteractiveActions({
                 <span>Report Post</span>
               </button>
               {isAuthor && (
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer"
-                >
-                  <Trash2 size={14} strokeWidth={1.75} aria-hidden="true" />
-                  <span>Delete Post</span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setEditOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer"
+                  >
+                    <Pencil size={14} strokeWidth={1.75} aria-hidden="true" />
+                    <span>Edit Post</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer"
+                  >
+                    <Trash2 size={14} strokeWidth={1.75} aria-hidden="true" />
+                    <span>Delete Post</span>
+                  </button>
+                </>
               )}
             </div>
           )}
@@ -290,6 +364,16 @@ export function InteractiveActions({
         targetType="post"
         targetId={postId}
       />
+
+      {post && (
+        <EditPostDialog
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          post={post}
+          onPostUpdated={onPostUpdated}
+        />
+      )}
     </div>
   );
 }
+

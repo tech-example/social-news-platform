@@ -9,6 +9,8 @@ import { useToast } from "@/components/ui/toast";
 import { ImagePlus, LoaderCircle, CircleAlert } from "lucide-react";
 import { LIMITS } from "@/lib/constants";
 
+import { compressImage } from "@/lib/compress-image";
+
 export function EditProfileDialog({ open, onClose, profile, onProfileUpdated }) {
   const [displayName, setDisplayName] = useState(profile.display_name || "");
   const [bio, setBio] = useState(profile.bio || "");
@@ -25,8 +27,15 @@ export function EditProfileDialog({ open, onClose, profile, onProfileUpdated }) 
     setIsUploading(true);
     setErrorMsg("");
     try {
+      // Compress image client-side before upload
+      const { file: compressedFile } = await compressImage(file, {
+        maxSizeMB: 0.5,
+        maxWidthOrHeight: 512,
+        quality: 0.85,
+      });
+
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressedFile);
 
       const res = await fetch("/api/upload-url", {
         method: "POST",

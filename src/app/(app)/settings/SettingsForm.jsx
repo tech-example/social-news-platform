@@ -9,6 +9,8 @@ import { useToast } from "@/components/ui/toast";
 import { LogOut, CircleAlert, CircleCheck, ImagePlus, LoaderCircle } from "lucide-react";
 import { LIMITS } from "@/lib/constants";
 
+import { compressImage } from "@/lib/compress-image";
+
 export function SettingsForm({ session }) {
   const profile = session.profile;
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url || "");
@@ -23,8 +25,14 @@ export function SettingsForm({ session }) {
 
     setIsUploading(true);
     try {
+      const { file: compressedFile } = await compressImage(file, {
+        maxSizeMB: 0.5,
+        maxWidthOrHeight: 512,
+        quality: 0.85,
+      });
+
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressedFile);
 
       const res = await fetch("/api/upload-url", {
         method: "POST",

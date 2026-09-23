@@ -1,12 +1,22 @@
 "use server";
-import { requireRole } from "@/server/auth";
+import { requireRoleOrThrow, AuthError } from "@/server/auth";
 import { createUserClient } from "@/server/supabase";
 import { getAdminClient } from "@/server/admin-client";
 import { commentSchema, shareSchema } from "@/lib/validators";
 import { revalidatePath } from "next/cache";
+import { getCommentsForPost } from "@/server/dal/posts";
 
 export async function toggleLikeAction(postId) {
-  const session = await requireRole("user");
+  let session;
+  try {
+    session = await requireRoleOrThrow("user");
+  } catch (err) {
+    if (err instanceof AuthError && err.code === "UNAUTHENTICATED") {
+      return { ok: false, error: "UNAUTHENTICATED", code: "UNAUTHENTICATED" };
+    }
+    return { ok: false, error: "You do not have permission.", code: "FORBIDDEN" };
+  }
+
   const userSupabase = await createUserClient();
   const adminSupabase = getAdminClient();
 
@@ -76,7 +86,15 @@ export async function toggleLikeAction(postId) {
 }
 
 export async function toggleFollowAction(targetUserId) {
-  const session = await requireRole("user");
+  let session;
+  try {
+    session = await requireRoleOrThrow("user");
+  } catch (err) {
+    if (err instanceof AuthError && err.code === "UNAUTHENTICATED") {
+      return { ok: false, error: "UNAUTHENTICATED", code: "UNAUTHENTICATED" };
+    }
+    return { ok: false, error: "You do not have permission.", code: "FORBIDDEN" };
+  }
   if (session.user.id === targetUserId) {
     return { ok: false, error: "You cannot follow yourself." };
   }
@@ -148,7 +166,15 @@ export async function toggleFollowAction(targetUserId) {
 }
 
 export async function createCommentAction(postId, body, parentId = null) {
-  const session = await requireRole("user");
+  let session;
+  try {
+    session = await requireRoleOrThrow("user");
+  } catch (err) {
+    if (err instanceof AuthError && err.code === "UNAUTHENTICATED") {
+      return { ok: false, error: "UNAUTHENTICATED", code: "UNAUTHENTICATED" };
+    }
+    return { ok: false, error: "You do not have permission.", code: "FORBIDDEN" };
+  }
   const parsed = commentSchema.safeParse({ postId, body, parentId });
 
   if (!parsed.success) {
@@ -236,7 +262,15 @@ export async function createCommentAction(postId, body, parentId = null) {
 }
 
 export async function deleteCommentAction(commentId, postId) {
-  const session = await requireRole("user");
+  let session;
+  try {
+    session = await requireRoleOrThrow("user");
+  } catch (err) {
+    if (err instanceof AuthError && err.code === "UNAUTHENTICATED") {
+      return { ok: false, error: "UNAUTHENTICATED", code: "UNAUTHENTICATED" };
+    }
+    return { ok: false, error: "You do not have permission.", code: "FORBIDDEN" };
+  }
   const adminSupabase = getAdminClient();
 
   const { data: comment } = await adminSupabase
@@ -263,7 +297,15 @@ export async function deleteCommentAction(commentId, postId) {
 }
 
 export async function sharePostAction(postId, note = null) {
-  const session = await requireRole("user");
+  let session;
+  try {
+    session = await requireRoleOrThrow("user");
+  } catch (err) {
+    if (err instanceof AuthError && err.code === "UNAUTHENTICATED") {
+      return { ok: false, error: "UNAUTHENTICATED", code: "UNAUTHENTICATED" };
+    }
+    return { ok: false, error: "You do not have permission.", code: "FORBIDDEN" };
+  }
   const parsed = shareSchema.safeParse({ postId, note: note || null });
 
   if (!parsed.success) {
@@ -282,4 +324,14 @@ export async function sharePostAction(postId, note = null) {
   }
 
   return { ok: true };
+}
+
+export async function getCommentsAction(postId) {
+  try {
+    const comments = await getCommentsForPost(postId);
+    return { ok: true, comments: comments || [] };
+  } catch (err) {
+    console.error("Failed to load comments:", err);
+    return { ok: false, error: err.message || "Failed to load comments.", comments: [] };
+  }
 }

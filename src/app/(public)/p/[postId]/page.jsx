@@ -21,6 +21,39 @@ export async function generateMetadata({ params }) {
   };
 }
 
+function renderBodyWithLinks(text) {
+  if (!text) return null;
+  const parts = text.split(/(https?:\/\/[^\s]+|#[a-zA-Z0-9_]+)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("http://") || part.startsWith("https://")) {
+      return (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[var(--accent)] underline break-all hover:opacity-85 font-normal"
+        >
+          {part}
+        </a>
+      );
+    }
+    if (part.startsWith("#")) {
+      const tag = part.slice(1).toLowerCase();
+      return (
+        <Link
+          key={i}
+          href={`/tag/${tag}`}
+          className="text-[var(--accent)] font-medium hover:underline"
+        >
+          {part}
+        </Link>
+      );
+    }
+    return part;
+  });
+}
+
 export default async function PostDetailPage({ params }) {
   const { postId } = await params;
   const session = await getSession();
@@ -71,7 +104,7 @@ export default async function PostDetailPage({ params }) {
                 <h1 className="text-2xl font-bold text-[var(--ink)]">{post.title}</h1>
               )}
               <p className="text-sm text-[var(--ink)] leading-relaxed whitespace-pre-wrap">
-                {post.body}
+                {renderBodyWithLinks(post.body)}
               </p>
             </div>
           )}
@@ -121,7 +154,9 @@ export default async function PostDetailPage({ params }) {
               {post.title && (
                 <h2 className="text-sm font-bold text-[var(--ink)]">{post.title}</h2>
               )}
-              <p className="text-sm text-[var(--ink)] whitespace-pre-wrap">{post.body}</p>
+              <p className="text-sm text-[var(--ink)] whitespace-pre-wrap">
+                {renderBodyWithLinks(post.body)}
+              </p>
               {post.tags && post.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 pt-1">
                   {post.tags.map((tag) => (
@@ -152,11 +187,13 @@ export default async function PostDetailPage({ params }) {
             <InteractiveActions
               postId={post.id}
               postTitle={post.title || post.body?.slice(0, 40)}
+              post={post}
               initialLiked={post.isLiked || false}
               initialLikesCount={post.likesCount || 0}
               commentsCount={post.commentsCount || 0}
               sharesCount={post.sharesCount || 0}
               isAuthor={isAuthor}
+              currentUserId={viewerId}
             />
           </div>
         </div>
@@ -164,3 +201,4 @@ export default async function PostDetailPage({ params }) {
     </div>
   );
 }
+

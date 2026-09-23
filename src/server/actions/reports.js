@@ -16,20 +16,30 @@ export async function createReportAction(input) {
   const { targetType, targetId, reason, details } = parsed.data;
   const supabase = await createUserClient();
 
+  const reportPayload = {
+    reporter_id: session.user.id,
+    target_type: targetType,
+    reason,
+    details: details || null,
+    status: "pending",
+  };
+
+  if (targetType === "post") {
+    reportPayload.target_post_id = targetId;
+  } else if (targetType === "user") {
+    reportPayload.target_user_id = targetId;
+  } else if (targetType === "comment") {
+    reportPayload.target_comment_id = targetId;
+  }
+
   const { data: newReport, error } = await supabase
     .from("reports")
-    .insert({
-      reporter_id: session.user.id,
-      target_type: targetType,
-      target_id: targetId,
-      reason,
-      details: details || null,
-      status: "pending",
-    })
+    .insert(reportPayload)
     .select("id")
     .single();
 
   if (error) {
+    console.error("createReportAction error:", error);
     return { ok: false, error: error.message || "Failed to submit report." };
   }
 

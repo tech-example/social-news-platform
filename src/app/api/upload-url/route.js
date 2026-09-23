@@ -38,6 +38,16 @@ export async function POST(request) {
 
       const buffer = Buffer.from(await file.arrayBuffer());
 
+      // Ensure media bucket exists
+      const { data: buckets } = await adminSupabase.storage.listBuckets();
+      const mediaBucket = buckets?.find((b) => b.name === "media");
+      if (!mediaBucket) {
+        await adminSupabase.storage.createBucket("media", {
+          public: true,
+          fileSizeLimit: LIMITS.MAX_UPLOAD_IMAGE_BYTES,
+        });
+      }
+
       // Upload to media bucket
       const { error: uploadError } = await adminSupabase.storage
         .from("media")
@@ -48,7 +58,7 @@ export async function POST(request) {
 
       if (uploadError) {
         console.error("Storage upload error:", uploadError);
-        return NextResponse.json({ error: "Failed to upload file to storage." }, { status: 500 });
+        return NextResponse.json({ error: uploadError.message || "Failed to upload file to storage." }, { status: 500 });
       }
 
       const { data: publicData } = adminSupabase.storage

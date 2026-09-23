@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -11,8 +11,9 @@ import { FollowButton } from "@/components/ui/follow-button";
 import { X, ExternalLink } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format";
 
-export function InterceptedPostTopSheet({ post, comments = [], viewerId = null }) {
+export function InterceptedPostTopSheet({ post: initialPost, comments = [], viewerId = null }) {
   const router = useRouter();
+  const [post, setPost] = useState(initialPost);
 
   const handleClose = () => {
     router.back();
@@ -40,7 +41,44 @@ export function InterceptedPostTopSheet({ post, comments = [], viewerId = null }
 
   const isAuthor = viewerId === (post.author?.id || post.author_id || post.user_id);
 
+  // Render body with clickable links and hashtags
+  const renderBodyWithLinks = (text) => {
+    if (!text) return null;
+    const parts = text.split(/(https?:\/\/[^\s]+|#[a-zA-Z0-9_]+)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("http://") || part.startsWith("https://")) {
+        return (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--accent)] underline break-all hover:opacity-85 font-normal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+          </a>
+        );
+      }
+      if (part.startsWith("#")) {
+        const tag = part.slice(1).toLowerCase();
+        return (
+          <Link
+            key={i}
+            href={`/tag/${tag}`}
+            onClick={handleClose}
+            className="text-[var(--accent)] font-medium hover:underline"
+          >
+            {part}
+          </Link>
+        );
+      }
+      return part;
+    });
+  };
+
   return (
+
     <div
       role="dialog"
       aria-modal="true"
@@ -134,7 +172,7 @@ export function InterceptedPostTopSheet({ post, comments = [], viewerId = null }
               </h2>
             )}
             <p className="text-sm text-[var(--ink)] leading-relaxed whitespace-pre-wrap">
-              {post.body}
+              {renderBodyWithLinks(post.body)}
             </p>
 
             {post.tags && post.tags.length > 0 && (
@@ -158,11 +196,14 @@ export function InterceptedPostTopSheet({ post, comments = [], viewerId = null }
             <InteractiveActions
               postId={post.id}
               postTitle={post.title || post.body?.slice(0, 40)}
+              post={post}
               initialLiked={post.isLiked || false}
               initialLikesCount={post.likesCount || 0}
               commentsCount={post.commentsCount || comments.length || 0}
               sharesCount={post.sharesCount || 0}
               isAuthor={isAuthor}
+              onPostUpdated={(updated) => setPost((prev) => ({ ...prev, ...updated }))}
+              currentUserId={viewerId}
             />
           </div>
 

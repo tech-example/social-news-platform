@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, startTransition, memo } from "react";
 import Link from "next/link";
 import { Inbox } from "lucide-react";
 import { PostCard } from "./PostCard";
@@ -8,11 +8,18 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { COPY } from "@/lib/copy";
 
+// Memoize PostCard so unchanged items skip re-render during list appends
+const MemoizedPostCard = memo(PostCard, (prev, next) => {
+  return prev.post.id === next.post.id && prev.currentUserId === next.currentUserId;
+});
+MemoizedPostCard.displayName = "MemoizedPostCard";
+
 export function FeedList({ initialPosts = [], initialCursor = null, filter = "latest", currentUserId = null }) {
   const [posts, setPosts] = useState(initialPosts);
   const [cursor, setCursor] = useState(initialCursor);
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinelRef = useRef(null);
+  const loadingRef = useRef(false); // Prevent duplicate IntersectionObserver fires
 
   useEffect(() => {
     setPosts(initialPosts);
@@ -20,21 +27,44 @@ export function FeedList({ initialPosts = [], initialCursor = null, filter = "la
   }, [initialPosts, initialCursor, filter]);
 
   const handleLoadMore = useCallback(async () => {
-    if (!cursor || loadingMore) return;
+    if (!cursor || loadingRef.current) return;
+    loadingRef.current = true;
     setLoadingMore(true);
     try {
       const res = await fetch(`/api/feed?cursor=${encodeURIComponent(cursor)}&filter=${filter}`);
       if (res.ok) {
         const data = await res.json();
-        setPosts((prev) => [...prev, ...data.posts]);
-        setCursor(data.nextCursor);
+        // Use startTransition to keep the UI responsive during large state updates
+        startTransition(() => {
+          setPosts((prev) => [...prev, ...data.posts]);
+          setCursor(data.nextCursor);
+        });
       }
     } catch (err) {
       console.error("Failed to load more posts:", err);
     } finally {
       setLoadingMore(false);
+      loadingRef.current = false;
     }
-  }, [cursor, loadingMore, filter]);
+  }, [cursor, filter]);
+
+  // IntersectionObserver for automatic infinite scroll
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && cursor && !loadingRef.current) {
+          handleLoadMore();
+        }
+      },
+      { rootMargin: "400px" }, // Pre-fetch 400px before reaching the bottom
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [cursor, handleLoadMore]);
 
   if (posts.length === 0) {
     const isFollowingFilter = filter === "following";
@@ -66,7 +96,7 @@ export function FeedList({ initialPosts = [], initialCursor = null, filter = "la
   return (
     <div className="flex flex-col w-full max-w-[470px] mx-auto">
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} currentUserId={currentUserId} />
+        <MemoizedPostCard key={post.id} post={post} currentUserId={currentUserId} />
       ))}
 
       {/* Load more: show skeleton placeholder cards while fetching */}
@@ -78,8 +108,9 @@ export function FeedList({ initialPosts = [], initialCursor = null, filter = "la
         </div>
       )}
 
+      {/* Sentinel for IntersectionObserver auto-load */}
       {cursor && !loadingMore && (
-        <div className="py-6 flex justify-center">
+        <div ref={sentinelRef} className="py-6 flex justify-center">
           <Button
             variant="secondary"
             onClick={handleLoadMore}

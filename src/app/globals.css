@@ -126,3 +126,10 @@ body {
 .animate-fadeIn {
   animation: fadeIn 0.18s ease-out forwards;
 }
+
+/* Feed item rendering optimization for low-spec devices & large feeds */
+.feed-card-contain {
+  content-visibility: auto;
+  contain-intrinsic-size: 550px;
+}
+
