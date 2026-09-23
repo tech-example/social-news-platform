@@ -1,5 +1,5 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { toggleFollowAction } from "@/server/actions/interactions";
 import { useToast } from "@/components/ui/toast";
 import { UserCheck, UserPlus } from "lucide-react";
@@ -10,10 +10,15 @@ export function FollowButton({
   size = "sm",
   variant = "button", // "button" | "compact" | "text"
   className = "",
+  onToggle = null,
 }) {
   const [following, setFollowing] = useState(initialFollowing);
   const [isPending, startTransition] = useTransition();
   const { addToast } = useToast();
+
+  useEffect(() => {
+    setFollowing(initialFollowing);
+  }, [initialFollowing]);
 
   const handleToggle = (e) => {
     e.preventDefault();
@@ -21,23 +26,32 @@ export function FollowButton({
 
     const nextState = !following;
     setFollowing(nextState);
+    if (onToggle) onToggle(nextState);
 
     startTransition(async () => {
       try {
         const res = await toggleFollowAction(targetUserId);
         if (!res?.ok) {
           setFollowing(!nextState);
-          addToast(res?.error || "Failed to update follow status.", "error");
+          if (onToggle) onToggle(!nextState);
+          if (res?.code === "UNAUTHENTICATED" || res?.error === "UNAUTHENTICATED") {
+            addToast("กรุณาเข้าสู่ระบบเพื่อติดตาม (Please sign in to follow)", "error");
+          } else {
+            addToast(res?.error || "Failed to update follow status.", "error");
+          }
         } else if (typeof res.following === "boolean") {
           setFollowing(res.following);
+          if (onToggle) onToggle(res.following);
         }
       } catch (err) {
         console.error("Follow error:", err);
         setFollowing(!nextState);
+        if (onToggle) onToggle(!nextState);
         addToast("Network error updating follow status.", "error");
       }
     });
   };
+
 
   if (variant === "compact") {
     return (

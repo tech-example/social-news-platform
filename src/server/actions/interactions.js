@@ -95,37 +95,26 @@ export async function toggleFollowAction(targetUserId) {
     }
     return { ok: false, error: "You do not have permission.", code: "FORBIDDEN" };
   }
+  if (!targetUserId) {
+    return { ok: false, error: "Target user ID is required." };
+  }
   if (session.user.id === targetUserId) {
     return { ok: false, error: "You cannot follow yourself." };
   }
 
-  const userSupabase = await createUserClient();
   const adminSupabase = getAdminClient();
 
-  // 1. Try database RPC using user client (where auth.uid() is populated)
   try {
-    const { data, error } = await userSupabase.rpc("toggle_follow", {
-      p_user_id: targetUserId,
-    });
-
-    if (!error && data !== null && data !== undefined) {
-      const isFollowing = typeof data === "object" ? !!data.following : !!data;
-      revalidatePath("/?filter=following");
-      revalidatePath("/");
-      return { ok: true, following: isFollowing };
-    }
-  } catch (rpcErr) {
-    console.warn("toggle_follow RPC warning:", rpcErr);
-  }
-
-  // 2. Direct table fallback on public.follows (composite PK: follower_id, following_id)
-  try {
-    const { data: existing } = await adminSupabase
+    const { data: existing, error: selectErr } = await adminSupabase
       .from("follows")
       .select("follower_id")
       .eq("follower_id", session.user.id)
       .eq("following_id", targetUserId)
       .maybeSingle();
+
+    if (selectErr) {
+      console.warn("Follow check warning:", selectErr);
+    }
 
     if (existing) {
       const { error: delErr } = await adminSupabase
@@ -139,8 +128,7 @@ export async function toggleFollowAction(targetUserId) {
         return { ok: false, error: delErr.message || "Failed to unfollow." };
       }
 
-      revalidatePath("/?filter=following");
-      revalidatePath("/");
+      revalidatePath("/", "layout");
       return { ok: true, following: false };
     } else {
       const { error: insErr } = await adminSupabase
@@ -151,18 +139,22 @@ export async function toggleFollowAction(targetUserId) {
         });
 
       if (insErr) {
+        if (insErr.code === "23505") {
+          revalidatePath("/", "layout");
+          return { ok: true, following: true };
+        }
         console.error("Direct follow insert error:", insErr);
         return { ok: false, error: insErr.message || "Failed to follow." };
       }
 
-      revalidatePath("/?filter=following");
-      revalidatePath("/");
+      revalidatePath("/", "layout");
       return { ok: true, following: true };
     }
   } catch (err) {
     console.error("Direct follow fallback error:", err);
     return { ok: false, error: err.message || "Failed to update follow status." };
   }
+
 }
 
 export async function createCommentAction(postId, body, parentId = null) {

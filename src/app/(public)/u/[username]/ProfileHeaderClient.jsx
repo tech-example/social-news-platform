@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,10 @@ export function ProfileHeaderClient({ initialProfile, viewerId }) {
   const [editOpen, setEditOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  useEffect(() => {
+    setProfile(initialProfile);
+  }, [initialProfile]);
+
   const isViewer = profile.isViewer || viewerId === profile.id;
 
   const handleProfileUpdated = (updatedFields) => {
@@ -22,6 +26,7 @@ export function ProfileHeaderClient({ initialProfile, viewerId }) {
       ...updatedFields,
     }));
   };
+
 
   const getRoleBadge = (role) => {
     if (role === "admin") {
@@ -85,8 +90,19 @@ export function ProfileHeaderClient({ initialProfile, viewerId }) {
                 </>
               ) : viewerId ? (
                 <>
-                  <FollowButton targetUserId={profile.id} initialFollowing={profile.isFollowing} />
+                  <FollowButton
+                    targetUserId={profile.id}
+                    initialFollowing={profile.isFollowing}
+                    onToggle={(newFollowing) => {
+                      setProfile((prev) => ({
+                        ...prev,
+                        isFollowing: newFollowing,
+                        followers_count: Math.max(0, (prev.followers_count || 0) + (newFollowing ? 1 : -1)),
+                      }));
+                    }}
+                  />
                   <Button
+
                     variant="ghost"
                     onClick={() => setDetailsOpen(true)}
                     className="text-xs h-8 px-2 text-[var(--ink-muted)] hover:text-[var(--ink)]"

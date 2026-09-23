@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
@@ -19,6 +19,12 @@ export function PostCard({ post, currentUserId = null }) {
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [allCommentsLoaded, setAllCommentsLoaded] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
+
+  useEffect(() => {
+    setCurrentPost(post);
+    setLocalComments(post.recentComments || []);
+    setLocalCommentsCount(post.commentsCount || 0);
+  }, [post]);
 
   const author = currentPost.author || {
     id: currentPost.user_id,
@@ -131,6 +137,12 @@ export function PostCard({ post, currentUserId = null }) {
                     targetUserId={author.id}
                     initialFollowing={currentPost.isFollowingAuthor || false}
                     variant="text"
+                    onToggle={(newFollowing) => {
+                      setCurrentPost((prev) => ({
+                        ...prev,
+                        isFollowingAuthor: newFollowing,
+                      }));
+                    }}
                   />
                 </>
               )}

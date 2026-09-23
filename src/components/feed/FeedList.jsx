@@ -9,10 +9,9 @@ import { Button } from "@/components/ui/button";
 import { COPY } from "@/lib/copy";
 
 // Memoize PostCard so unchanged items skip re-render during list appends
-const MemoizedPostCard = memo(PostCard, (prev, next) => {
-  return prev.post.id === next.post.id && prev.currentUserId === next.currentUserId;
-});
+const MemoizedPostCard = memo(PostCard);
 MemoizedPostCard.displayName = "MemoizedPostCard";
+
 
 export function FeedList({ initialPosts = [], initialCursor = null, filter = "latest", currentUserId = null }) {
   const [posts, setPosts] = useState(initialPosts);

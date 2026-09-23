@@ -1,10 +1,16 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { IconButton } from "@/components/ui/icon-button";
 
 export function Dialog({ open, onClose, title, children, maxWidth = "max-w-lg" }) {
   const dialogRef = useRef(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     function handleKeyDown(e) {
@@ -24,9 +30,9 @@ export function Dialog({ open, onClose, title, children, maxWidth = "max-w-lg" }
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -50,6 +56,8 @@ export function Dialog({ open, onClose, title, children, maxWidth = "max-w-lg" }
         </div>
         <div className="p-4 overflow-y-auto flex-1">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
+

@@ -128,6 +128,12 @@ export function InterceptedPostTopSheet({ post: initialPost, comments = [], view
                 initialFollowing={post.isFollowingAuthor || false}
                 variant="compact"
                 className="ml-1"
+                onToggle={(newFollowing) => {
+                  setPost((prev) => ({
+                    ...prev,
+                    isFollowingAuthor: newFollowing,
+                  }));
+                }}
               />
             )}
           </div>
