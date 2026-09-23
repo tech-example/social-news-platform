@@ -9,8 +9,10 @@ import { formatRelativeTime } from "@/lib/format";
 import { FollowButton } from "@/components/ui/follow-button";
 import { ExternalLink, Loader2 } from "lucide-react";
 import { getCommentsAction } from "@/server/actions/interactions";
+import { useToast } from "@/components/ui/toast";
 
 export function PostCard({ post, currentUserId = null }) {
+  const { addToast } = useToast();
   const [currentPost, setCurrentPost] = useState(post);
   const [expanded, setExpanded] = useState(false);
   const [localComments, setLocalComments] = useState(post.recentComments || []);
@@ -255,6 +257,8 @@ export function PostCard({ post, currentUserId = null }) {
                 const el = document.getElementById(`comment-input-${currentPost.id}`);
                 if (el) el.focus();
               }, 50);
+            } else {
+              addToast("Please sign in to comment.", "info");
             }
           }}
           currentUserId={currentUserId}
@@ -320,13 +324,21 @@ export function PostCard({ post, currentUserId = null }) {
           </button>
         )}
 
-        {/* Inline Comment Input */}
-        {currentUserId && (
+        {/* Inline Comment Input / Sign-in prompt for guests */}
+        {currentUserId ? (
           <InlineCommentInput
             postId={currentPost.id}
             onCommentPosted={handleCommentPosted}
+            currentUserId={currentUserId}
           />
-        )}
+        ) : showComments ? (
+          <div className="pt-2 text-xs text-[var(--ink-muted)]">
+            <Link href="/sign-in" className="text-[var(--accent)] font-semibold hover:underline">
+              Sign in
+            </Link>{" "}
+            to comment.
+          </div>
+        ) : null}
       </div>
     </article>
   );

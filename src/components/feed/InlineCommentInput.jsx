@@ -3,9 +3,11 @@ import { useState } from "react";
 import { createCommentAction } from "@/server/actions/interactions";
 import { useToast } from "@/components/ui/toast";
 
-export function InlineCommentInput({ postId, onCommentPosted }) {
+export function InlineCommentInput({ postId, onCommentPosted, currentUserId = null }) {
   const [text, setText] = useState("");
   const { addToast } = useToast();
+
+  if (!currentUserId) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();

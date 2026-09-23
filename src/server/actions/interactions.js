@@ -163,9 +163,9 @@ export async function createCommentAction(postId, body, parentId = null) {
     session = await requireRoleOrThrow("user");
   } catch (err) {
     if (err instanceof AuthError && err.code === "UNAUTHENTICATED") {
-      return { ok: false, error: "UNAUTHENTICATED", code: "UNAUTHENTICATED" };
+      return { ok: false, error: "Please sign in to comment.", code: "UNAUTHENTICATED" };
     }
-    return { ok: false, error: "You do not have permission.", code: "FORBIDDEN" };
+    return { ok: false, error: "You do not have permission to comment.", code: "FORBIDDEN" };
   }
   const parsed = commentSchema.safeParse({ postId, body, parentId });
 

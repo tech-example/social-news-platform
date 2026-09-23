@@ -18,6 +18,10 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
 
   const handlePostComment = (e) => {
     e.preventDefault();
+    if (!currentUserId) {
+      addToast("Please sign in to comment.", "error");
+      return;
+    }
     const commentBody = text.trim();
     if (!commentBody) return;
 
@@ -129,17 +133,19 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
                       <span className="text-[var(--ink)]">{comment.body}</span>
                       <div className="flex items-center gap-3 mt-1 text-xs text-[var(--ink-muted)]">
                         <span suppressHydrationWarning>{formatRelativeTime(comment.createdAt)}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setReplyingTo(comment);
-                            const el = document.getElementById(`comment-input-${postId}`);
-                            if (el) el.focus();
-                          }}
-                          className="hover:text-[var(--ink)] font-medium cursor-pointer"
-                        >
-                          Reply
-                        </button>
+                        {currentUserId && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReplyingTo(comment);
+                              const el = document.getElementById(`comment-input-${postId}`);
+                              if (el) el.focus();
+                            }}
+                            className="hover:text-[var(--ink)] font-medium cursor-pointer"
+                          >
+                            Reply
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -202,42 +208,51 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
         )}
       </div>
 
-      {/* Input Box */}
-      <form onSubmit={handlePostComment} className="pt-3 border-t border-[var(--line)]">
-        {replyingTo && (
-          <div className="flex items-center justify-between bg-[var(--surface)] px-3 py-1.5 rounded-t text-xs text-[var(--ink-muted)]">
-            <span className="flex items-center gap-1">
-              <CornerDownRight size={12} strokeWidth={1.75} aria-hidden="true" />
-              Replying to <span className="font-semibold text-[var(--ink)]">@{replyingTo.author?.username}</span>
-            </span>
-            <button
-              type="button"
-              onClick={() => setReplyingTo(null)}
-              className="font-medium hover:text-[var(--ink)]"
+      {/* Input Box / Sign-in prompt for guests */}
+      {currentUserId ? (
+        <form onSubmit={handlePostComment} className="pt-3 border-t border-[var(--line)]">
+          {replyingTo && (
+            <div className="flex items-center justify-between bg-[var(--surface)] px-3 py-1.5 rounded-t text-xs text-[var(--ink-muted)]">
+              <span className="flex items-center gap-1">
+                <CornerDownRight size={12} strokeWidth={1.75} aria-hidden="true" />
+                Replying to <span className="font-semibold text-[var(--ink)]">@{replyingTo.author?.username}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setReplyingTo(null)}
+                className="font-medium hover:text-[var(--ink)]"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <input
+              id={`comment-input-${postId}`}
+              type="text"
+              value={text}
+              maxLength={LIMITS.COMMENT_BODY_MAX}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={replyingTo ? `Reply to @${replyingTo.author?.username}...` : "Add a comment..."}
+              className="flex-1 px-3 py-2 text-sm border border-[var(--line)] rounded-lg bg-[var(--surface)] text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:bg-[var(--bg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+            />
+            <Button
+              type="submit"
+              disabled={!text.trim()}
+              className="shrink-0 text-sm"
             >
-              Cancel
-            </button>
+              Post
+            </Button>
           </div>
-        )}
-        <div className="flex items-center gap-2">
-          <input
-            id={`comment-input-${postId}`}
-            type="text"
-            value={text}
-            maxLength={LIMITS.COMMENT_BODY_MAX}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={replyingTo ? `Reply to @${replyingTo.author?.username}...` : "Add a comment..."}
-            className="flex-1 px-3 py-2 text-sm border border-[var(--line)] rounded-lg bg-[var(--surface)] text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:bg-[var(--bg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-          />
-          <Button
-            type="submit"
-            disabled={!text.trim()}
-            className="shrink-0 text-sm"
-          >
-            Post
-          </Button>
+        </form>
+      ) : (
+        <div className="pt-3 border-t border-[var(--line)] text-center py-3 text-xs text-[var(--ink-muted)]">
+          <Link href="/sign-in" className="text-[var(--accent)] font-semibold hover:underline">
+            Sign in
+          </Link>{" "}
+          to comment.
         </div>
-      </form>
+      )}
     </div>
   );
 }
