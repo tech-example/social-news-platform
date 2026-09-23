@@ -6,6 +6,7 @@ import { getSession } from "@/server/auth";
 import { Avatar } from "@/components/ui/avatar";
 import { InteractiveActions } from "@/components/feed/InteractiveActions";
 import { CommentThread } from "@/components/feed/CommentThread";
+import { FollowButton } from "@/components/ui/follow-button";
 import { ChevronLeft } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format";
 
@@ -80,23 +81,35 @@ export default async function PostDetailPage({ params }) {
         <div className="w-full md:w-[380px] shrink-0 flex flex-col h-[550px] bg-[var(--bg)]">
           {/* Author Header */}
           <div className="flex items-center justify-between p-4 border-b border-[var(--line)]">
-            <Link href={`/u/${post.author?.username}`} className="flex items-center gap-3 min-w-0">
-              <Avatar
-                src={post.author?.avatar_url}
-                name={post.author?.display_name || post.author?.username}
-                size={36}
-              />
-              <div className="flex flex-col min-w-0">
-                <span className="font-semibold text-sm text-[var(--ink)] truncate">
-                  {post.author?.username}
-                </span>
-                <span className="text-xs text-[var(--ink-muted)] truncate">
-                  {post.author?.display_name}
-                </span>
-              </div>
-            </Link>
+            <div className="flex items-center gap-3 min-w-0">
+              <Link href={`/u/${post.author?.username}`} className="flex items-center gap-3 min-w-0 group">
+                <Avatar
+                  src={post.author?.avatar_url}
+                  name={post.author?.display_name || post.author?.username}
+                  size={36}
+                />
+                <div className="flex flex-col min-w-0">
+                  <span className="font-semibold text-sm text-[var(--ink)] truncate group-hover:underline">
+                    {post.author?.username}
+                  </span>
+                  <span className="text-xs text-[var(--ink-muted)] truncate">
+                    {post.author?.display_name}
+                  </span>
+                </div>
+              </Link>
+
+              {viewerId && !isAuthor && post.author?.id && (
+                <FollowButton
+                  targetUserId={post.author.id}
+                  initialFollowing={post.isFollowingAuthor || false}
+                  variant="compact"
+                  className="ml-1"
+                />
+              )}
+            </div>
+
             {post.createdAt && (
-              <span className="text-xs text-[var(--ink-muted)]" suppressHydrationWarning>
+              <span className="text-xs text-[var(--ink-muted)] shrink-0" suppressHydrationWarning>
                 {formatRelativeTime(post.createdAt)}
               </span>
             )}

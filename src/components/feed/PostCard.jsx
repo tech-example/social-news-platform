@@ -6,6 +6,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { InteractiveActions } from "@/components/feed/InteractiveActions";
 import { InlineCommentInput } from "@/components/feed/InlineCommentInput";
 import { formatRelativeTime } from "@/lib/format";
+import { FollowButton } from "@/components/ui/follow-button";
+import { ExternalLink } from "lucide-react";
 
 export function PostCard({ post, currentUserId = null }) {
   const [expanded, setExpanded] = useState(false);
@@ -71,18 +73,43 @@ export function PostCard({ post, currentUserId = null }) {
             />
           </Link>
           <div className="flex flex-col min-w-0">
-            <Link
-              href={`/u/${author.username}`}
-              className="font-semibold text-sm truncate hover:underline text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)] rounded"
-            >
-              {author.username}
-            </Link>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Link
+                href={`/u/${author.username}`}
+                className="font-semibold text-sm truncate hover:underline text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)] rounded"
+              >
+                {author.username}
+              </Link>
+              {currentUserId && !isAuthor && author.id && (
+                <>
+                  <span className="text-xs text-[var(--ink-muted)]">•</span>
+                  <FollowButton
+                    targetUserId={author.id}
+                    initialFollowing={post.isFollowingAuthor || false}
+                    variant="text"
+                  />
+                </>
+              )}
+            </div>
             {post.createdAt && (
               <span className="text-xs text-[var(--ink-muted)] shrink-0" suppressHydrationWarning>
                 {formatRelativeTime(post.createdAt)}
               </span>
             )}
           </div>
+        </div>
+
+        {/* Full page direct navigation */}
+        <div className="flex items-center gap-1.5">
+          <a
+            href={`/p/${post.id}`}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
+            title="Open standalone full page"
+            aria-label="Open standalone full page"
+          >
+            <span className="hidden sm:inline">Full page</span>
+            <ExternalLink size={13} strokeWidth={2} aria-hidden="true" />
+          </a>
         </div>
       </div>
 

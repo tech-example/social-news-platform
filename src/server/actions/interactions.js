@@ -7,27 +7,30 @@ import { revalidatePath } from "next/cache";
 
 export async function toggleLikeAction(postId) {
   const session = await requireRole("user");
+  const userSupabase = await createUserClient();
   const adminSupabase = getAdminClient();
 
-  // Try database RPC first
+  // 1. Try database RPC first using user client (where auth.uid() is populated)
   try {
-    const { data, error } = await adminSupabase.rpc("toggle_like", {
+    const { data, error } = await userSupabase.rpc("toggle_like", {
       p_post_id: postId,
     });
 
     if (!error && data !== null && data !== undefined) {
       const isLiked = typeof data === "object" ? !!data.liked : !!data;
+      revalidatePath("/");
+      revalidatePath(`/p/${postId}`);
       return { ok: true, liked: isLiked };
     }
   } catch (rpcErr) {
     console.warn("toggle_like RPC warning:", rpcErr);
   }
 
-  // Robust direct table fallback via adminSupabase to prevent trigger RLS errors on notifications
+  // 2. Direct table fallback on public.likes (composite PK: user_id, post_id - no 'id' column)
   try {
     const { data: existing } = await adminSupabase
       .from("likes")
-      .select("id")
+      .select("user_id")
       .eq("user_id", session.user.id)
       .eq("post_id", postId)
       .maybeSingle();
@@ -36,11 +39,15 @@ export async function toggleLikeAction(postId) {
       const { error: delErr } = await adminSupabase
         .from("likes")
         .delete()
-        .eq("id", existing.id);
-      
+        .eq("user_id", session.user.id)
+        .eq("post_id", postId);
+
       if (delErr) {
+        console.error("Direct unlike delete error:", delErr);
         return { ok: false, error: delErr.message || "Failed to unlike post." };
       }
+      revalidatePath("/");
+      revalidatePath(`/p/${postId}`);
       return { ok: true, liked: false };
     } else {
       const { error: insErr } = await adminSupabase
@@ -51,8 +58,15 @@ export async function toggleLikeAction(postId) {
         });
 
       if (insErr) {
+        // If already inserted concurrently, treat as liked
+        if (insErr.code === "23505") {
+          return { ok: true, liked: true };
+        }
+        console.error("Direct like insert error:", insErr);
         return { ok: false, error: insErr.message || "Failed to like post." };
       }
+      revalidatePath("/");
+      revalidatePath(`/p/${postId}`);
       return { ok: true, liked: true };
     }
   } catch (err) {
@@ -67,11 +81,12 @@ export async function toggleFollowAction(targetUserId) {
     return { ok: false, error: "You cannot follow yourself." };
   }
 
+  const userSupabase = await createUserClient();
   const adminSupabase = getAdminClient();
 
-  // Try RPC with the correct parameter name p_user_id (matches PostgreSQL function)
+  // 1. Try database RPC using user client (where auth.uid() is populated)
   try {
-    const { data, error } = await adminSupabase.rpc("toggle_follow", {
+    const { data, error } = await userSupabase.rpc("toggle_follow", {
       p_user_id: targetUserId,
     });
 
@@ -85,32 +100,42 @@ export async function toggleFollowAction(targetUserId) {
     console.warn("toggle_follow RPC warning:", rpcErr);
   }
 
-  // Robust fallback to direct table operation on public.follows via adminSupabase
+  // 2. Direct table fallback on public.follows (composite PK: follower_id, following_id)
   try {
     const { data: existing } = await adminSupabase
       .from("follows")
-      .select("id")
+      .select("follower_id")
       .eq("follower_id", session.user.id)
       .eq("following_id", targetUserId)
       .maybeSingle();
 
     if (existing) {
-      await adminSupabase
+      const { error: delErr } = await adminSupabase
         .from("follows")
         .delete()
         .eq("follower_id", session.user.id)
         .eq("following_id", targetUserId);
 
+      if (delErr) {
+        console.error("Direct unfollow delete error:", delErr);
+        return { ok: false, error: delErr.message || "Failed to unfollow." };
+      }
+
       revalidatePath("/?filter=following");
       revalidatePath("/");
       return { ok: true, following: false };
     } else {
-      await adminSupabase
+      const { error: insErr } = await adminSupabase
         .from("follows")
         .insert({
           follower_id: session.user.id,
           following_id: targetUserId,
         });
+
+      if (insErr) {
+        console.error("Direct follow insert error:", insErr);
+        return { ok: false, error: insErr.message || "Failed to follow." };
+      }
 
       revalidatePath("/?filter=following");
       revalidatePath("/");

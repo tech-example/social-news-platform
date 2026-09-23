@@ -72,16 +72,39 @@ export async function getFeedPosts({
   }
 
   let likedPostIds = new Set();
+  let followedAuthorIds = new Set();
   if (viewerId && rawPosts && rawPosts.length > 0) {
     const postIds = rawPosts.map((p) => p.id);
-    const { data: userLikes } = await supabase
-      .from("likes")
-      .select("post_id")
-      .eq("user_id", viewerId)
-      .in("post_id", postIds);
+    const authorIds = [
+      ...new Set(
+        rawPosts
+          .map((p) => p.author?.id)
+          .filter((id) => id && id !== viewerId)
+      ),
+    ];
 
-    if (userLikes) {
-      likedPostIds = new Set(userLikes.map((l) => l.post_id));
+    const [userLikesResult, userFollowsResult] = await Promise.all([
+      supabase
+        .from("likes")
+        .select("post_id")
+        .eq("user_id", viewerId)
+        .in("post_id", postIds),
+      authorIds.length > 0
+        ? supabase
+            .from("follows")
+            .select("following_id")
+            .eq("follower_id", viewerId)
+            .in("following_id", authorIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    if (userLikesResult.data) {
+      likedPostIds = new Set(userLikesResult.data.map((l) => l.post_id));
+    }
+    if (userFollowsResult.data) {
+      followedAuthorIds = new Set(
+        userFollowsResult.data.map((f) => f.following_id)
+      );
     }
   }
 
@@ -98,6 +121,7 @@ export async function getFeedPosts({
     author: post.author,
     tags: (post.tags || []).map((t) => t.tag?.name).filter(Boolean),
     isLiked: likedPostIds.has(post.id),
+    isFollowingAuthor: followedAuthorIds.has(post.author?.id),
   }));
 
   const nextCursor =
@@ -137,15 +161,28 @@ export async function getPostById(postId, viewerId = null) {
   if (error || !post) return null;
 
   let isLiked = false;
+  let isFollowingAuthor = false;
   if (viewerId) {
-    const { data: likeRecord } = await supabase
-      .from("likes")
-      .select("post_id")
-      .eq("user_id", viewerId)
-      .eq("post_id", postId)
-      .maybeSingle();
+    const authorId = post.author?.id;
+    const [likeRecord, followRecord] = await Promise.all([
+      supabase
+        .from("likes")
+        .select("post_id")
+        .eq("user_id", viewerId)
+        .eq("post_id", postId)
+        .maybeSingle(),
+      authorId && authorId !== viewerId
+        ? supabase
+            .from("follows")
+            .select("following_id")
+            .eq("follower_id", viewerId)
+            .eq("following_id", authorId)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
 
-    isLiked = !!likeRecord;
+    isLiked = !!likeRecord.data;
+    isFollowingAuthor = !!followRecord.data;
   }
 
   return {
@@ -161,6 +198,7 @@ export async function getPostById(postId, viewerId = null) {
     author: post.author,
     tags: (post.tags || []).map((t) => t.tag?.name).filter(Boolean),
     isLiked,
+    isFollowingAuthor,
   };
 }
 

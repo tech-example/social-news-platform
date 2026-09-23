@@ -14,20 +14,37 @@ import {
   Settings,
   LogIn,
   UserPlus,
+  LogOut,
   X,
 } from "lucide-react";
+import { Avatar } from "@/components/ui/avatar";
+import { signOutAction } from "@/server/actions/auth";
 import { COPY } from "@/lib/copy";
 
-export function AppShell({ children }) {
+export function AppShell({ children, session = null }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+
+  const profile = session?.profile || null;
+  const userRole = profile?.role || "guest";
+  const isAuthenticated = !!session?.user && !!profile;
+  const isModerator = userRole === "moderator" || userRole === "admin";
+  const isAdmin = userRole === "admin";
 
   const navItems = [
     { name: COPY.nav.home, href: "/", icon: House },
     { name: COPY.nav.search, href: "/search", icon: Search },
     { name: COPY.nav.compose, href: "/compose", icon: SquarePlus },
-    { name: COPY.nav.notifications, href: "/notifications", icon: Bell },
-    { name: COPY.nav.profile, href: "/settings", icon: User },
+    ...(isAuthenticated
+      ? [{ name: COPY.nav.notifications, href: "/notifications", icon: Bell }]
+      : []),
+    {
+      name: isAuthenticated ? COPY.nav.profile : "Sign In",
+      href: isAuthenticated ? `/u/${profile.username}` : "/sign-in",
+      icon: isAuthenticated ? User : LogIn,
+      avatar: isAuthenticated ? profile.avatar_url : null,
+      username: profile?.username,
+    },
   ];
 
   return (
@@ -41,27 +58,54 @@ export function AppShell({ children }) {
           {COPY.appName}
         </Link>
         <div className="flex items-center gap-1">
-          <Link
-            href="/notifications"
-            className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--ink)] hover:bg-[var(--surface-strong)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-            aria-label={COPY.nav.notifications}
-          >
-            <Bell size={22} strokeWidth={1.75} aria-hidden="true" />
-          </Link>
-          <Link
-            href="/compose"
-            className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--ink)] hover:bg-[var(--surface-strong)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-            aria-label={COPY.nav.compose}
-          >
-            <SquarePlus size={22} strokeWidth={1.75} aria-hidden="true" />
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link
+                href="/notifications"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--ink)] hover:bg-[var(--surface-strong)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+                aria-label={COPY.nav.notifications}
+              >
+                <Bell size={22} strokeWidth={1.75} aria-hidden="true" />
+              </Link>
+              <Link
+                href="/compose"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--ink)] hover:bg-[var(--surface-strong)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+                aria-label={COPY.nav.compose}
+              >
+                <SquarePlus size={22} strokeWidth={1.75} aria-hidden="true" />
+              </Link>
+              <Link
+                href={`/u/${profile.username}`}
+                className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-[var(--surface-strong)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+                aria-label={profile.username}
+              >
+                <Avatar
+                  src={profile.avatar_url}
+                  name={profile.display_name || profile.username}
+                  size={28}
+                />
+              </Link>
+            </>
+          ) : (
+            <Link
+              href="/sign-in"
+              className="px-3 py-1.5 text-xs font-semibold rounded-md bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors mr-1"
+            >
+              Sign In
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => setMoreOpen(!moreOpen)}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--ink)] hover:bg-[var(--surface-strong)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--ink)] hover:bg-[var(--surface-strong)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)] cursor-pointer"
             aria-label="Toggle navigation menu"
+            aria-expanded={moreOpen}
           >
-            {moreOpen ? <X size={22} strokeWidth={1.75} aria-hidden="true" /> : <Menu size={22} strokeWidth={1.75} aria-hidden="true" />}
+            {moreOpen ? (
+              <X size={22} strokeWidth={1.75} aria-hidden="true" />
+            ) : (
+              <Menu size={22} strokeWidth={1.75} aria-hidden="true" />
+            )}
           </button>
         </div>
       </header>
@@ -84,7 +128,9 @@ export function AppShell({ children }) {
 
         <nav aria-label="Main Navigation" className="flex flex-col gap-1.5 flex-1">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              pathname === item.href ||
+              (item.username && pathname.startsWith(`/u/${item.username}`));
             const Icon = item.icon;
             return (
               <Link
@@ -98,13 +144,24 @@ export function AppShell({ children }) {
                 aria-current={isActive ? "page" : undefined}
                 aria-label={item.name}
               >
-                <Icon
-                  size={24}
-                  strokeWidth={isActive ? 2.25 : 1.75}
-                  fill={isActive ? "currentColor" : "none"}
-                  aria-hidden="true"
-                  className="shrink-0"
-                />
+                {item.avatar ? (
+                  <Avatar
+                    src={item.avatar}
+                    name={item.name}
+                    size={24}
+                    className={`shrink-0 ${
+                      isActive ? "ring-2 ring-[var(--ink)]" : ""
+                    }`}
+                  />
+                ) : (
+                  <Icon
+                    size={24}
+                    strokeWidth={isActive ? 2.25 : 1.75}
+                    fill={isActive ? "currentColor" : "none"}
+                    aria-hidden="true"
+                    className="shrink-0"
+                  />
+                )}
                 <span className="hidden xl:block text-base truncate">
                   {item.name}
                 </span>
@@ -116,48 +173,108 @@ export function AppShell({ children }) {
         {/* More Menu Dropup */}
         <div className="relative mt-auto pt-2 border-t border-[var(--line)]">
           {moreOpen && (
-            <div className="absolute bottom-full left-0 mb-2 w-56 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-xl py-1.5 z-40 animate-fadeIn space-y-0.5">
-              <Link
-                href="/settings"
-                onClick={() => setMoreOpen(false)}
-                className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
-              >
-                <Settings size={18} strokeWidth={1.75} aria-hidden="true" />
-                <span>Settings</span>
-              </Link>
-              <Link
-                href="/moderation"
-                onClick={() => setMoreOpen(false)}
-                className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
-              >
-                <ShieldCheck size={18} strokeWidth={1.75} aria-hidden="true" className="text-[var(--accent)]" />
-                <span>Moderation</span>
-              </Link>
-              <Link
-                href="/admin"
-                onClick={() => setMoreOpen(false)}
-                className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
-              >
-                <LayoutDashboard size={18} strokeWidth={1.75} aria-hidden="true" className="text-[var(--ink)]" />
-                <span>Admin Dashboard</span>
-              </Link>
-              <div className="my-1 border-t border-[var(--line)]" />
-              <Link
-                href="/sign-in"
-                onClick={() => setMoreOpen(false)}
-                className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
-              >
-                <LogIn size={18} strokeWidth={1.75} aria-hidden="true" />
-                <span>Sign In</span>
-              </Link>
-              <Link
-                href="/register"
-                onClick={() => setMoreOpen(false)}
-                className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
-              >
-                <UserPlus size={18} strokeWidth={1.75} aria-hidden="true" />
-                <span>Register</span>
-              </Link>
+            <div className="absolute bottom-full left-0 mb-2 w-64 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-xl py-1.5 z-40 animate-fadeIn space-y-0.5 overflow-hidden">
+              {isAuthenticated ? (
+                <>
+                  {/* Logged in User Profile Card */}
+                  <Link
+                    href={`/u/${profile.username}`}
+                    onClick={() => setMoreOpen(false)}
+                    className="flex items-center gap-3 px-3.5 py-3 hover:bg-[var(--surface)] transition-colors border-b border-[var(--line)]"
+                  >
+                    <Avatar
+                      src={profile.avatar_url}
+                      name={profile.display_name || profile.username}
+                      size={38}
+                      className="shrink-0"
+                    />
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-bold text-[var(--ink)] truncate">
+                        {profile.display_name || profile.username}
+                      </span>
+                      <span className="text-xs text-[var(--ink-muted)] truncate">
+                        @{profile.username}
+                      </span>
+                    </div>
+                  </Link>
+
+                  <Link
+                    href="/settings"
+                    onClick={() => setMoreOpen(false)}
+                    className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
+                  >
+                    <Settings size={18} strokeWidth={1.75} aria-hidden="true" />
+                    <span>Settings</span>
+                  </Link>
+
+                  {/* Show Moderation only if moderator or admin */}
+                  {isModerator && (
+                    <Link
+                      href="/moderation"
+                      onClick={() => setMoreOpen(false)}
+                      className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
+                    >
+                      <ShieldCheck
+                        size={18}
+                        strokeWidth={1.75}
+                        aria-hidden="true"
+                        className="text-[var(--accent)]"
+                      />
+                      <span>Moderation</span>
+                    </Link>
+                  )}
+
+                  {/* Show Admin Dashboard only if admin */}
+                  {isAdmin && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setMoreOpen(false)}
+                      className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
+                    >
+                      <LayoutDashboard
+                        size={18}
+                        strokeWidth={1.75}
+                        aria-hidden="true"
+                        className="text-[var(--ink)]"
+                      />
+                      <span>Admin Dashboard</span>
+                    </Link>
+                  )}
+
+                  <div className="my-1 border-t border-[var(--line)]" />
+
+                  {/* Sign Out Action */}
+                  <form action={signOutAction} className="w-full">
+                    <button
+                      type="submit"
+                      className="flex items-center gap-3 w-full px-3.5 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer"
+                    >
+                      <LogOut size={18} strokeWidth={1.75} aria-hidden="true" />
+                      <span>Sign Out</span>
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <>
+                  {/* Guest menu */}
+                  <Link
+                    href="/sign-in"
+                    onClick={() => setMoreOpen(false)}
+                    className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors font-medium"
+                  >
+                    <LogIn size={18} strokeWidth={1.75} aria-hidden="true" />
+                    <span>Sign In</span>
+                  </Link>
+                  <Link
+                    href="/register"
+                    onClick={() => setMoreOpen(false)}
+                    className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors font-medium"
+                  >
+                    <UserPlus size={18} strokeWidth={1.75} aria-hidden="true" />
+                    <span>Register</span>
+                  </Link>
+                </>
+              )}
             </div>
           )}
 
@@ -177,46 +294,91 @@ export function AppShell({ children }) {
       {/* Mobile Popover Menu when more is open */}
       {moreOpen && (
         <div className="md:hidden fixed inset-x-0 top-14 bg-[var(--bg)] border-b border-[var(--line)] shadow-lg p-3 z-30 animate-fadeIn space-y-1">
-          <Link
-            href="/settings"
-            onClick={() => setMoreOpen(false)}
-            className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)]"
-          >
-            <Settings size={18} strokeWidth={1.75} aria-hidden="true" />
-            <span>Settings</span>
-          </Link>
-          <Link
-            href="/moderation"
-            onClick={() => setMoreOpen(false)}
-            className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)]"
-          >
-            <ShieldCheck size={18} strokeWidth={1.75} aria-hidden="true" className="text-[var(--accent)]" />
-            <span>Moderation</span>
-          </Link>
-          <Link
-            href="/admin"
-            onClick={() => setMoreOpen(false)}
-            className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)]"
-          >
-            <LayoutDashboard size={18} strokeWidth={1.75} aria-hidden="true" />
-            <span>Admin Dashboard</span>
-          </Link>
-          <Link
-            href="/sign-in"
-            onClick={() => setMoreOpen(false)}
-            className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink-muted)] hover:bg-[var(--surface)]"
-          >
-            <LogIn size={18} strokeWidth={1.75} aria-hidden="true" />
-            <span>Sign In</span>
-          </Link>
-          <Link
-            href="/register"
-            onClick={() => setMoreOpen(false)}
-            className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink-muted)] hover:bg-[var(--surface)]"
-          >
-            <UserPlus size={18} strokeWidth={1.75} aria-hidden="true" />
-            <span>Register</span>
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link
+                href={`/u/${profile.username}`}
+                onClick={() => setMoreOpen(false)}
+                className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)] border-b border-[var(--line)] pb-3"
+              >
+                <Avatar
+                  src={profile.avatar_url}
+                  name={profile.display_name || profile.username}
+                  size={36}
+                />
+                <div className="flex flex-col min-w-0">
+                  <span className="font-bold text-sm text-[var(--ink)] truncate">
+                    {profile.display_name || profile.username}
+                  </span>
+                  <span className="text-xs text-[var(--ink-muted)] truncate">
+                    @{profile.username}
+                  </span>
+                </div>
+              </Link>
+              <Link
+                href="/settings"
+                onClick={() => setMoreOpen(false)}
+                className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)]"
+              >
+                <Settings size={18} strokeWidth={1.75} aria-hidden="true" />
+                <span>Settings</span>
+              </Link>
+              {isModerator && (
+                <Link
+                  href="/moderation"
+                  onClick={() => setMoreOpen(false)}
+                  className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)]"
+                >
+                  <ShieldCheck
+                    size={18}
+                    strokeWidth={1.75}
+                    aria-hidden="true"
+                    className="text-[var(--accent)]"
+                  />
+                  <span>Moderation</span>
+                </Link>
+              )}
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => setMoreOpen(false)}
+                  className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)]"
+                >
+                  <LayoutDashboard size={18} strokeWidth={1.75} aria-hidden="true" />
+                  <span>Admin Dashboard</span>
+                </Link>
+              )}
+              <div className="border-t border-[var(--line)] my-1" />
+              <form action={signOutAction} className="w-full">
+                <button
+                  type="submit"
+                  className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 w-full text-left cursor-pointer"
+                >
+                  <LogOut size={18} strokeWidth={1.75} aria-hidden="true" />
+                  <span>Sign Out</span>
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/sign-in"
+                onClick={() => setMoreOpen(false)}
+                className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)] font-medium"
+              >
+                <LogIn size={18} strokeWidth={1.75} aria-hidden="true" />
+                <span>Sign In</span>
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setMoreOpen(false)}
+                className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)] font-medium"
+              >
+                <UserPlus size={18} strokeWidth={1.75} aria-hidden="true" />
+                <span>Register</span>
+              </Link>
+            </>
+          )}
         </div>
       )}
 
@@ -235,7 +397,9 @@ export function AppShell({ children }) {
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex h-14 items-center justify-around border-t border-[var(--line)] bg-[var(--bg)] pb-[env(safe-area-inset-bottom)]"
       >
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive =
+            pathname === item.href ||
+            (item.username && pathname.startsWith(`/u/${item.username}`));
           const Icon = item.icon;
           return (
             <Link
@@ -245,12 +409,21 @@ export function AppShell({ children }) {
               aria-label={item.name}
               aria-current={isActive ? "page" : undefined}
             >
-              <Icon
-                size={24}
-                strokeWidth={isActive ? 2.25 : 1.75}
-                fill={isActive ? "currentColor" : "none"}
-                aria-hidden="true"
-              />
+              {item.avatar ? (
+                <Avatar
+                  src={item.avatar}
+                  name={item.name}
+                  size={24}
+                  className={isActive ? "ring-2 ring-[var(--ink)]" : ""}
+                />
+              ) : (
+                <Icon
+                  size={24}
+                  strokeWidth={isActive ? 2.25 : 1.75}
+                  fill={isActive ? "currentColor" : "none"}
+                  aria-hidden="true"
+                />
+              )}
             </Link>
           );
         })}

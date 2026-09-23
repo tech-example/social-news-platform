@@ -3,11 +3,14 @@ import { MotionProvider } from "@/components/motion/motion-provider";
 import { AppShell } from "@/components/layout/AppShell";
 
 import { ToastProvider } from "@/components/ui/toast";
+import { getSession } from "@/server/auth";
 
 export const metadata = {
   title: "SocialNews - Social News and Content Platform",
   description: "A social format web application for content management and following news.",
 };
+
+export const dynamic = "force-dynamic";
 
 export const viewport = {
   width: "device-width",
@@ -16,7 +19,9 @@ export const viewport = {
   themeColor: "#FFFFFF",
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const session = await getSession();
+
   return (
     <html lang="en" className="h-full antialiased">
       <head>
@@ -31,7 +36,7 @@ export default function RootLayout({ children }) {
         </a>
         <ToastProvider>
           <MotionProvider>
-            <AppShell>{children}</AppShell>
+            <AppShell session={session}>{children}</AppShell>
           </MotionProvider>
         </ToastProvider>
       </body>

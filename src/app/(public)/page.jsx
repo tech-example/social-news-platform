@@ -1,13 +1,34 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { getFeedPosts } from "@/server/dal/posts";
 import { getSuggestedProfiles } from "@/server/dal/profiles";
 import { getTrendingTags } from "@/server/dal/tags";
 import { getSession } from "@/server/auth";
 import { FeedList } from "@/components/feed/FeedList";
+import { FeedSkeleton } from "@/components/ui/skeletons";
 import { Avatar } from "@/components/ui/avatar";
 import { Hash } from "lucide-react";
 
 export const revalidate = 0; // Dynamic feed
+
+async function FeedStream({ filter, viewerId }) {
+  const feedData = await getFeedPosts({
+    cursor: null,
+    limit: 10,
+    viewerId,
+    filter,
+  });
+
+  return (
+    <FeedList
+      key={filter}
+      initialPosts={feedData.posts}
+      initialCursor={feedData.nextCursor}
+      filter={filter}
+      currentUserId={viewerId}
+    />
+  );
+}
 
 export default async function HomeFeedPage({ searchParams }) {
   const resolvedParams = await searchParams;
@@ -16,13 +37,7 @@ export default async function HomeFeedPage({ searchParams }) {
   const session = await getSession();
   const viewerId = session?.user?.id || null;
 
-  const [feedData, suggestedUsers, trendingTags] = await Promise.all([
-    getFeedPosts({
-      cursor: null,
-      limit: 10,
-      viewerId,
-      filter,
-    }),
+  const [suggestedUsers, trendingTags] = await Promise.all([
     getSuggestedProfiles(viewerId, 5),
     getTrendingTags(6),
   ]);
@@ -57,13 +72,9 @@ export default async function HomeFeedPage({ searchParams }) {
           </div>
         )}
 
-        <FeedList
-          key={filter}
-          initialPosts={feedData.posts}
-          initialCursor={feedData.nextCursor}
-          filter={filter}
-          currentUserId={viewerId}
-        />
+        <Suspense key={filter} fallback={<FeedSkeleton count={3} />}>
+          <FeedStream filter={filter} viewerId={viewerId} />
+        </Suspense>
       </div>
 
       {/* Right Rail (Visible on >= lg / 1024px) */}

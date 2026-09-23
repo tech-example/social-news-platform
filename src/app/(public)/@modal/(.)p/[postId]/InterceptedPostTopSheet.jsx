@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { InteractiveActions } from "@/components/feed/InteractiveActions";
 import { CommentThread } from "@/components/feed/CommentThread";
 import { IconButton } from "@/components/ui/icon-button";
+import { FollowButton } from "@/components/ui/follow-button";
 import { X, ExternalLink } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format";
 
@@ -31,12 +32,13 @@ export function InterceptedPostTopSheet({ post, comments = [], viewerId = null }
   if (!post) return null;
 
   const author = post.author || {
+    id: post.user_id,
     username: "anonymous",
     display_name: "Anonymous",
     avatar_url: null,
   };
 
-  const isAuthor = viewerId === (post.author?.id || post.author_id);
+  const isAuthor = viewerId === (post.author?.id || post.author_id || post.user_id);
 
   return (
     <div
@@ -59,37 +61,48 @@ export function InterceptedPostTopSheet({ post, comments = [], viewerId = null }
 
         {/* Top Header */}
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--line)] shrink-0 bg-[var(--bg)]">
-          <Link
-            href={`/u/${author.username}`}
-            onClick={handleClose}
-            className="flex items-center gap-2.5 min-w-0 group"
-          >
-            <Avatar
-              src={author.avatar_url}
-              name={author.display_name || author.username}
-              size={34}
-            />
-            <div className="flex flex-col min-w-0">
-              <span className="font-semibold text-sm text-[var(--ink)] truncate group-hover:underline">
-                {author.username}
-              </span>
-              {post.createdAt && (
-                <span className="text-xs text-[var(--ink-muted)] truncate" suppressHydrationWarning>
-                  {formatRelativeTime(post.createdAt)}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Link
+              href={`/u/${author.username}`}
+              onClick={handleClose}
+              className="flex items-center gap-2.5 min-w-0 group"
+            >
+              <Avatar
+                src={author.avatar_url}
+                name={author.display_name || author.username}
+                size={34}
+              />
+              <div className="flex flex-col min-w-0">
+                <span className="font-semibold text-sm text-[var(--ink)] truncate group-hover:underline">
+                  {author.username}
                 </span>
-              )}
-            </div>
-          </Link>
+                {post.createdAt && (
+                  <span className="text-xs text-[var(--ink-muted)] truncate" suppressHydrationWarning>
+                    {formatRelativeTime(post.createdAt)}
+                  </span>
+                )}
+              </div>
+            </Link>
+
+            {viewerId && !isAuthor && author.id && (
+              <FollowButton
+                targetUserId={author.id}
+                initialFollowing={post.isFollowingAuthor || false}
+                variant="compact"
+                className="ml-1"
+              />
+            )}
+          </div>
 
           <div className="flex items-center gap-1.5">
-            <Link
+            <a
               href={`/p/${post.id}`}
               className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-[var(--accent)] hover:bg-[var(--surface)] rounded-md transition-colors"
               title="Open standalone page"
             >
               <span>Full page</span>
               <ExternalLink size={13} strokeWidth={2} aria-hidden="true" />
-            </Link>
+            </a>
             <IconButton label="Close preview" onClick={handleClose}>
               <X size={18} strokeWidth={2} aria-hidden="true" className="text-[var(--ink)]" />
             </IconButton>
