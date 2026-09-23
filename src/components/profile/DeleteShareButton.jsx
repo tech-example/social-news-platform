@@ -14,7 +14,7 @@ export function DeleteShareButton({ shareId }) {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!window.confirm("Remove this repost from your profile? (ต้องการลบการรีโพสต์นี้ใช่หรือไม่?)")) {
+    if (!window.confirm("Remove this repost from your profile?")) {
       return;
     }
 

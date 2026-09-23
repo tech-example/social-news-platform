@@ -35,7 +35,7 @@ export function FollowButton({
           setFollowing(!nextState);
           if (onToggle) onToggle(!nextState);
           if (res?.code === "UNAUTHENTICATED" || res?.error === "UNAUTHENTICATED") {
-            addToast("กรุณาเข้าสู่ระบบเพื่อติดตาม (Please sign in to follow)", "error");
+            addToast("Please sign in to follow creators.", "error");
           } else {
             addToast(res?.error || "Failed to update follow status.", "error");
           }

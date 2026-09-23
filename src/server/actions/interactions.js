@@ -319,14 +319,14 @@ export async function sharePostAction(postId, note = null) {
         ok: false,
         alreadyShared: true,
         isOwnShare: true,
-        error: "คุณได้รีโพสต์นี้ไปแล้ว ไม่สามารถรีโพสต์ซ้ำได้ (You have already reposted this post)",
+        error: "You have already reposted this post.",
       };
     } else {
       return {
         ok: false,
         alreadyShared: true,
         isOwnShare: false,
-        error: "โพสต์นี้มีผู้รีโพสต์ไปแล้ว (1 โพสต์สามารถมีผู้รีโพสต์ได้ 1 คนเท่านั้น)",
+        error: "This post has already been reposted by another user (maximum 1 repost per post).",
       };
     }
   }
@@ -342,7 +342,7 @@ export async function sharePostAction(postId, note = null) {
       return {
         ok: false,
         alreadyShared: true,
-        error: "โพสต์นี้มีผู้รีโพสต์ไปแล้ว (1 โพสต์สามารถมีผู้รีโพสต์ได้ 1 คนเท่านั้น)",
+        error: "This post has already been reposted by another user.",
       };
     }
     return { ok: false, error: error.message || "Failed to share post." };

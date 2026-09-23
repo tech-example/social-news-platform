@@ -19,7 +19,7 @@ function useAuthGuard() {
   const guard = useCallback(
     (res) => {
       if (res?.code === "UNAUTHENTICATED" || res?.error === "UNAUTHENTICATED") {
-        addToast("กรุณาเข้าสู่ระบบเพื่อดำเนินการต่อ (Please sign in to continue)", "error");
+        addToast("Please sign in to continue.", "error");
         return true;
       }
       return false;
@@ -94,7 +94,7 @@ export function InteractiveActions({
   const handleLike = () => {
     // Client-side pre-check: if not logged in, prompt user immediately
     if (!currentUserId) {
-      addToast("กรุณาเข้าสู่ระบบเพื่อกดถูกใจ (Please sign in to like)", "error");
+      addToast("Please sign in to like this post.", "error");
       return;
     }
 
@@ -137,13 +137,13 @@ export function InteractiveActions({
 
   const handleQuickShare = () => {
     if (!currentUserId) {
-      addToast("กรุณาเข้าสู่ระบบเพื่อรีโพสต์ (Please sign in to repost)", "error");
+      addToast("Please sign in to repost.", "error");
       setShareMenuOpen(false);
       return;
     }
 
     if (shareState.isShared) {
-      addToast("คุณได้รีโพสต์นี้ไปแล้ว ไม่สามารถรีโพสต์ซ้ำได้ (Already reposted)", "info");
+      addToast("You have already reposted this post.", "info");
       setShareMenuOpen(false);
       return;
     }
@@ -167,7 +167,7 @@ export function InteractiveActions({
 
   const handleUnshare = () => {
     if (!currentUserId) {
-      addToast("กรุณาเข้าสู่ระบบเพื่อดำเนินการต่อ (Please sign in)", "error");
+      addToast("Please sign in to continue.", "error");
       setShareMenuOpen(false);
       return;
     }
@@ -280,7 +280,7 @@ export function InteractiveActions({
               label="Comment on post"
               onClick={() => {
                 if (!currentUserId) {
-                  addToast("กรุณาเข้าสู่ระบบเพื่อแสดงความคิดเห็น", "error");
+                  addToast("Please sign in to comment.", "error");
                   return;
                 }
                 const el = document.getElementById(`comment-input-${postId}`);
@@ -328,7 +328,7 @@ export function InteractiveActions({
                       className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer"
                     >
                       <Trash2 size={15} strokeWidth={1.75} className="text-[var(--danger)]" />
-                      <span>Remove Repost (ลบการรีโพสต์)</span>
+                      <span>Remove Repost</span>
                     </button>
                   ) : (
                     <button
@@ -347,7 +347,7 @@ export function InteractiveActions({
                       onClick={() => {
                         setShareMenuOpen(false);
                         if (!currentUserId) {
-                          addToast("กรุณาเข้าสู่ระบบเพื่อแชร์โพสต์", "error");
+                          addToast("Please sign in to share.", "error");
                           return;
                         }
                         setShareOpen(true);
@@ -405,7 +405,7 @@ export function InteractiveActions({
                   onClick={() => {
                     setMenuOpen(false);
                     if (!currentUserId) {
-                      addToast("กรุณาเข้าสู่ระบบเพื่อรายงานโพสต์", "error");
+                      addToast("Please sign in to report.", "error");
                       return;
                     }
                     setReportOpen(true);

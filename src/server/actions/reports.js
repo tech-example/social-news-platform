@@ -10,7 +10,7 @@ export async function createReportAction(input) {
   if (!session?.user) {
     return {
       ok: false,
-      error: "Please sign in to report content. (กรุณาเข้าสู่ระบบก่อนรายงานเนื้อหา)",
+      error: "Please sign in to report content.",
     };
   }
   const parsed = reportSchema.safeParse(input);
@@ -52,7 +52,7 @@ export async function createReportAction(input) {
       return {
         ok: false,
         alreadyReported: true,
-        error: "You have already reported this item. Our moderation team is currently reviewing it. (คุณได้ส่งรายงานเนื้อหานี้ไปแล้ว และกำลังอยู่ระหว่างการตรวจสอบ)",
+        error: "You have already reported this item. Our moderation team is currently reviewing it.",
       };
     }
     console.error("createReportAction error:", error);
