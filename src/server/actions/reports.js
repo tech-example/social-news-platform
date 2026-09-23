@@ -1,12 +1,18 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/server/auth";
+import { getSession } from "@/server/auth";
 import { createUserClient } from "@/server/supabase";
 import { getAdminClient } from "@/server/admin-client";
 import { reportSchema } from "@/lib/validators";
 
 export async function createReportAction(input) {
-  const session = await requireRole("user");
+  const session = await getSession();
+  if (!session?.user) {
+    return {
+      ok: false,
+      error: "Please sign in to report content. (กรุณาเข้าสู่ระบบก่อนรายงานเนื้อหา)",
+    };
+  }
   const parsed = reportSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -39,6 +45,16 @@ export async function createReportAction(input) {
     .single();
 
   if (error) {
+    if (
+      error.code === "23505" ||
+      error.message?.includes("reports_no_duplicates")
+    ) {
+      return {
+        ok: false,
+        alreadyReported: true,
+        error: "You have already reported this item. Our moderation team is currently reviewing it. (คุณได้ส่งรายงานเนื้อหานี้ไปแล้ว และกำลังอยู่ระหว่างการตรวจสอบ)",
+      };
+    }
     console.error("createReportAction error:", error);
     return { ok: false, error: error.message || "Failed to submit report." };
   }

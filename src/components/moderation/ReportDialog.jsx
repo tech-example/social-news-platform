@@ -5,17 +5,19 @@ import { Button } from "@/components/ui/button";
 import { createReportAction } from "@/server/actions/reports";
 import { useToast } from "@/components/ui/toast";
 import { REPORT_REASONS, LIMITS } from "@/lib/constants";
-import { Flag, CircleCheck } from "lucide-react";
+import { Flag, CircleCheck, Info } from "lucide-react";
 
 export function ReportDialog({ open, onClose, targetType, targetId }) {
   const [reason, setReason] = useState(REPORT_REASONS[0]);
   const [details, setDetails] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [alreadyReported, setAlreadyReported] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { addToast } = useToast();
 
   const handleClose = () => {
     setSubmitted(false);
+    setAlreadyReported(false);
     setDetails("");
     onClose();
   };
@@ -32,6 +34,9 @@ export function ReportDialog({ open, onClose, targetType, targetId }) {
 
       if (res.ok) {
         setSubmitted(true);
+      } else if (res.alreadyReported) {
+        setAlreadyReported(true);
+        addToast(res.error, "info");
       } else {
         addToast(res.error || "Failed to submit report.", "error");
       }
@@ -46,6 +51,17 @@ export function ReportDialog({ open, onClose, targetType, targetId }) {
           <h3 className="text-base font-semibold text-[var(--ink)]">Thank You for Reporting</h3>
           <p className="text-sm text-[var(--ink-muted)] max-w-xs">
             We take platform safety seriously. A moderator will review this item in accordance with our community guidelines.
+          </p>
+          <Button onClick={handleClose} className="mt-2">
+            Done
+          </Button>
+        </div>
+      ) : alreadyReported ? (
+        <div className="flex flex-col items-center justify-center py-6 text-center gap-3">
+          <Info size={48} strokeWidth={1.75} aria-hidden="true" className="text-[var(--accent)]" />
+          <h3 className="text-base font-semibold text-[var(--ink)]">Already Reported</h3>
+          <p className="text-sm text-[var(--ink-muted)] max-w-xs">
+            You have already reported this {targetType}. Our moderation team is currently reviewing it.
           </p>
           <Button onClick={handleClose} className="mt-2">
             Done
