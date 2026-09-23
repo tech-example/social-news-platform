@@ -34,7 +34,9 @@ export function InlineCommentInput({ postId, onCommentPosted }) {
     // Background sync
     createCommentAction(postId, commentBody)
       .then((res) => {
-        if (!res?.ok) {
+        if (res?.ok && res?.comment) {
+          if (onCommentPosted) onCommentPosted(res.comment, tempId);
+        } else if (!res?.ok) {
           addToast(res?.error || "Failed to post comment.", "error");
           setText(commentBody);
         }
@@ -44,6 +46,7 @@ export function InlineCommentInput({ postId, onCommentPosted }) {
         addToast("Network error posting comment.", "error");
         setText(commentBody);
       });
+
   };
 
   return (

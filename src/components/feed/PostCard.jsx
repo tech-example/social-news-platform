@@ -35,11 +35,16 @@ export function PostCard({ post, currentUserId = null }) {
 
   const isAuthor = currentUserId === (currentPost.author?.id || currentPost.user_id);
 
-  const handleCommentPosted = (comment) => {
-    setLocalComments((prev) => [...prev, comment]);
-    setLocalCommentsCount((prev) => prev + 1);
-    setShowComments(true);
+  const handleCommentPosted = (comment, tempId = null) => {
+    if (tempId) {
+      setLocalComments((prev) => prev.map((c) => (c.id === tempId ? comment : c)));
+    } else {
+      setLocalComments((prev) => [...prev, comment]);
+      setLocalCommentsCount((prev) => prev + 1);
+      setShowComments(true);
+    }
   };
+
 
   const handleDelete = () => {
     setIsDeleted(true);
@@ -256,20 +261,35 @@ export function PostCard({ post, currentUserId = null }) {
 
         {/* Comments Display */}
         {displayedComments.length > 0 && (
-          <div className={`mt-2 space-y-1.5 ${showComments ? "max-h-72 overflow-y-auto pr-1" : ""}`}>
+          <div className={`mt-2 space-y-2 ${showComments ? "max-h-72 overflow-y-auto pr-1" : ""}`}>
             {displayedComments.map((c) => (
-              <div key={c.id} className="text-sm">
+              <div key={c.id} className="flex items-start gap-2 text-sm leading-snug">
                 <Link
-                  href={`/u/${c.author?.username}`}
-                  className="font-semibold text-[var(--ink)] hover:underline mr-1.5"
+                  href={`/u/${c.author?.username || "anonymous"}`}
+                  className="shrink-0 pt-0.5 focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)] rounded-full"
+                  title={c.author?.display_name || c.author?.username}
                 >
-                  {c.author?.username}
+                  <Avatar
+                    src={c.author?.avatar_url}
+                    alt={c.author?.display_name || c.author?.username || "User avatar"}
+                    name={c.author?.display_name || c.author?.username}
+                    size={22}
+                  />
                 </Link>
-                <span className="text-[var(--ink)]">{c.body}</span>
+                <div className="flex-1 min-w-0 break-words">
+                  <Link
+                    href={`/u/${c.author?.username || "anonymous"}`}
+                    className="font-semibold text-[var(--ink)] hover:underline mr-1.5"
+                  >
+                    {c.author?.username}
+                  </Link>
+                  <span className="text-[var(--ink)]">{c.body}</span>
+                </div>
               </div>
             ))}
           </div>
         )}
+
 
         {/* Loading comments indicator */}
         {isLoadingComments && (

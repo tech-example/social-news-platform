@@ -108,6 +108,45 @@ export async function getFeedPosts({
     }
   }
 
+  // Fetch recent comments for feed posts (preview on feed)
+  const recentCommentsMap = new Map();
+  if (rawPosts && rawPosts.length > 0) {
+    const postIds = rawPosts.map((p) => p.id);
+    const { data: recentCommentsData } = await supabase
+      .from("comments")
+      .select(`
+        id,
+        post_id,
+        author_id,
+        body,
+        created_at,
+        author:profiles!comments_author_id_fkey(
+          id,
+          username,
+          display_name,
+          avatar_url
+        )
+      `)
+      .in("post_id", postIds)
+      .eq("status", "published")
+      .order("created_at", { ascending: true });
+
+    if (recentCommentsData) {
+      for (const c of recentCommentsData) {
+        if (!recentCommentsMap.has(c.post_id)) {
+          recentCommentsMap.set(c.post_id, []);
+        }
+        recentCommentsMap.get(c.post_id).push({
+          id: c.id,
+          postId: c.post_id,
+          body: c.body,
+          createdAt: c.created_at,
+          author: c.author,
+        });
+      }
+    }
+  }
+
   const posts = (rawPosts || []).map((post) => ({
     id: post.id,
     title: post.title,
@@ -122,12 +161,14 @@ export async function getFeedPosts({
     tags: (post.tags || []).map((t) => t.tag?.name).filter(Boolean),
     isLiked: likedPostIds.has(post.id),
     isFollowingAuthor: followedAuthorIds.has(post.author?.id),
+    recentComments: (recentCommentsMap.get(post.id) || []).slice(-2),
   }));
 
   const nextCursor =
     posts.length === limit ? posts[posts.length - 1].createdAt : null;
 
   return { posts, nextCursor };
+
 }
 
 export async function getPostById(postId, viewerId = null) {

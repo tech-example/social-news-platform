@@ -111,11 +111,12 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
               <div key={comment.id} className="space-y-2 animate-fadeIn">
                 <div className="flex items-start justify-between gap-3 group">
                   <div className="flex items-start gap-2.5 min-w-0">
-                    <Link href={`/u/${comment.author?.username}`}>
+                    <Link href={`/u/${comment.author?.username}`} className="shrink-0 pt-0.5">
                       <Avatar
                         src={comment.author?.avatar_url}
-                        alt={comment.author?.display_name || "User"}
-                        size="sm"
+                        alt={comment.author?.display_name || comment.author?.username || "User"}
+                        name={comment.author?.display_name || comment.author?.username}
+                        size={24}
                       />
                     </Link>
                     <div className="text-sm leading-snug break-words">
@@ -160,11 +161,12 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
                     {replies.map((reply) => (
                       <div key={reply.id} className="flex items-start justify-between gap-2 group animate-fadeIn">
                         <div className="flex items-start gap-2 min-w-0">
-                          <Link href={`/u/${reply.author?.username}`}>
+                          <Link href={`/u/${reply.author?.username}`} className="shrink-0 pt-0.5">
                             <Avatar
                               src={reply.author?.avatar_url}
-                              alt={reply.author?.display_name || "User"}
-                              size="xs"
+                              alt={reply.author?.display_name || reply.author?.username || "User"}
+                              name={reply.author?.display_name || reply.author?.username}
+                              size={20}
                             />
                           </Link>
                           <div className="text-sm leading-snug break-words">
