@@ -4,30 +4,42 @@ import { searchTags } from "@/server/dal/tags";
 import { searchPosts } from "@/server/dal/posts";
 import { Avatar } from "@/components/ui/avatar";
 import { SearchInput } from "./SearchInput";
-import { Hash, User, FileText, SearchX } from "lucide-react";
-import { formatCompactNumber } from "@/lib/format";
+import { Hash, Heart, MessageCircle, SearchX } from "lucide-react";
+import { formatCompactNumber, formatRelativeTime } from "@/lib/format";
 
 export const metadata = {
   title: "Search - SocialNews",
-  description: "Search accounts, tags, and news articles on SocialNews.",
+  description: "Search news articles, accounts, and tags on SocialNews.",
 };
 
 export default async function SearchPage({ searchParams }) {
   const resolvedParams = await searchParams;
-  const query = resolvedParams?.q?.trim() || "";
-  const type = resolvedParams?.type || "accounts";
+  const rawQuery = resolvedParams?.q?.trim() || "";
+  let type = resolvedParams?.type;
 
+  // Auto-detect type if not explicitly set
+  if (!type) {
+    if (rawQuery.startsWith("#")) {
+      type = "tags";
+    } else if (rawQuery.startsWith("@")) {
+      type = "accounts";
+    } else {
+      type = "posts";
+    }
+  }
+
+  const query = rawQuery;
   let accounts = [];
   let tags = [];
   let posts = [];
 
   if (query) {
-    if (type === "accounts") {
+    if (type === "posts") {
+      posts = await searchPosts(query, 20);
+    } else if (type === "accounts") {
       accounts = await searchProfiles(query, 20);
     } else if (type === "tags") {
       tags = await searchTags(query, 20);
-    } else if (type === "posts") {
-      posts = await searchPosts(query, 20);
     }
   }
 
@@ -40,6 +52,16 @@ export default async function SearchPage({ searchParams }) {
 
       {/* Search Type Tabs */}
       <div className="flex border-b border-[var(--line)] bg-[var(--bg)] mt-4 mb-6">
+        <Link
+          href={`/search?q=${encodeURIComponent(query)}&type=posts`}
+          className={`flex-1 py-2.5 text-center text-xs font-semibold tracking-wider uppercase transition-colors ${
+            type === "posts"
+              ? "text-[var(--ink)] border-b-2 border-[var(--ink)]"
+              : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
+          }`}
+        >
+          Posts
+        </Link>
         <Link
           href={`/search?q=${encodeURIComponent(query)}&type=accounts`}
           className={`flex-1 py-2.5 text-center text-xs font-semibold tracking-wider uppercase transition-colors ${
@@ -60,25 +82,72 @@ export default async function SearchPage({ searchParams }) {
         >
           Tags
         </Link>
-        <Link
-          href={`/search?q=${encodeURIComponent(query)}&type=posts`}
-          className={`flex-1 py-2.5 text-center text-xs font-semibold tracking-wider uppercase transition-colors ${
-            type === "posts"
-              ? "text-[var(--ink)] border-b-2 border-[var(--ink)]"
-              : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
-          }`}
-        >
-          Posts
-        </Link>
       </div>
 
       {/* Results */}
       {!query ? (
         <div className="py-12 text-center text-sm text-[var(--ink-muted)]">
-          Search for usernames, hashtags, or news topics.
+          Search for news keywords, topics, usernames, or hashtags.
         </div>
       ) : (
         <div className="space-y-3">
+          {type === "posts" && (
+            posts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
+                <SearchX size={36} strokeWidth={1.5} className="text-[var(--ink-muted)]" aria-hidden="true" />
+                <p className="text-sm text-[var(--ink-muted)]">No posts found matching &ldquo;{query}&rdquo;.</p>
+              </div>
+            ) : (
+              posts.map((p) => {
+                const likes = p.likesCount ?? p.likes_count ?? 0;
+                const comments = p.commentsCount ?? p.comments_count ?? 0;
+                const authorName = p.author?.display_name || p.author?.username || "Unknown";
+                const username = p.author?.username || "user";
+                const avatarUrl = p.author?.avatar_url;
+                const time = p.createdAt ? formatRelativeTime(p.createdAt) : "";
+
+                return (
+                  <Link
+                    key={p.id}
+                    href={`/p/${p.id}`}
+                    className="flex flex-col p-4 rounded-xl border border-[var(--line)] bg-[var(--surface)] hover:border-[var(--line-strong)] hover:shadow-xs transition-all gap-2"
+                  >
+                    <div className="flex items-center justify-between text-xs text-[var(--ink-muted)]">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Avatar src={avatarUrl} name={authorName} size={24} />
+                        <span className="font-semibold text-[var(--ink)] truncate">@{username}</span>
+                        {time && (
+                          <>
+                            <span>&bull;</span>
+                            <span>{time}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="flex items-center gap-1">
+                          <Heart size={13} strokeWidth={1.75} className="text-[var(--ink-muted)]" aria-hidden="true" />
+                          <span>{formatCompactNumber(likes)}</span>
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MessageCircle size={13} strokeWidth={1.75} className="text-[var(--ink-muted)]" aria-hidden="true" />
+                          <span>{formatCompactNumber(comments)}</span>
+                        </span>
+                      </div>
+                    </div>
+                    {p.title && (
+                      <h2 className="text-sm font-semibold text-[var(--ink)] line-clamp-1">
+                        {p.title}
+                      </h2>
+                    )}
+                    <p className="text-xs text-[var(--ink-muted)] line-clamp-2 leading-relaxed">
+                      {p.body}
+                    </p>
+                  </Link>
+                );
+              })
+            )
+          )}
+
           {type === "accounts" && (
             accounts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
@@ -139,37 +208,6 @@ export default async function SearchPage({ searchParams }) {
                   <span className="text-xs text-[var(--ink-muted)] tabular-nums">
                     {formatCompactNumber(t.posts_count || 0)} posts
                   </span>
-                </Link>
-              ))
-            )
-          )}
-
-          {type === "posts" && (
-            posts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
-                <SearchX size={36} strokeWidth={1.5} className="text-[var(--ink-muted)]" aria-hidden="true" />
-                <p className="text-sm text-[var(--ink-muted)]">No posts found matching &ldquo;{query}&rdquo;.</p>
-              </div>
-            ) : (
-              posts.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`/p/${p.id}`}
-                  className="flex flex-col p-3 rounded-lg border border-[var(--line)] hover:bg-[var(--surface)] transition-colors gap-1.5"
-                >
-                  <div className="flex items-center gap-2 text-xs text-[var(--ink-muted)]">
-                    <span className="font-semibold text-[var(--ink)]">@{p.author?.username}</span>
-                    <span>&bull;</span>
-                    <span>{formatCompactNumber(p.likes_count || 0)} likes</span>
-                  </div>
-                  {p.title && (
-                    <h3 className="text-sm font-semibold text-[var(--ink)] line-clamp-1">
-                      {p.title}
-                    </h3>
-                  )}
-                  <p className="text-xs text-[var(--ink)] line-clamp-2">
-                    {p.body}
-                  </p>
                 </Link>
               ))
             )

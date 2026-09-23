@@ -487,38 +487,105 @@ export async function getExplorePosts({ limit = 18 } = {}) {
 export async function searchPosts(searchQuery, limit = 20) {
   if (!searchQuery?.trim()) return [];
   const supabase = await createUserClient();
+  const clean = searchQuery.trim().replace(/^#/, "");
 
-  const { data, error } = await supabase.rpc("search_posts", {
-    p_query: searchQuery.trim(),
-    p_limit: limit,
-  });
+  // 1. Direct search on title, body, and matching tags
+  const { data: matchedTags } = await supabase
+    .from("tags")
+    .select("id")
+    .ilike("name", `%${clean}%`)
+    .limit(10);
 
-  if (error) {
-    // Fallback to ilike
-    const { data: fallbackPosts } = await supabase
-      .from("posts")
-      .select(`
-        id,
-        title,
-        body,
-        image_url,
-        likes_count,
-        comments_count,
-        shares_count,
-        created_at,
-        author:profiles!posts_author_id_fkey(
-          id,
-          username,
-          display_name,
-          avatar_url
-        )
-      `)
-      .eq("status", "published")
-      .or(`title.ilike.%${searchQuery}%,body.ilike.%${searchQuery}%`)
-      .limit(limit);
-
-    return fallbackPosts || [];
+  let taggedPostIds = [];
+  if (matchedTags && matchedTags.length > 0) {
+    const tagIds = matchedTags.map((t) => t.id);
+    const { data: postTags } = await supabase
+      .from("post_tags")
+      .select("post_id")
+      .in("tag_id", tagIds)
+      .limit(30);
+    if (postTags && postTags.length > 0) {
+      taggedPostIds = postTags.map((pt) => pt.post_id);
+    }
   }
 
-  return data || [];
+  let orClause = `title.ilike.%${clean}%,body.ilike.%${clean}%`;
+  if (taggedPostIds.length > 0) {
+    orClause += `,id.in.(${taggedPostIds.join(",")})`;
+  }
+
+  const { data: posts, error } = await supabase
+    .from("posts")
+    .select(`
+      id,
+      title,
+      body,
+      image_url,
+      likes_count,
+      comments_count,
+      shares_count,
+      created_at,
+      author:profiles!posts_author_id_fkey(
+        id,
+        username,
+        display_name,
+        avatar_url
+      )
+    `)
+    .eq("status", "published")
+    .or(orClause)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (!error && posts && posts.length > 0) {
+    return posts.map((p) => ({
+      id: p.id,
+      title: p.title,
+      body: p.body,
+      imageUrl: p.image_url,
+      likesCount: p.likes_count || 0,
+      commentsCount: p.comments_count || 0,
+      sharesCount: p.shares_count || 0,
+      createdAt: p.created_at,
+      author: p.author,
+    }));
+  }
+
+  // 2. Fallback to RPC search_posts if available
+  try {
+    const { data: rpcData, error: rpcErr } = await supabase.rpc("search_posts", {
+      p_query: clean,
+      p_limit: limit,
+    });
+
+    if (!rpcErr && rpcData && rpcData.length > 0) {
+      const authorIds = [...new Set(rpcData.map((p) => p.author_id).filter(Boolean))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username, display_name, avatar_url")
+        .in("id", authorIds);
+      const profileMap = new Map((profiles || []).map((pr) => [pr.id, pr]));
+
+      return rpcData.map((p) => ({
+        id: p.id,
+        title: p.title,
+        body: p.body,
+        imageUrl: p.image_url,
+        likesCount: p.likes_count || 0,
+        commentsCount: p.comments_count || 0,
+        sharesCount: p.shares_count || 0,
+        createdAt: p.created_at,
+        author: profileMap.get(p.author_id) || {
+          username: p.author_username || "anonymous",
+          display_name: p.author_display_name || "Anonymous",
+          avatar_url: p.author_avatar_url || null,
+        },
+      }));
+    }
+  } catch (err) {
+    console.warn("search_posts fallback warning:", err);
+  }
+
+  return [];
 }
+

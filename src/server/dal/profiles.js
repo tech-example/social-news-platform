@@ -96,13 +96,15 @@ export async function getSuggestedProfiles(viewerId = null, limit = 5) {
 
 export async function searchProfiles(query, limit = 20) {
   if (!query?.trim()) return [];
+  const clean = query.trim().replace(/^@/, "");
+  if (!clean) return [];
   const supabase = await createUserClient();
 
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select("id, username, display_name, avatar_url, followers_count, is_suspended")
     .eq("is_suspended", false)
-    .or(`username.ilike.%${query.trim()}%,display_name.ilike.%${query.trim()}%`)
+    .or(`username.ilike.%${clean}%,display_name.ilike.%${clean}%`)
     .order("followers_count", { ascending: false })
     .limit(limit);
 

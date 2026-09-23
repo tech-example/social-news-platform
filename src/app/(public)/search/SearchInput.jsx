@@ -4,18 +4,28 @@ import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { IconButton } from "@/components/ui/icon-button";
 
-export function SearchInput({ initialQuery = "", initialType = "accounts" }) {
+export function SearchInput({ initialQuery = "", initialType = "posts" }) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    router.push(`/search?q=${encodeURIComponent(query.trim())}&type=${initialType}`);
+    const clean = query.trim();
+    if (!clean) return;
+
+    let targetType = initialType || "posts";
+    if (clean.startsWith("#")) {
+      targetType = "tags";
+    } else if (clean.startsWith("@")) {
+      targetType = "accounts";
+    }
+
+    router.push(`/search?q=${encodeURIComponent(clean)}&type=${targetType}`);
   };
 
   const handleClear = () => {
     setQuery("");
-    router.push(`/search?type=${initialType}`);
+    router.push(`/search?type=${initialType || "posts"}`);
   };
 
   return (
@@ -31,7 +41,7 @@ export function SearchInput({ initialQuery = "", initialType = "accounts" }) {
         inputMode="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search accounts, tags, or news keywords..."
+        placeholder="Search news, topics, @accounts, or #tags..."
         className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:bg-[var(--bg)] focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)] [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
       />
       {query && (
