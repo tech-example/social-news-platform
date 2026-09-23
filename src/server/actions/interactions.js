@@ -306,20 +306,29 @@ export async function sharePostAction(postId, note = null) {
 
   const adminSupabase = getAdminClient();
 
-  // Check if user has already shared this post (1 user cannot repost the same post multiple times)
+  // Check if post is already shared (1 post can only have 1 reposter, 1 user can have multiple reposts, but cannot repost duplicate)
   const { data: existingShare } = await adminSupabase
     .from("shares")
-    .select("id")
+    .select("id, user_id")
     .eq("post_id", postId)
-    .eq("user_id", session.user.id)
     .maybeSingle();
 
   if (existingShare) {
-    return {
-      ok: false,
-      alreadyShared: true,
-      error: "You have already reposted this post. (คุณได้รีโพสต์นี้ไปแล้ว ไม่สามารถรีโพสต์ซ้ำได้)",
-    };
+    if (existingShare.user_id === session.user.id) {
+      return {
+        ok: false,
+        alreadyShared: true,
+        isOwnShare: true,
+        error: "คุณได้รีโพสต์นี้ไปแล้ว ไม่สามารถรีโพสต์ซ้ำได้ (You have already reposted this post)",
+      };
+    } else {
+      return {
+        ok: false,
+        alreadyShared: true,
+        isOwnShare: false,
+        error: "โพสต์นี้มีผู้รีโพสต์ไปแล้ว (1 โพสต์สามารถมีผู้รีโพสต์ได้ 1 คนเท่านั้น)",
+      };
+    }
   }
 
   const { error } = await adminSupabase.from("shares").insert({
@@ -333,7 +342,7 @@ export async function sharePostAction(postId, note = null) {
       return {
         ok: false,
         alreadyShared: true,
-        error: "You have already reposted this post. (คุณได้รีโพสต์นี้ไปแล้ว ไม่สามารถรีโพสต์ซ้ำได้)",
+        error: "โพสต์นี้มีผู้รีโพสต์ไปแล้ว (1 โพสต์สามารถมีผู้รีโพสต์ได้ 1 คนเท่านั้น)",
       };
     }
     return { ok: false, error: error.message || "Failed to share post." };
