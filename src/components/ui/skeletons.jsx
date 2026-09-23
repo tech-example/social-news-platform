@@ -10,28 +10,46 @@ export function PostCardSkeleton() {
       aria-label="Loading post..."
       className="border-b border-[var(--line)] bg-[var(--bg)] py-4 flex flex-col gap-3 max-w-[470px] w-full mx-auto"
     >
-      {/* Header */}
-      <div className="flex items-center px-4 gap-3">
-        <Skeleton className="h-9 w-9 rounded-full shrink-0" />
-        <div className="space-y-1.5 flex-1">
-          <Skeleton className="h-3.5 w-28" />
-          <Skeleton className="h-2.5 w-16" />
+      {/* Header: Avatar, Username + Follow, Full Page link */}
+      <div className="flex items-center justify-between px-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1.5">
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-3 w-1" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+            <Skeleton className="h-2.5 w-16" />
+          </div>
         </div>
+        <Skeleton className="h-5 w-14 rounded-md" />
       </div>
 
-      {/* Media or Body Block */}
-      <Skeleton className="w-full aspect-4/5 max-h-[420px] rounded-none sm:rounded-sm" />
+      {/* Media Block (4:5 aspect ratio) */}
+      <Skeleton className="w-full aspect-4/5 max-h-[420px] rounded-none" />
 
-      {/* Content & Actions */}
+      {/* Action Icons Row */}
       <div className="px-4 space-y-2 mt-1">
         <div className="flex items-center gap-3 py-1">
           <Skeleton className="h-6 w-6 rounded-full" />
           <Skeleton className="h-6 w-6 rounded-full" />
           <Skeleton className="h-6 w-6 rounded-full" />
+          <div className="flex-1" />
+          <Skeleton className="h-6 w-6 rounded-full" />
         </div>
+
+        {/* Likes count */}
         <Skeleton className="h-3.5 w-20" />
+
+        {/* Caption lines */}
         <Skeleton className="h-3.5 w-4/5" />
         <Skeleton className="h-3.5 w-2/3" />
+
+        {/* Inline comment input placeholder */}
+        <div className="pt-2 border-t border-[var(--line)] mt-2">
+          <Skeleton className="h-8 w-full rounded-lg" />
+        </div>
       </div>
     </div>
   );
@@ -343,34 +361,65 @@ export function PostDetailSkeleton() {
       aria-label="Loading post details..."
       className="max-w-[935px] mx-auto px-4 py-4 sm:py-6"
     >
-      <Skeleton className="h-5 w-24 mb-4" />
-      <div className="bg-[var(--bg)] border border-[var(--line)] rounded-xl overflow-hidden shadow-xs flex flex-col md:flex-row min-h-[500px]">
-        {/* Left media block */}
-        <Skeleton className="flex-1 min-h-[350px] md:min-h-[500px] rounded-none" />
+      {/* Back link */}
+      <div className="mb-4">
+        <Skeleton className="h-5 w-28" />
+      </div>
+
+      <div className="bg-[var(--bg)] border border-[var(--line)] rounded-xl overflow-hidden shadow-xs flex flex-col md:flex-row">
+        {/* Left: Media block */}
+        <div className="flex-1 bg-[var(--surface)] border-b md:border-b-0 md:border-r border-[var(--line)] min-h-[300px] md:min-h-[500px]">
+          <Skeleton className="w-full h-full min-h-[300px] md:min-h-[500px] rounded-none" />
+        </div>
 
         {/* Right column */}
-        <div className="w-full md:w-[380px] shrink-0 p-4 flex flex-col justify-between border-t md:border-t-0 md:border-l border-[var(--line)] space-y-4">
-          <div className="flex items-center gap-3 pb-4 border-b border-[var(--line)]">
-            <Skeleton className="w-9 h-9 rounded-full shrink-0" />
-            <div className="space-y-1.5 flex-1">
-              <Skeleton className="h-3.5 w-28" />
-              <Skeleton className="h-2.5 w-16" />
+        <div className="w-full md:w-[380px] shrink-0 flex flex-col h-[550px] bg-[var(--bg)]">
+          {/* Author Header */}
+          <div className="flex items-center justify-between p-4 border-b border-[var(--line)]">
+            <div className="flex items-center gap-3 min-w-0">
+              <Skeleton className="w-9 h-9 rounded-full shrink-0" />
+              <div className="flex flex-col gap-1">
+                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="h-2.5 w-16" />
+              </div>
+              <Skeleton className="h-6 w-18 rounded-md ml-1" />
             </div>
+            <Skeleton className="h-3 w-12 shrink-0" />
           </div>
-          <div className="flex-1 space-y-3">
+
+          {/* Caption area */}
+          <div className="p-4 border-b border-[var(--line)] space-y-2 bg-[var(--surface)]">
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-3.5 w-full" />
             <Skeleton className="h-3.5 w-5/6" />
-            <div className="pt-4">
-              <CommentThreadSkeleton count={3} />
+            <div className="flex gap-1.5 pt-1">
+              <Skeleton className="h-3 w-14" />
+              <Skeleton className="h-3 w-14" />
             </div>
           </div>
-          <div className="pt-3 border-t border-[var(--line)] space-y-2">
-            <Skeleton className="h-6 w-32" />
-            <Skeleton className="h-8 w-full rounded-lg" />
+
+          {/* Comments placeholder (scrollable area) */}
+          <div className="flex-1 overflow-hidden p-4 space-y-3">
+            <CommentItemSkeleton />
+            <CommentItemSkeleton />
+            <CommentItemSkeleton />
+            <CommentItemSkeleton />
+          </div>
+
+          {/* Action Row at Bottom */}
+          <div className="p-4 border-t border-[var(--line)] space-y-2">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-6 w-6 rounded-full" />
+              <Skeleton className="h-6 w-6 rounded-full" />
+              <Skeleton className="h-6 w-6 rounded-full" />
+              <div className="flex-1" />
+              <Skeleton className="h-6 w-6 rounded-full" />
+            </div>
+            <Skeleton className="h-3.5 w-20" />
           </div>
         </div>
       </div>
     </div>
   );
 }
+
