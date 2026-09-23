@@ -1,12 +1,12 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { Heart, MessageCircle, Send, Ellipsis, Link as LinkIcon, Flag, Trash2, Repeat, Pencil } from "lucide-react";
 import { IconButton } from "@/components/ui/icon-button";
 import { ShareDialog } from "@/components/feed/ShareDialog";
 import { ReportDialog } from "@/components/moderation/ReportDialog";
 import { EditPostDialog } from "@/components/feed/EditPostDialog";
-import { toggleLikeAction, sharePostAction } from "@/server/actions/interactions";
+import { toggleLikeAction, sharePostAction, unsharePostAction } from "@/server/actions/interactions";
 import { deletePostAction } from "@/server/actions/posts";
 import { formatCompactNumber } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
@@ -35,6 +35,7 @@ export function InteractiveActions({
   post = null,
   initialLiked = false,
   initialLikesCount = 0,
+  initialShared = false,
   commentsCount = 0,
   sharesCount: initialSharesCount = 0,
   isAuthor = false,
@@ -49,7 +50,10 @@ export function InteractiveActions({
     count: initialLikesCount,
   });
   const [justLiked, setJustLiked] = useState(false);
-  const [localSharesCount, setLocalSharesCount] = useState(initialSharesCount);
+  const [shareState, setShareState] = useState({
+    isShared: post?.isShared || initialShared,
+    count: initialSharesCount,
+  });
   const [shareOpen, setShareOpen] = useState(false);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -58,6 +62,34 @@ export function InteractiveActions({
   const [isDeleted, setIsDeleted] = useState(false);
   const { addToast } = useToast();
   const authGuard = useAuthGuard();
+
+  useEffect(() => {
+    setLikeState({
+      isLiked: initialLiked,
+      count: initialLikesCount,
+    });
+  }, [initialLiked, initialLikesCount]);
+
+  useEffect(() => {
+    setShareState({
+      isShared: post?.isShared || initialShared,
+      count: initialSharesCount,
+    });
+  }, [post?.isShared, initialShared, initialSharesCount]);
+
+  // Close menus on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setShareMenuOpen(false);
+        setMenuOpen(false);
+      }
+    };
+    if (shareMenuOpen || menuOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [shareMenuOpen, menuOpen]);
 
   const handleLike = () => {
     // Client-side pre-check: if not logged in, prompt user immediately
@@ -105,25 +137,55 @@ export function InteractiveActions({
 
   const handleQuickShare = () => {
     if (!currentUserId) {
-      addToast("กรุณาเข้าสู่ระบบเพื่อแชร์โพสต์", "error");
+      addToast("กรุณาเข้าสู่ระบบเพื่อรีโพสต์ (Please sign in to repost)", "error");
+      setShareMenuOpen(false);
+      return;
+    }
+
+    if (shareState.isShared) {
+      addToast("คุณได้รีโพสต์นี้ไปแล้ว ไม่สามารถรีโพสต์ซ้ำได้ (Already reposted)", "info");
       setShareMenuOpen(false);
       return;
     }
 
     setShareMenuOpen(false);
-    setLocalSharesCount((prev) => prev + 1);
-    addToast("Post shared to your profile.");
+    setShareState((prev) => ({ isShared: true, count: prev.count + 1 }));
+    addToast("Post reposted to your profile.");
 
     sharePostAction(postId).then((res) => {
       if (!res?.ok) {
-        setLocalSharesCount((prev) => Math.max(0, prev - 1));
+        setShareState((prev) => ({ isShared: false, count: Math.max(0, prev.count - 1) }));
         if (authGuard(res)) return;
-        addToast(res?.error || "Failed to share post.", "error");
+        addToast(res?.error || "Failed to repost post.", "error");
       }
     }).catch((err) => {
       console.error("Share error:", err);
-      setLocalSharesCount((prev) => Math.max(0, prev - 1));
+      setShareState((prev) => ({ isShared: false, count: Math.max(0, prev.count - 1) }));
       addToast("Network error sharing post.", "error");
+    });
+  };
+
+  const handleUnshare = () => {
+    if (!currentUserId) {
+      addToast("กรุณาเข้าสู่ระบบเพื่อดำเนินการต่อ (Please sign in)", "error");
+      setShareMenuOpen(false);
+      return;
+    }
+
+    setShareMenuOpen(false);
+    setShareState((prev) => ({ isShared: false, count: Math.max(0, prev.count - 1) }));
+    addToast("Repost removed from your profile.");
+
+    unsharePostAction(postId).then((res) => {
+      if (!res?.ok) {
+        setShareState((prev) => ({ isShared: true, count: prev.count + 1 }));
+        if (authGuard(res)) return;
+        addToast(res?.error || "Failed to remove repost.", "error");
+      }
+    }).catch((err) => {
+      console.error("Unshare error:", err);
+      setShareState((prev) => ({ isShared: true, count: prev.count + 1 }));
+      addToast("Network error removing repost.", "error");
     });
   };
 
@@ -162,7 +224,7 @@ export function InteractiveActions({
   };
 
   const handleShareSuccess = () => {
-    setLocalSharesCount((prev) => prev + 1);
+    setShareState((prev) => ({ isShared: true, count: prev.count + 1 }));
   };
 
   if (isDeleted) {
@@ -233,45 +295,80 @@ export function InteractiveActions({
           <div className="relative">
             <IconButton
               label="Share post"
+              pressed={shareState.isShared}
               onClick={() => setShareMenuOpen(!shareMenuOpen)}
             >
-              <Send size={22} strokeWidth={1.75} aria-hidden="true" className="text-[var(--ink)] -rotate-12" />
+              <Send
+                size={22}
+                strokeWidth={shareState.isShared ? 2 : 1.75}
+                aria-hidden="true"
+                className={`-rotate-12 transition-colors ${
+                  shareState.isShared ? "text-[var(--accent)]" : "text-[var(--ink)]"
+                }`}
+              />
             </IconButton>
 
             {shareMenuOpen && (
-              <div className="absolute left-0 bottom-full mb-1 w-48 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-xl py-1.5 z-40 animate-slideDown">
-                <button
-                  type="button"
-                  onClick={handleQuickShare}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer"
-                >
-                  <Repeat size={15} strokeWidth={2} className="text-[var(--accent)]" />
-                  <span>Repost to Profile</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
+              <>
+                {/* Transparent backdrop for clicking outside */}
+                <div
+                  className="fixed inset-0 z-30 bg-transparent cursor-default"
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setShareMenuOpen(false);
-                    if (!currentUserId) {
-                      addToast("กรุณาเข้าสู่ระบบเพื่อแชร์โพสต์", "error");
-                      return;
-                    }
-                    setShareOpen(true);
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer"
-                >
-                  <Send size={14} strokeWidth={1.75} className="text-[var(--ink-muted)]" />
-                  <span>Share with note...</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer"
-                >
-                  <LinkIcon size={14} strokeWidth={1.75} className="text-[var(--ink-muted)]" />
-                  <span>Copy link</span>
-                </button>
-              </div>
+                  aria-hidden="true"
+                />
+
+                <div className="absolute left-0 bottom-full mb-1 w-52 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-xl py-1.5 z-40 animate-slideDown">
+                  {shareState.isShared ? (
+                    <button
+                      type="button"
+                      onClick={handleUnshare}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer"
+                    >
+                      <Trash2 size={15} strokeWidth={1.75} className="text-[var(--danger)]" />
+                      <span>Remove Repost (ลบการรีโพสต์)</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleQuickShare}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer"
+                    >
+                      <Repeat size={15} strokeWidth={2} className="text-[var(--accent)]" />
+                      <span>Repost to Profile</span>
+                    </button>
+                  )}
+
+                  {!shareState.isShared && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShareMenuOpen(false);
+                        if (!currentUserId) {
+                          addToast("กรุณาเข้าสู่ระบบเพื่อแชร์โพสต์", "error");
+                          return;
+                        }
+                        setShareOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer"
+                    >
+                      <Send size={14} strokeWidth={1.75} className="text-[var(--ink-muted)]" />
+                      <span>Share with note...</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer"
+                  >
+                    <LinkIcon size={14} strokeWidth={1.75} className="text-[var(--ink-muted)]" />
+                    <span>Copy link</span>
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -283,54 +380,66 @@ export function InteractiveActions({
           </IconButton>
 
           {menuOpen && (
-            <div className="absolute right-0 bottom-full mb-1 w-44 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-xl py-1 z-30 animate-slideDown">
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer"
-              >
-                <LinkIcon size={14} strokeWidth={1.75} aria-hidden="true" />
-                <span>Copy Link</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
+            <>
+              {/* Transparent backdrop for clicking outside */}
+              <div
+                className="fixed inset-0 z-20 bg-transparent cursor-default"
+                onClick={(e) => {
+                  e.stopPropagation();
                   setMenuOpen(false);
-                  if (!currentUserId) {
-                    addToast("กรุณาเข้าสู่ระบบเพื่อรายงานโพสต์", "error");
-                    return;
-                  }
-                  setReportOpen(true);
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer"
-              >
-                <Flag size={14} strokeWidth={1.75} aria-hidden="true" />
-                <span>Report Post</span>
-              </button>
-              {isAuthor && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      setEditOpen(true);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer"
-                  >
-                    <Pencil size={14} strokeWidth={1.75} aria-hidden="true" />
-                    <span>Edit Post</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer"
-                  >
-                    <Trash2 size={14} strokeWidth={1.75} aria-hidden="true" />
-                    <span>Delete Post</span>
-                  </button>
-                </>
-              )}
-            </div>
+                aria-hidden="true"
+              />
+
+              <div className="absolute right-0 bottom-full mb-1 w-44 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-xl py-1 z-30 animate-slideDown">
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer"
+                >
+                  <LinkIcon size={14} strokeWidth={1.75} aria-hidden="true" />
+                  <span>Copy Link</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    if (!currentUserId) {
+                      addToast("กรุณาเข้าสู่ระบบเพื่อรายงานโพสต์", "error");
+                      return;
+                    }
+                    setReportOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer"
+                >
+                  <Flag size={14} strokeWidth={1.75} aria-hidden="true" />
+                  <span>Report Post</span>
+                </button>
+                {isAuthor && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setEditOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer"
+                    >
+                      <Pencil size={14} strokeWidth={1.75} aria-hidden="true" />
+                      <span>Edit Post</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer"
+                    >
+                      <Trash2 size={14} strokeWidth={1.75} aria-hidden="true" />
+                      <span>Delete Post</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -343,9 +452,9 @@ export function InteractiveActions({
             {formatCompactNumber(commentsCount)} comments
           </span>
         )}
-        {localSharesCount > 0 && (
+        {shareState.count > 0 && (
           <span className="text-[var(--ink-muted)] font-normal">
-            {formatCompactNumber(localSharesCount)} shares
+            {formatCompactNumber(shareState.count)} shares
           </span>
         )}
       </div>

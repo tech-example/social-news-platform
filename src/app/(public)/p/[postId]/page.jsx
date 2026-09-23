@@ -190,6 +190,7 @@ export default async function PostDetailPage({ params }) {
               post={post}
               initialLiked={post.isLiked || false}
               initialLikesCount={post.likesCount || 0}
+              initialShared={post.isShared || false}
               commentsCount={post.commentsCount || 0}
               sharesCount={post.sharesCount || 0}
               isAuthor={isAuthor}

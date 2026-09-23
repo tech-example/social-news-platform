@@ -140,6 +140,7 @@ create table if not exists public.shares (
 );
 create index if not exists shares_post_idx on public.shares (post_id);
 create index if not exists shares_user_idx on public.shares (user_id, created_at desc);
+create unique index if not exists shares_user_post_unique on public.shares (user_id, post_id);
 
 -- 9. Notifications
 create table if not exists public.notifications (

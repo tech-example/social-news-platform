@@ -25,6 +25,16 @@ export function AppShell({ children, session = null }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") setMoreOpen(false);
+    };
+    if (moreOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [moreOpen]);
+
   const profile = session?.profile || null;
   const userRole = profile?.role || "guest";
   const isAuthenticated = !!session?.user && !!profile;
@@ -173,7 +183,14 @@ export function AppShell({ children, session = null }) {
         {/* More Menu Dropup */}
         <div className="relative mt-auto pt-2 border-t border-[var(--line)]">
           {moreOpen && (
-            <div className="absolute bottom-full left-0 mb-2 w-64 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-xl py-1.5 z-40 animate-fadeIn space-y-0.5 overflow-hidden">
+            <>
+              {/* Backdrop to close more menu when clicking outside */}
+              <div
+                className="fixed inset-0 z-30 bg-transparent cursor-default"
+                onClick={() => setMoreOpen(false)}
+                aria-hidden="true"
+              />
+              <div className="absolute bottom-full left-0 mb-2 w-64 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-xl py-1.5 z-40 animate-fadeIn space-y-0.5 overflow-hidden">
               {isAuthenticated ? (
                 <>
                   {/* Logged in User Profile Card */}
@@ -276,7 +293,8 @@ export function AppShell({ children, session = null }) {
                 </>
               )}
             </div>
-          )}
+          </>
+        )}
 
           <button
             type="button"
@@ -293,7 +311,13 @@ export function AppShell({ children, session = null }) {
 
       {/* Mobile Popover Menu when more is open */}
       {moreOpen && (
-        <div className="md:hidden fixed inset-x-0 top-14 bg-[var(--bg)] border-b border-[var(--line)] shadow-lg p-3 z-30 animate-fadeIn space-y-1">
+        <>
+          <div
+            className="md:hidden fixed inset-0 z-30 bg-black/20 backdrop-blur-[1px] cursor-default"
+            onClick={() => setMoreOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="md:hidden fixed inset-x-0 top-14 bg-[var(--bg)] border-b border-[var(--line)] shadow-lg p-3 z-40 animate-fadeIn space-y-1">
           {isAuthenticated ? (
             <>
               <Link
@@ -380,7 +404,8 @@ export function AppShell({ children, session = null }) {
             </>
           )}
         </div>
-      )}
+      </>
+    )}
 
       {/* Main Content Area */}
       <main

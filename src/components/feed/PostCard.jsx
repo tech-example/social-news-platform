@@ -240,6 +240,7 @@ export function PostCard({ post, currentUserId = null }) {
           post={currentPost}
           initialLiked={currentPost.isLiked || false}
           initialLikesCount={currentPost.likesCount || 0}
+          initialShared={currentPost.isShared || false}
           commentsCount={localCommentsCount}
           sharesCount={currentPost.sharesCount || 0}
           isAuthor={isAuthor}

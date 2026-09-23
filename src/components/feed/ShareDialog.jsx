@@ -8,27 +8,34 @@ import { LIMITS } from "@/lib/constants";
 
 export function ShareDialog({ open, onClose, postId, postTitle, onShareSuccess }) {
   const [note, setNote] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { addToast } = useToast();
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const shareNote = note.trim();
-    
-    // Close modal and update UI instantly
-    setNote("");
-    onClose();
-    if (onShareSuccess) onShareSuccess();
-    addToast("Post shared to your profile.");
+    setIsSubmitting(true);
 
-    // Sync in background
-    sharePostAction(postId, shareNote).then((res) => {
-      if (!res?.ok) {
-        addToast(res?.error || "Failed to share post.", "error");
-      }
-    }).catch((err) => {
-      console.error("Share error:", err);
-      addToast("Network error sharing post.", "error");
-    });
+    sharePostAction(postId, shareNote)
+      .then((res) => {
+        setIsSubmitting(false);
+        if (res?.ok) {
+          setNote("");
+          onClose();
+          if (onShareSuccess) onShareSuccess();
+          addToast("Post shared to your profile.");
+        } else if (res?.alreadyShared) {
+          addToast(res.error, "info");
+          onClose();
+        } else {
+          addToast(res?.error || "Failed to share post.", "error");
+        }
+      })
+      .catch((err) => {
+        setIsSubmitting(false);
+        console.error("Share error:", err);
+        addToast("Network error sharing post.", "error");
+      });
   };
 
   return (
@@ -57,11 +64,11 @@ export function ShareDialog({ open, onClose, postId, postTitle, onShareSuccess }
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2 border-t border-[var(--line)]">
-          <Button variant="ghost" type="button" onClick={onClose}>
+          <Button variant="ghost" type="button" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit">
-            Share Now
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Sharing..." : "Share Now"}
           </Button>
         </div>
       </form>

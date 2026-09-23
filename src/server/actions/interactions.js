@@ -305,6 +305,23 @@ export async function sharePostAction(postId, note = null) {
   }
 
   const adminSupabase = getAdminClient();
+
+  // Check if user has already shared this post (1 user cannot repost the same post multiple times)
+  const { data: existingShare } = await adminSupabase
+    .from("shares")
+    .select("id")
+    .eq("post_id", postId)
+    .eq("user_id", session.user.id)
+    .maybeSingle();
+
+  if (existingShare) {
+    return {
+      ok: false,
+      alreadyShared: true,
+      error: "You have already reposted this post. (คุณได้รีโพสต์นี้ไปแล้ว ไม่สามารถรีโพสต์ซ้ำได้)",
+    };
+  }
+
   const { error } = await adminSupabase.from("shares").insert({
     post_id: postId,
     user_id: session.user.id,
@@ -312,9 +329,71 @@ export async function sharePostAction(postId, note = null) {
   });
 
   if (error) {
+    if (error.code === "23505") {
+      return {
+        ok: false,
+        alreadyShared: true,
+        error: "You have already reposted this post. (คุณได้รีโพสต์นี้ไปแล้ว ไม่สามารถรีโพสต์ซ้ำได้)",
+      };
+    }
     return { ok: false, error: error.message || "Failed to share post." };
   }
 
+  revalidatePath(`/p/${postId}`);
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function unsharePostAction(postId) {
+  let session;
+  try {
+    session = await requireRoleOrThrow("user");
+  } catch (err) {
+    if (err instanceof AuthError && err.code === "UNAUTHENTICATED") {
+      return { ok: false, error: "UNAUTHENTICATED", code: "UNAUTHENTICATED" };
+    }
+    return { ok: false, error: "You do not have permission.", code: "FORBIDDEN" };
+  }
+
+  const adminSupabase = getAdminClient();
+  const { error } = await adminSupabase
+    .from("shares")
+    .delete()
+    .eq("post_id", postId)
+    .eq("user_id", session.user.id);
+
+  if (error) {
+    return { ok: false, error: error.message || "Failed to remove repost." };
+  }
+
+  revalidatePath(`/p/${postId}`);
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function deleteShareAction(shareId) {
+  let session;
+  try {
+    session = await requireRoleOrThrow("user");
+  } catch (err) {
+    if (err instanceof AuthError && err.code === "UNAUTHENTICATED") {
+      return { ok: false, error: "UNAUTHENTICATED", code: "UNAUTHENTICATED" };
+    }
+    return { ok: false, error: "You do not have permission.", code: "FORBIDDEN" };
+  }
+
+  const adminSupabase = getAdminClient();
+  const { error } = await adminSupabase
+    .from("shares")
+    .delete()
+    .eq("id", shareId)
+    .eq("user_id", session.user.id);
+
+  if (error) {
+    return { ok: false, error: error.message || "Failed to delete share." };
+  }
+
+  revalidatePath("/");
   return { ok: true };
 }
 

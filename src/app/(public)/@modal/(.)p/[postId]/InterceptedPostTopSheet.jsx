@@ -83,7 +83,10 @@ export function InterceptedPostTopSheet({ post: initialPost, comments = [], view
       role="dialog"
       aria-modal="true"
       aria-label={`Post by ${author.username}`}
-      className="fixed inset-0 z-50 flex justify-center items-start pt-2 sm:pt-6 px-2 sm:px-4 pointer-events-none overscroll-contain"
+      className="fixed inset-0 z-50 flex justify-center items-start pt-2 sm:pt-6 px-2 sm:px-4 pointer-events-auto overscroll-contain"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
     >
       {/* Backdrop */}
       <div
@@ -93,7 +96,10 @@ export function InterceptedPostTopSheet({ post: initialPost, comments = [], view
       />
 
       {/* Top Dropdown Sheet Card */}
-      <div className="relative pointer-events-auto w-full max-w-2xl bg-[var(--bg)] border border-[var(--line)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[88dvh] animate-slideDown z-10">
+      <div
+        className="relative pointer-events-auto w-full max-w-2xl bg-[var(--bg)] border border-[var(--line)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[88dvh] animate-slideDown z-10"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Top Handle Bar */}
         <div className="w-10 h-1 bg-[var(--line)] rounded-full mx-auto mt-2 mb-1 shrink-0" />
 
@@ -205,6 +211,7 @@ export function InterceptedPostTopSheet({ post: initialPost, comments = [], view
               post={post}
               initialLiked={post.isLiked || false}
               initialLikesCount={post.likesCount || 0}
+              initialShared={post.isShared || false}
               commentsCount={post.commentsCount || comments.length || 0}
               sharesCount={post.sharesCount || 0}
               isAuthor={isAuthor}

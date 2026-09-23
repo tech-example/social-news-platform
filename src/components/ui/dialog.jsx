@@ -44,6 +44,7 @@ export function Dialog({ open, onClose, title, children, maxWidth = "max-w-lg" }
     >
       <div
         ref={dialogRef}
+        onClick={(e) => e.stopPropagation()}
         className={`w-full ${maxWidth} bg-[var(--bg)] rounded-t-2xl sm:rounded-xl border border-[var(--line)] shadow-xl overflow-hidden flex flex-col max-h-[90dvh] transition-all`}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--line)]">
