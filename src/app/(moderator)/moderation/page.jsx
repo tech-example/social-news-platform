@@ -1,164 +1,137 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { requireRole } from "@/server/auth";
-import { getModeratorKPIs, getReportsByStatus, getTimeseries } from "@/server/dal/stats";
+import {
+  getModeratorKPIs,
+  getReportsByStatus,
+  getReportsByReason,
+  getTimeseries,
+  getHiddenPosts,
+} from "@/server/dal/stats";
 import { getReports } from "@/server/dal/reports";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
-import { TimeseriesChart, DonutChart } from "@/components/dashboard/Charts";
+import { DashboardControls } from "@/components/dashboard/DashboardControls";
+import {
+  TimeseriesChart,
+  DonutChart,
+  HorizontalBarChart,
+} from "@/components/dashboard/Charts";
+import { ModerationQueueTable } from "@/components/dashboard/ModerationQueueTable";
+import { HiddenContentTable } from "@/components/dashboard/HiddenContentTable";
 import { Button } from "@/components/ui/button";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { StatCardSkeleton, ChartSkeleton, TableSkeleton } from "@/components/ui/skeletons";
-import { formatRelativeTime } from "@/lib/format";
-import { ShieldCheck, Clock, TriangleAlert, CircleCheck, ArrowRight } from "lucide-react";
+import {
+  StatCardSkeleton,
+  ChartSkeleton,
+  TableSkeleton,
+} from "@/components/ui/skeletons";
+import { SKELETON_SIZES } from "@/lib/constants";
+import {
+  ShieldCheck,
+  Clock,
+  TriangleAlert,
+  CircleCheck,
+  ShieldAlert,
+} from "lucide-react";
 
 export const metadata = {
-  title: "Moderation Dashboard - SocialNews",
+  title: "Moderator Dashboard - SocialNews",
 };
 
-const getStatusVariant = (status) => {
-  switch (status) {
-    case "pending":
-      return "warning";
-    case "in_review":
-      return "neutral";
-    case "escalated":
-      return "danger";
-    case "resolved_actioned":
-      return "success";
-    case "resolved_dismissed":
-      return "neutral";
-    default:
-      return "neutral";
-  }
-};
-
-async function ModeratorKPIsSection({ range }) {
+// 1. KPI Cards Widget
+async function ModeratorKPIsWidget({ range }) {
   const kpis = await getModeratorKPIs(range);
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <StatCard
         title="Awaiting Action"
         value={kpis.awaiting_action || 0}
-        subtitle="Pending or currently in review"
+        previousValue={kpis.prev_awaiting_action}
+        subtitle="Pending or in initial review"
         icon={Clock}
+        tooltip="Content reports requiring moderator review and initial disposition"
       />
       <StatCard
-        title="Escalated to Admin"
+        title="Awaiting Final Decision"
         value={kpis.awaiting_final || 0}
-        subtitle="Awaiting administrative ruling"
+        previousValue={kpis.prev_awaiting_final}
+        subtitle="Escalated to administrator"
         icon={TriangleAlert}
+        tooltip="High-severity or appeal reports awaiting administrator ruling"
       />
       <StatCard
-        title="Resolved in Period"
+        title="Resolved in Range"
         value={kpis.resolved_in_range || 0}
+        previousValue={kpis.prev_resolved_in_range}
         subtitle="Actioned or dismissed"
         icon={CircleCheck}
+        tooltip="Reports where final moderation ruling was completed within the selected period"
       />
     </div>
   );
 }
 
-async function ModeratorChartsSection({ range }) {
-  const [reportsTimeseries, reportsByStatus] = await Promise.all([
-    getTimeseries("reports", "day", range),
-    getReportsByStatus(range),
-  ]);
-
+// 2. Reports Over Time Widget
+async function ReportsTimeseriesWidget({ range, bucket }) {
+  const data = await getTimeseries("reports", bucket, range);
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <TimeseriesChart
-        data={reportsTimeseries}
-        title="Reports Received Over Time"
-        metricLabel="Reports"
-      />
-      <DonutChart
-        data={reportsByStatus}
-        title="Reports by Status"
-      />
-    </div>
+    <TimeseriesChart
+      data={data}
+      title="Reports Received Over Time"
+      metricLabel="Reports"
+      color="#B7791F"
+      tooltip="Volume of content and account reports filed over time"
+    />
   );
 }
 
-async function ModerationQueueSection() {
-  const queue = await getReports({ status: "pending", limit: 5 });
-
+// 3. Reports By Status Donut Widget
+async function ReportsStatusWidget({ range }) {
+  const data = await getReportsByStatus(range);
   return (
-    <div className="border border-[var(--line)] rounded-xl bg-[var(--bg)] p-5 shadow-xs space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-bold text-[var(--ink)]">Urgent Pending Reports</h2>
-          <p className="text-xs text-[var(--ink-muted)]">Reports requiring moderator initial assessment</p>
-        </div>
-        <Link
-          href="/moderation/reports?status=pending"
-          className="text-xs font-semibold text-[var(--accent)] hover:underline flex items-center gap-1"
-        >
-          <span>Open queue</span>
-          <ArrowRight size={14} strokeWidth={2} aria-hidden="true" />
-        </Link>
-      </div>
-
-      {queue.reports.length === 0 ? (
-        <p className="py-8 text-center text-sm text-[var(--ink-muted)]">
-          No pending reports in the queue. All caught up!
-        </p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Target</TableHead>
-              <TableHead>Reason</TableHead>
-              <TableHead>Reporter</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Reported</TableHead>
-              <TableHead className="text-right">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {queue.reports.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell className="font-semibold capitalize text-xs">
-                  {r.target_type}
-                </TableCell>
-                <TableCell className="capitalize text-xs font-medium text-[var(--danger)]">
-                  {r.reason}
-                </TableCell>
-                <TableCell className="text-xs text-[var(--ink-muted)]">
-                  @{r.reporter?.username || "anonymous"}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={getStatusVariant(r.status)} size="sm">
-                    {r.status.replace("_", " ")}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-xs text-[var(--ink-muted)]" suppressHydrationWarning>
-                  {formatRelativeTime(r.created_at)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Link href={`/moderation/reports/${r.id}`}>
-                    <Button variant="secondary" className="text-xs h-7 px-3">
-                      Review
-                    </Button>
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </div>
+    <DonutChart
+      data={data}
+      title="Reports by Status"
+      tooltip="Distribution of reports across pending, review, escalation, and resolution states"
+    />
   );
+}
+
+// 4. Reports By Reason Horizontal Bar Widget
+async function ReportsReasonWidget({ range }) {
+  const data = await getReportsByReason(range);
+  return (
+    <HorizontalBarChart
+      data={data}
+      title="Reports by Alleged Reason"
+      metricLabel="Reports"
+      tooltip="Breakdown of alleged violations reported by users"
+    />
+  );
+}
+
+// 5. Moderation Queue Widget
+async function QueueWidget() {
+  const res = await getReports({ limit: 20 });
+  return <ModerationQueueTable reports={res.reports || []} />;
+}
+
+// 6. Hidden Content Widget
+async function HiddenContentWidget() {
+  const hiddenPosts = await getHiddenPosts(10);
+  return <HiddenContentTable posts={hiddenPosts} />;
 }
 
 export default async function ModerationDashboardPage({ searchParams }) {
   await requireRole("moderator");
   const resolvedParams = await searchParams;
   const range = resolvedParams?.range || "30d";
+  const bucket =
+    resolvedParams?.bucket ||
+    (range === "today" ? "day" : range === "90d" ? "week" : "day");
 
   return (
-    <div className="max-w-[1100px] mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-[1200px] mx-auto px-4 py-6 space-y-6">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--line)]">
         <div className="flex items-center gap-3">
@@ -170,20 +143,23 @@ export default async function ModerationDashboardPage({ searchParams }) {
               Moderation Dashboard
             </h1>
             <p className="text-xs text-[var(--ink-muted)]">
-              Two-tier safety queue & platform enforcement overview
+              Two-tier safety enforcement, report queues, and content oversight
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <DateRangePicker />
           <Link href="/moderation/reports">
-            <Button className="text-xs">
-              View All Reports
+            <Button variant="secondary" size="sm" className="text-xs">
+              <ShieldAlert size={14} strokeWidth={1.75} aria-hidden="true" className="mr-1.5" />
+              <span>Full Report Queue</span>
             </Button>
           </Link>
         </div>
       </div>
+
+      {/* Global Controls */}
+      <DashboardControls isAdmin={false} showBucket={true} showCompare={true} />
 
       {/* Row 1: KPI Stat Cards */}
       <Suspense
@@ -195,24 +171,32 @@ export default async function ModerationDashboardPage({ searchParams }) {
           </div>
         }
       >
-        <ModeratorKPIsSection range={range} />
+        <ModeratorKPIsWidget range={range} />
       </Suspense>
 
-      {/* Row 2: Charts */}
-      <Suspense
-        fallback={
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ChartSkeleton standalone={false} />
-            <ChartSkeleton standalone={false} />
-          </div>
-        }
-      >
-        <ModeratorChartsSection range={range} />
-      </Suspense>
+      {/* Row 2: Charts (Timeseries + Donut + Reason Bars) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Suspense fallback={<ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />}>
+          <ReportsTimeseriesWidget range={range} bucket={bucket} />
+        </Suspense>
 
-      {/* Row 3: Pending Queue Preview */}
+        <Suspense fallback={<ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />}>
+          <ReportsStatusWidget range={range} />
+        </Suspense>
+
+        <Suspense fallback={<ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />}>
+          <ReportsReasonWidget range={range} />
+        </Suspense>
+      </div>
+
+      {/* Row 3: Report Queue Table */}
       <Suspense fallback={<TableSkeleton rows={5} cols={6} standalone={false} />}>
-        <ModerationQueueSection />
+        <QueueWidget />
+      </Suspense>
+
+      {/* Row 4: Recently Hidden Content with Restore Action */}
+      <Suspense fallback={<TableSkeleton rows={4} cols={4} standalone={false} />}>
+        <HiddenContentWidget />
       </Suspense>
     </div>
   );

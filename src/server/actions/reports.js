@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { getSession } from "@/server/auth";
+import { getSession, requireRole } from "@/server/auth";
 import { createUserClient } from "@/server/supabase";
 import { getAdminClient } from "@/server/admin-client";
 import { reportSchema } from "@/lib/validators";
@@ -83,9 +83,9 @@ export async function transitionReportAction({ reportId, nextStatus, actionTaken
   await adminSupabase.from("audit_logs").insert({
     actor_id: session.user.id,
     action: `report_transition_to_${nextStatus}`,
-    target_type: "report",
-    target_id: reportId,
-    details: { nextStatus, actionTaken, note },
+    entity: "report",
+    entity_id: reportId,
+    metadata: { nextStatus, actionTaken, note },
   });
 
   revalidatePath("/moderation");

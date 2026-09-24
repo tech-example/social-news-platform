@@ -70,8 +70,9 @@ export async function signUpAction(prevState, formData) {
   }
 
   const supabase = await createUserClient();
+  const adminClient = getAdminClient();
 
-  // Check if username is already taken in profiles
+  // 1. Check if username is already taken in profiles
   const { data: existingUser } = await supabase
     .from("profiles")
     .select("id")
@@ -79,10 +80,32 @@ export async function signUpAction(prevState, formData) {
     .maybeSingle();
 
   if (existingUser) {
-    return { ok: false, error: "Username is already taken. Please choose another." };
+    return {
+      ok: false,
+      error: "Username is already taken. Please choose another.",
+      fieldErrors: { username: "Username is already taken. Please choose another." },
+    };
   }
 
-  // First try standard user signUp
+  // 2. Upfront check: check if an account with this email already exists in auth.users
+  try {
+    const { data: { users: existingAuthUsers } = {} } = await adminClient.auth.admin.listUsers();
+    const emailLower = result.data.email.toLowerCase();
+    const emailCollision = existingAuthUsers?.some(
+      (u) => u.email?.toLowerCase() === emailLower
+    );
+    if (emailCollision) {
+      return {
+        ok: false,
+        error: "An account with this email already exists.",
+        fieldErrors: { email: "An account with this email already exists." },
+      };
+    }
+  } catch (err) {
+    console.warn("Could not pre-check auth.users for duplicate email:", err);
+  }
+
+  // 3. Try standard user signUp
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email: result.data.email,
     password: result.data.password,
@@ -94,12 +117,37 @@ export async function signUpAction(prevState, formData) {
     },
   });
 
-  // If standard signUp fails (e.g. Supabase project rejects email or SMTP is unconfigured):
-  // Gracefully fallback to creating the user via the admin service role with email_confirm: true
+  // Supabase Auth returns a user object with empty identities [] when the email already exists
+  if (
+    signUpData?.user &&
+    Array.isArray(signUpData.user.identities) &&
+    signUpData.user.identities.length === 0
+  ) {
+    return {
+      ok: false,
+      error: "An account with this email already exists.",
+      fieldErrors: { email: "An account with this email already exists." },
+    };
+  }
+
+  // If standard signUp errors due to existing user
   if (signUpError) {
+    const isDuplicate =
+      signUpError.status === 422 ||
+      signUpError.message?.toLowerCase().includes("already registered") ||
+      signUpError.message?.toLowerCase().includes("already been registered") ||
+      signUpError.message?.toLowerCase().includes("user already exists");
+
+    if (isDuplicate) {
+      return {
+        ok: false,
+        error: "An account with this email already exists.",
+        fieldErrors: { email: "An account with this email already exists." },
+      };
+    }
+
     console.warn("Standard signUp failed, attempting admin registration fallback:", signUpError.message);
     try {
-      const adminClient = getAdminClient();
       const { data: adminData, error: adminErr } = await adminClient.auth.admin.createUser({
         email: result.data.email,
         password: result.data.password,
@@ -111,6 +159,20 @@ export async function signUpAction(prevState, formData) {
       });
 
       if (adminErr || !adminData?.user) {
+        const isAdminDuplicate =
+          adminErr?.status === 422 ||
+          adminErr?.message?.toLowerCase().includes("already registered") ||
+          adminErr?.message?.toLowerCase().includes("already been registered") ||
+          adminErr?.message?.toLowerCase().includes("user already exists");
+
+        if (isAdminDuplicate) {
+          return {
+            ok: false,
+            error: "An account with this email already exists.",
+            fieldErrors: { email: "An account with this email already exists." },
+          };
+        }
+
         console.error("Admin user creation failed:", adminErr);
         return { ok: false, error: adminErr?.message || signUpError.message || "Failed to create account." };
       }
@@ -152,7 +214,6 @@ export async function signUpAction(prevState, formData) {
   // If signUp succeeded but email confirmation is required:
   if (signUpData?.user && !signUpData.session) {
     try {
-      const adminClient = getAdminClient();
       await adminClient.auth.admin.updateUserById(signUpData.user.id, {
         email_confirm: true,
       });

@@ -17,11 +17,13 @@ export async function hidePostAction(postId) {
   await adminSupabase.from("audit_logs").insert({
     actor_id: session.user.id,
     action: "hide_post",
-    target_type: "post",
-    target_id: postId,
+    entity: "post",
+    entity_id: postId,
+    metadata: {},
   });
 
   revalidatePath("/");
+  revalidatePath("/moderation");
   revalidatePath("/moderation/content");
   return { ok: true };
 }
@@ -40,11 +42,13 @@ export async function restorePostAction(postId) {
   await adminSupabase.from("audit_logs").insert({
     actor_id: session.user.id,
     action: "restore_post",
-    target_type: "post",
-    target_id: postId,
+    entity: "post",
+    entity_id: postId,
+    metadata: {},
   });
 
   revalidatePath("/");
+  revalidatePath("/moderation");
   revalidatePath("/moderation/content");
   return { ok: true };
 }
@@ -63,10 +67,12 @@ export async function hideCommentAction(commentId) {
   await adminSupabase.from("audit_logs").insert({
     actor_id: session.user.id,
     action: "hide_comment",
-    target_type: "comment",
-    target_id: commentId,
+    entity: "comment",
+    entity_id: commentId,
+    metadata: {},
   });
 
+  revalidatePath("/moderation");
   revalidatePath("/moderation/content");
   return { ok: true };
 }
@@ -85,10 +91,12 @@ export async function restoreCommentAction(commentId) {
   await adminSupabase.from("audit_logs").insert({
     actor_id: session.user.id,
     action: "restore_comment",
-    target_type: "comment",
-    target_id: commentId,
+    entity: "comment",
+    entity_id: commentId,
+    metadata: {},
   });
 
+  revalidatePath("/moderation");
   revalidatePath("/moderation/content");
   return { ok: true };
 }

@@ -32,8 +32,8 @@ export async function GET() {
     await adminSupabase.from("audit_logs").insert({
       actor_id: session.user.id,
       action: "export_reports_csv",
-      target_type: "report",
-      details: { rowCount: reports?.length || 0 },
+      entity: "report",
+      metadata: { rowCount: reports?.length || 0 },
     });
 
     const headers = [

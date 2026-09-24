@@ -1,16 +1,13 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { IconButton } from "@/components/ui/icon-button";
+import { useMounted } from "@/lib/use-mounted";
 
 export function Dialog({ open, onClose, title, children, maxWidth = "max-w-lg" }) {
   const dialogRef = useRef(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useMounted();
 
   useEffect(() => {
     function handleKeyDown(e) {
