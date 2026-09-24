@@ -21,9 +21,8 @@ export async function generateMetadata({ params }) {
 }
 
 async function PopularTagsRow({ currentTag = "" }) {
-  const tags = await getPopularTags(12);
-  const otherTags = tags.filter((t) => t.name.toLowerCase() !== currentTag.toLowerCase());
-  if (otherTags.length === 0) return null;
+  const tags = await getPopularTags(12, currentTag);
+  if (!tags || tags.length === 0) return null;
 
   return (
     <div className="space-y-1.5 pt-1">
@@ -31,7 +30,7 @@ async function PopularTagsRow({ currentTag = "" }) {
         Popular Tags
       </span>
       <div className="flex flex-wrap gap-2">
-        {otherTags.map((t) => (
+        {tags.map((t) => (
           <TagChip key={t.id} name={t.name} postsCount={t.posts_count} />
         ))}
       </div>

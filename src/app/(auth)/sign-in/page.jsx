@@ -130,7 +130,12 @@ function SignInContent() {
             )}
           </div>
 
-          <Button type="submit" disabled={isPending} className="w-full mt-2 font-semibold bg-[#0095F6] text-white hover:bg-[#0074CC]">
+          <Button
+            type="submit"
+            disabled={isPending}
+            loading={isPending}
+            className="w-full mt-2 font-semibold bg-[#0095F6] !text-white active:!text-white focus:!text-white hover:bg-[#0074CC]"
+          >
             {isPending ? "Signing in..." : COPY.auth.signIn}
           </Button>
         </form>

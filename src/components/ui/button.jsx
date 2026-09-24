@@ -24,7 +24,7 @@ export function Button({
 
   const variantStyles = {
     primary:
-      "bg-[var(--accent)] text-white hover:opacity-90 active:opacity-100",
+      "bg-[var(--accent)] !text-white active:!text-white focus:!text-white hover:!text-white disabled:!text-white hover:opacity-90 active:opacity-100",
     secondary:
       "bg-[var(--surface-strong)] text-[var(--ink)] hover:bg-[var(--line)]",
     outline:
@@ -32,7 +32,7 @@ export function Button({
     ghost:
       "bg-transparent text-[var(--ink)] hover:bg-[var(--surface-strong)]",
     danger:
-      "bg-[var(--danger)] text-white hover:opacity-90 active:opacity-100",
+      "bg-[var(--danger)] !text-white active:!text-white focus:!text-white hover:!text-white disabled:!text-white hover:opacity-90 active:opacity-100",
   };
 
   return (

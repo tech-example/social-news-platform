@@ -53,33 +53,61 @@ export async function getAdminKPIs(rangePreset = "30d") {
   const { from, to, prevFrom, prevTo } = getDateRanges(rangePreset);
   const adminSupabase = getAdminClient();
 
-  const { data, error } = await adminSupabase.rpc("stats_kpis", {
+  // Try stats_kpis RPC first
+  const { data: kpiData, error: kpiErr } = await adminSupabase.rpc("stats_kpis", {
     p_from: from,
     p_to: to,
     p_prev_from: prevFrom,
     p_prev_to: prevTo,
   });
 
-  if (error || !data || data.length === 0) {
+  if (!kpiErr && kpiData) {
+    const res = Array.isArray(kpiData) ? kpiData[0] : kpiData;
+    if (res) return res;
+  }
+
+  // Fallback to stats_overview RPC
+  const { data: overviewData, error: overviewErr } = await adminSupabase.rpc("stats_overview", {
+    p_from: from,
+    p_to: to,
+  });
+
+  if (!overviewErr && overviewData) {
+    const ov = Array.isArray(overviewData) ? overviewData[0] : overviewData;
     return {
-      total_users: 0,
-      new_users: 0,
-      prev_new_users: 0,
-      total_posts: 0,
-      new_posts: 0,
-      prev_new_posts: 0,
-      total_engagement: 0,
-      prev_total_engagement: 0,
+      total_users: ov.total_users || 0,
+      new_users: ov.new_users || 0,
+      prev_new_users: ov.prev_new_users || 0,
+      total_posts: ov.total_posts || 0,
+      new_posts: ov.new_posts || 0,
+      prev_new_posts: ov.prev_new_posts || 0,
+      total_engagement: ov.total_engagement || 0,
+      prev_total_engagement: ov.prev_total_engagement || 0,
       active_users_dau: 0,
       active_users_wau: 0,
       active_users_mau: 0,
-      open_reports: 0,
-      escalated_reports: 0,
-      suspended_users: 0,
+      open_reports: ov.open_reports || 0,
+      escalated_reports: ov.escalated_reports || 0,
+      suspended_users: ov.suspended_users || 0,
     };
   }
 
-  return data[0];
+  return {
+    total_users: 0,
+    new_users: 0,
+    prev_new_users: 0,
+    total_posts: 0,
+    new_posts: 0,
+    prev_new_posts: 0,
+    total_engagement: 0,
+    prev_total_engagement: 0,
+    active_users_dau: 0,
+    active_users_wau: 0,
+    active_users_mau: 0,
+    open_reports: 0,
+    escalated_reports: 0,
+    suspended_users: 0,
+  };
 }
 
 export async function getTimeseries(metric = "posts", bucket = "day", rangePreset = "30d") {
@@ -103,8 +131,7 @@ export async function getEngagementComposition(bucket = "day", rangePreset = "30
   const { from, to } = getDateRanges(rangePreset);
   const adminSupabase = getAdminClient();
 
-  const { data, error } = await adminSupabase.rpc("stats_engagement_composition", {
-    p_bucket: bucket,
+  const { data, error } = await adminSupabase.rpc("stats_engagement_by_day", {
     p_from: from,
     p_to: to,
   });
@@ -215,12 +242,21 @@ export async function getModerationResolutionTime(rangePreset = "30d") {
   const { from, to } = getDateRanges(rangePreset);
   const adminSupabase = getAdminClient();
 
-  const { data, error } = await adminSupabase.rpc("stats_moderation_resolution_time", {
+  // Try section 6.6 stats_report_resolution_time first
+  let { data, error } = await adminSupabase.rpc("stats_report_resolution_time", {
     p_from: from,
     p_to: to,
   });
 
-  if (error || !data || data.length === 0) {
+  if (error || !data) {
+    const fallback = await adminSupabase.rpc("stats_moderation_resolution_time", {
+      p_from: from,
+      p_to: to,
+    });
+    data = fallback.data;
+  }
+
+  if (!data) {
     return {
       resolved_count: 0,
       median_minutes: 0,
@@ -228,7 +264,8 @@ export async function getModerationResolutionTime(rangePreset = "30d") {
     };
   }
 
-  return data[0];
+  const res = Array.isArray(data) ? data[0] : data;
+  return res || { resolved_count: 0, median_minutes: 0, p90_minutes: 0 };
 }
 
 export async function getModeratorWorkload(rangePreset = "30d") {
@@ -250,13 +287,23 @@ export async function getSearchAnalytics(limit = 10, rangePreset = "30d") {
   const { from, to } = getDateRanges(rangePreset);
   const adminSupabase = getAdminClient();
 
-  const { data, error } = await adminSupabase.rpc("stats_search_analytics", {
+  // Try section 6.6 stats_search_terms first
+  let { data, error } = await adminSupabase.rpc("stats_search_terms", {
     p_from: from,
     p_to: to,
     p_limit: limit,
   });
 
-  if (error || !data) return [];
+  if (error || !data) {
+    const fallback = await adminSupabase.rpc("stats_search_analytics", {
+      p_from: from,
+      p_to: to,
+      p_limit: limit,
+    });
+    data = fallback.data;
+  }
+
+  if (!data) return [];
   return data;
 }
 

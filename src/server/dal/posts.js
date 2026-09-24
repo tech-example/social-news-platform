@@ -10,6 +10,42 @@ export async function getFeedPosts({
 } = {}) {
   const supabase = await createUserClient();
 
+  // 1. Try database-computed get_feed_posts RPC
+  try {
+    const { data: rpcFeed, error: rpcErr } = await supabase.rpc("get_feed_posts", {
+      p_filter: filter,
+      p_viewer_id: viewerId,
+      p_cursor: cursor,
+      p_limit: limit,
+    });
+
+    if (!rpcErr && rpcFeed) {
+      const posts = rpcFeed.map((p) => ({
+        id: p.id,
+        title: p.title,
+        body: p.body,
+        imageUrl: p.image_url,
+        status: p.status,
+        likesCount: p.likes_count || 0,
+        commentsCount: p.comments_count || 0,
+        sharesCount: p.shares_count || 0,
+        createdAt: p.created_at,
+        author: p.author,
+        tags: p.tags || [],
+        isLiked: !!p.is_liked,
+        isFollowingAuthor: !!p.is_following_author,
+        isShared: !!p.is_shared,
+        recentComments: [],
+      }));
+
+      const nextCursor =
+        posts.length === limit ? posts[posts.length - 1].createdAt : null;
+      return { posts, nextCursor };
+    }
+  } catch {
+    // Proceed to fallback query
+  }
+
   let query = supabase
     .from("posts")
     .select(`
@@ -315,7 +351,7 @@ export async function getUserPosts({
         id,
         note,
         created_at,
-        post:posts(
+        post:posts!inner(
           id,
           title,
           body,
@@ -341,22 +377,20 @@ export async function getUserPosts({
     const { data: rawShares, error } = await query;
     if (error || !rawShares) return { posts: [], nextCursor: null };
 
-    const items = rawShares
-      .filter((s) => s.post)
-      .map((s) => ({
-        shareId: s.id,
-        shareNote: s.note,
-        shareCreatedAt: s.created_at,
-        id: s.post.id,
-        title: s.post.title,
-        body: s.post.body,
-        imageUrl: s.post.image_url,
-        likesCount: s.post.likes_count || 0,
-        commentsCount: s.post.comments_count || 0,
-        sharesCount: s.post.shares_count || 0,
-        createdAt: s.post.created_at,
-        author: s.post.author,
-      }));
+    const items = rawShares.map((s) => ({
+      shareId: s.id,
+      shareNote: s.note,
+      shareCreatedAt: s.created_at,
+      id: s.post.id,
+      title: s.post.title,
+      body: s.post.body,
+      imageUrl: s.post.image_url,
+      likesCount: s.post.likes_count || 0,
+      commentsCount: s.post.comments_count || 0,
+      sharesCount: s.post.shares_count || 0,
+      createdAt: s.post.created_at,
+      author: s.post.author,
+    }));
 
     const nextCursor =
       items.length === limit ? items[items.length - 1].shareCreatedAt : null;
@@ -418,6 +452,42 @@ export async function getPostsByTag(tagNameOrOptions, cursorParam = null, limitP
   const supabase = await createUserClient();
   const clean = (tagName || "").trim().toLowerCase().replace(/^#/, "");
   if (!clean) return { tag: null, posts: [], nextCursor: null };
+
+  // 1. Try database-computed get_posts_by_tag RPC
+  try {
+    const { data: rpcPosts, error: rpcErr } = await supabase.rpc("get_posts_by_tag", {
+      p_tag_name: clean,
+      p_cursor: cursor,
+      p_limit: limit,
+      p_viewer_id: viewerId,
+    });
+
+    if (!rpcErr && rpcPosts) {
+      const posts = rpcPosts.map((p) => ({
+        id: p.id,
+        title: p.title,
+        body: p.body,
+        imageUrl: p.image_url,
+        status: p.status,
+        likesCount: p.likes_count || 0,
+        commentsCount: p.comments_count || 0,
+        sharesCount: p.shares_count || 0,
+        createdAt: p.created_at,
+        author: p.author,
+        tags: p.tags || [],
+        isLiked: !!p.is_liked,
+        isFollowingAuthor: !!p.is_following_author,
+        isShared: !!p.is_shared,
+        recentComments: [],
+      }));
+
+      const nextCursor =
+        posts.length === limit ? posts[posts.length - 1].createdAt : null;
+      return { tag: { name: clean }, posts, nextCursor };
+    }
+  } catch {
+    // Proceed to fallback query
+  }
 
   const { data: tagRecord, error: tagErr } = await supabase
     .from("tags")
@@ -628,31 +698,36 @@ export async function searchPosts(searchQuery, limit = 20) {
   const supabase = await createUserClient();
   const clean = searchQuery.trim().replace(/^#/, "");
 
-  // 1. Direct search on title, body, and matching tags
-  const { data: matchedTags } = await supabase
-    .from("tags")
-    .select("id")
-    .ilike("name", `%${clean}%`)
-    .limit(10);
+  // 1. Database-computed full-text, trigram & tag matching via search_posts RPC
+  try {
+    const { data: rpcData, error: rpcErr } = await supabase.rpc("search_posts", {
+      p_query: clean,
+      p_limit: limit,
+    });
 
-  let taggedPostIds = [];
-  if (matchedTags && matchedTags.length > 0) {
-    const tagIds = matchedTags.map((t) => t.id);
-    const { data: postTags } = await supabase
-      .from("post_tags")
-      .select("post_id")
-      .in("tag_id", tagIds)
-      .limit(30);
-    if (postTags && postTags.length > 0) {
-      taggedPostIds = postTags.map((pt) => pt.post_id);
+    if (!rpcErr && rpcData) {
+      return rpcData.map((p) => ({
+        id: p.id,
+        title: p.title,
+        body: p.body,
+        imageUrl: p.image_url,
+        likesCount: p.likes_count || 0,
+        commentsCount: p.comments_count || 0,
+        sharesCount: p.shares_count || 0,
+        createdAt: p.created_at,
+        author: {
+          id: p.author_id,
+          username: p.author_username || "anonymous",
+          display_name: p.author_display_name || "Anonymous",
+          avatar_url: p.author_avatar_url || null,
+        },
+      }));
     }
+  } catch (err) {
+    console.warn("search_posts RPC warning:", err);
   }
 
-  let orClause = `title.ilike.%${clean}%,body.ilike.%${clean}%`;
-  if (taggedPostIds.length > 0) {
-    orClause += `,id.in.(${taggedPostIds.join(",")})`;
-  }
-
+  // 2. Direct SQL fallback with author join
   const { data: posts, error } = await supabase
     .from("posts")
     .select(`
@@ -672,11 +747,11 @@ export async function searchPosts(searchQuery, limit = 20) {
       )
     `)
     .eq("status", "published")
-    .or(orClause)
+    .or(`title.ilike.%${clean}%,body.ilike.%${clean}%`)
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  if (!error && posts && posts.length > 0) {
+  if (!error && posts) {
     return posts.map((p) => ({
       id: p.id,
       title: p.title,
@@ -688,41 +763,6 @@ export async function searchPosts(searchQuery, limit = 20) {
       createdAt: p.created_at,
       author: p.author,
     }));
-  }
-
-  // 2. Fallback to RPC search_posts if available
-  try {
-    const { data: rpcData, error: rpcErr } = await supabase.rpc("search_posts", {
-      p_query: clean,
-      p_limit: limit,
-    });
-
-    if (!rpcErr && rpcData && rpcData.length > 0) {
-      const authorIds = [...new Set(rpcData.map((p) => p.author_id).filter(Boolean))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, username, display_name, avatar_url")
-        .in("id", authorIds);
-      const profileMap = new Map((profiles || []).map((pr) => [pr.id, pr]));
-
-      return rpcData.map((p) => ({
-        id: p.id,
-        title: p.title,
-        body: p.body,
-        imageUrl: p.image_url,
-        likesCount: p.likes_count || 0,
-        commentsCount: p.comments_count || 0,
-        sharesCount: p.shares_count || 0,
-        createdAt: p.created_at,
-        author: profileMap.get(p.author_id) || {
-          username: p.author_username || "anonymous",
-          display_name: p.author_display_name || "Anonymous",
-          avatar_url: p.author_avatar_url || null,
-        },
-      }));
-    }
-  } catch (err) {
-    console.warn("search_posts fallback warning:", err);
   }
 
   return [];
