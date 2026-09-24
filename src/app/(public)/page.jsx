@@ -5,6 +5,7 @@ import { getSuggestedProfiles } from "@/server/dal/profiles";
 import { getTrendingTags } from "@/server/dal/tags";
 import { getSession } from "@/server/auth";
 import { FeedList } from "@/components/feed/FeedList";
+import { TagChip } from "@/components/feed/TagChip";
 import { FeedSkeleton, SidebarSkeleton } from "@/components/ui/skeletons";
 import { Avatar } from "@/components/ui/avatar";
 import { Hash } from "lucide-react";
@@ -87,17 +88,11 @@ async function SidebarWidgets({ viewerId }) {
           </span>
           <div className="flex flex-wrap gap-1.5">
             {trendingTags.map((tag) => (
-              <Link
+              <TagChip
                 key={tag.id}
-                href={`/tag/${tag.name}`}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] hover:bg-[var(--surface-strong)] transition-colors"
-              >
-                <Hash size={12} strokeWidth={2} aria-hidden="true" className="text-[var(--ink-muted)]" />
-                <span>{tag.name}</span>
-                <span className="text-[10px] text-[var(--ink-muted)] tabular-nums">
-                  ({tag.posts_count})
-                </span>
-              </Link>
+                name={tag.name}
+                postsCount={tag.posts_count}
+              />
             ))}
           </div>
         </div>

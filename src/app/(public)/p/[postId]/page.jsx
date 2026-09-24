@@ -7,7 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { InteractiveActions } from "@/components/feed/InteractiveActions";
 import { CommentThread } from "@/components/feed/CommentThread";
 import { FollowButton } from "@/components/ui/follow-button";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Hash } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format";
 
 export async function generateMetadata({ params }) {
@@ -39,14 +39,16 @@ function renderBodyWithLinks(text) {
       );
     }
     if (part.startsWith("#")) {
-      const tag = part.slice(1).toLowerCase();
+      const rawTag = part.slice(1);
+      const tag = rawTag.toLowerCase();
       return (
         <Link
           key={i}
-          href={`/tag/${tag}`}
-          className="text-[var(--accent)] font-medium hover:underline"
+          href={`/tag/${encodeURIComponent(tag)}`}
+          className="inline-flex items-center text-[var(--accent)] font-medium hover:underline"
         >
-          {part}
+          <Hash size={13} strokeWidth={2} className="shrink-0 mr-0.5" aria-hidden="true" />
+          <span>{tag}</span>
         </Link>
       );
     }
@@ -158,16 +160,20 @@ export default async function PostDetailPage({ params }) {
                 {renderBodyWithLinks(post.body)}
               </p>
               {post.tags && post.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {post.tags.map((tag) => (
-                    <Link
-                      key={tag}
-                      href={`/tag/${tag}`}
-                      className="text-xs font-medium text-[var(--accent)] hover:underline"
-                    >
-                      #{tag}
-                    </Link>
-                  ))}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {post.tags.map((tag) => {
+                    const normalized = tag.toLowerCase().replace(/^#/, "");
+                    return (
+                      <Link
+                        key={tag}
+                        href={`/tag/${encodeURIComponent(normalized)}`}
+                        className="inline-flex items-center gap-0.5 text-xs font-medium text-[var(--accent)] hover:underline"
+                      >
+                        <Hash size={12} strokeWidth={2} aria-hidden="true" className="shrink-0" />
+                        <span>{normalized}</span>
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
             </div>

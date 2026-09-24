@@ -1,6 +1,20 @@
 import "server-only";
 import { createUserClient } from "@/server/supabase";
 
+export async function getPopularTags(limit = 20) {
+  const supabase = await createUserClient();
+
+  const { data: tags, error } = await supabase
+    .from("tags")
+    .select("id, name, posts_count")
+    .order("posts_count", { ascending: false })
+    .order("name", { ascending: true })
+    .limit(limit);
+
+  if (error || !tags) return [];
+  return tags;
+}
+
 export async function getTrendingTags(limit = 10) {
   const supabase = await createUserClient();
 
@@ -13,6 +27,7 @@ export async function getTrendingTags(limit = 10) {
   if (error || !tags) return [];
   return tags;
 }
+
 
 export async function searchTags(query, limit = 20) {
   if (!query?.trim()) return [];

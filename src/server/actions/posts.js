@@ -34,7 +34,7 @@ export async function createPostAction(input) {
   if (tags && tags.length > 0) {
     const { error: tagError } = await supabase.rpc("set_post_tags", {
       p_post_id: newPost.id,
-      p_tag_names: tags,
+      p_tags: tags,
     });
     if (tagError) {
       console.error("Error setting tags:", tagError);
@@ -87,7 +87,7 @@ export async function editPostAction(postId, input) {
   if (tags) {
     await supabase.rpc("set_post_tags", {
       p_post_id: postId,
-      p_tag_names: tags,
+      p_tags: tags,
     });
   }
 

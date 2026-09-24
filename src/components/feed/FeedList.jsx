@@ -13,7 +13,15 @@ const MemoizedPostCard = memo(PostCard);
 MemoizedPostCard.displayName = "MemoizedPostCard";
 
 
-export function FeedList({ initialPosts = [], initialCursor = null, filter = "latest", currentUserId = null }) {
+export function FeedList({
+  initialPosts = [],
+  initialCursor = null,
+  filter = "latest",
+  tag = null,
+  currentUserId = null,
+  emptyTitle = null,
+  emptyDescription = null,
+}) {
   const [posts, setPosts] = useState(initialPosts);
   const [cursor, setCursor] = useState(initialCursor);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -23,14 +31,17 @@ export function FeedList({ initialPosts = [], initialCursor = null, filter = "la
   useEffect(() => {
     setPosts(initialPosts);
     setCursor(initialCursor);
-  }, [initialPosts, initialCursor, filter]);
+  }, [initialPosts, initialCursor, filter, tag]);
 
   const handleLoadMore = useCallback(async () => {
     if (!cursor || loadingRef.current) return;
     loadingRef.current = true;
     setLoadingMore(true);
     try {
-      const res = await fetch(`/api/feed?cursor=${encodeURIComponent(cursor)}&filter=${filter}`);
+      const url = tag
+        ? `/api/feed?cursor=${encodeURIComponent(cursor)}&tag=${encodeURIComponent(tag)}`
+        : `/api/feed?cursor=${encodeURIComponent(cursor)}&filter=${encodeURIComponent(filter)}`;
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         // Use startTransition to keep the UI responsive during large state updates
@@ -45,7 +56,7 @@ export function FeedList({ initialPosts = [], initialCursor = null, filter = "la
       setLoadingMore(false);
       loadingRef.current = false;
     }
-  }, [cursor, filter]);
+  }, [cursor, filter, tag]);
 
   // IntersectionObserver for automatic infinite scroll
   useEffect(() => {
@@ -71,11 +82,12 @@ export function FeedList({ initialPosts = [], initialCursor = null, filter = "la
       <div className="flex flex-col w-full max-w-[470px] mx-auto py-12 px-4">
         <EmptyState
           icon={Inbox}
-          title={isFollowingFilter ? "No posts from followed creators" : COPY.feed.emptyTitle}
+          title={emptyTitle || (isFollowingFilter ? "No posts from followed creators" : COPY.feed.emptyTitle)}
           description={
-            isFollowingFilter
+            emptyDescription ||
+            (isFollowingFilter
               ? "You haven't followed any creators yet, or they haven't posted recently. Explore Latest News to find creators to follow!"
-              : COPY.feed.emptyDescription
+              : COPY.feed.emptyDescription)
           }
           action={
             isFollowingFilter ? (

@@ -105,4 +105,8 @@ export const SKELETON_SIZES = {
     SIDEBAR_WIDTH: 380,
     SIDEBAR_HEIGHT: 550,
   },
+  TAG_CHIP: {
+    HEIGHT: 32,
+    MIN_WIDTH: 72,
+  },
 };

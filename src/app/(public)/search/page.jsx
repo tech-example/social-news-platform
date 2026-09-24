@@ -1,9 +1,12 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { searchProfiles } from "@/server/dal/profiles";
-import { searchTags } from "@/server/dal/tags";
+import { searchTags, getPopularTags } from "@/server/dal/tags";
 import { searchPosts } from "@/server/dal/posts";
 import { Avatar } from "@/components/ui/avatar";
 import { SearchInput } from "./SearchInput";
+import { TagChip } from "@/components/feed/TagChip";
+import { Skeleton, TagChipsSkeleton } from "@/components/ui/skeletons";
 import { Hash, Heart, MessageCircle, SearchX } from "lucide-react";
 import { formatCompactNumber, formatRelativeTime } from "@/lib/format";
 
@@ -11,6 +14,40 @@ export const metadata = {
   title: "Search - SocialNews",
   description: "Search news articles, accounts, and tags on SocialNews.",
 };
+
+function PopularTagsSkeleton() {
+  return (
+    <div role="status" aria-busy="true" aria-label="Loading popular tags..." className="space-y-3 py-2">
+      <Skeleton className="h-3.5 w-24" />
+      <TagChipsSkeleton count={10} standalone={false} />
+    </div>
+  );
+}
+
+async function PopularTagsSection() {
+  const popularTags = await getPopularTags(20);
+
+  if (!popularTags || popularTags.length === 0) {
+    return (
+      <div className="py-12 text-center text-sm text-[var(--ink-muted)]">
+        Search for news keywords, topics, usernames, or hashtags.
+      </div>
+    );
+  }
+
+  return (
+    <section aria-label="Popular tags" className="space-y-3 py-2">
+      <h2 className="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wider">
+        Popular Tags
+      </h2>
+      <div className="flex flex-wrap gap-2">
+        {popularTags.map((tag) => (
+          <TagChip key={tag.id} name={tag.name} postsCount={tag.posts_count} />
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default async function SearchPage({ searchParams }) {
   const resolvedParams = await searchParams;
@@ -84,11 +121,11 @@ export default async function SearchPage({ searchParams }) {
         </Link>
       </div>
 
-      {/* Results */}
+      {/* Results or Popular Tags */}
       {!query ? (
-        <div className="py-12 text-center text-sm text-[var(--ink-muted)]">
-          Search for news keywords, topics, usernames, or hashtags.
-        </div>
+        <Suspense fallback={<PopularTagsSkeleton />}>
+          <PopularTagsSection />
+        </Suspense>
       ) : (
         <div className="space-y-3">
           {type === "posts" && (
@@ -194,7 +231,7 @@ export default async function SearchPage({ searchParams }) {
               tags.map((t) => (
                 <Link
                   key={t.id}
-                  href={`/tag/${t.name}`}
+                  href={`/tag/${encodeURIComponent(t.name.toLowerCase())}`}
                   className="flex items-center justify-between p-3 rounded-lg border border-[var(--line)] hover:bg-[var(--surface)] transition-colors"
                 >
                   <div className="flex items-center gap-3">

@@ -1,16 +1,22 @@
 import { NextResponse } from "next/server";
-import { getFeedPosts } from "@/server/dal/posts";
+import { getFeedPosts, getPostsByTag } from "@/server/dal/posts";
 import { getSession } from "@/server/auth";
 
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const cursor = searchParams.get("cursor");
+    const tag = searchParams.get("tag");
     const filter = searchParams.get("filter") || "latest";
     const limit = Math.min(parseInt(searchParams.get("limit") || "10", 10), 30);
 
     const session = await getSession();
     const viewerId = session?.user?.id || null;
+
+    if (tag) {
+      const { posts, nextCursor } = await getPostsByTag(tag, cursor, limit, viewerId);
+      return NextResponse.json({ posts, nextCursor });
+    }
 
     const { posts, nextCursor } = await getFeedPosts({
       cursor,

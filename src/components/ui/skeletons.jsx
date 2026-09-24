@@ -452,3 +452,29 @@ export function PostDetailSkeleton() {
     </div>
   );
 }
+
+export function TagChipsSkeleton({ count = 8, standalone = true, className = "" }) {
+  const chipWidths = [72, 84, 96, 68, 90, 78, 104, 82];
+  const content = (
+    <div className={`flex flex-wrap gap-2 ${className}`}>
+      {Array.from({ length: count }).map((_, i) => (
+        <Skeleton
+          key={i}
+          className="rounded-full"
+          style={{
+            height: `${SKELETON_SIZES.TAG_CHIP?.HEIGHT || 32}px`,
+            width: `${chipWidths[i % chipWidths.length]}px`,
+          }}
+        />
+      ))}
+    </div>
+  );
+
+  if (!standalone) return content;
+
+  return (
+    <div role="status" aria-busy="true" aria-label="Loading tags...">
+      {content}
+    </div>
+  );
+}

@@ -401,66 +401,186 @@ export async function getUserPosts({
   return { posts, nextCursor };
 }
 
-export async function getTagPosts({
-  tagName,
-  cursor = null,
-  limit = 12,
-} = {}) {
-  const supabase = await createUserClient();
+export async function getPostsByTag(tagNameOrOptions, cursorParam = null, limitParam = 10, viewerIdParam = null) {
+  let tagName, cursor, limit, viewerId;
+  if (typeof tagNameOrOptions === "object" && tagNameOrOptions !== null) {
+    tagName = tagNameOrOptions.tagName;
+    cursor = tagNameOrOptions.cursor ?? null;
+    limit = tagNameOrOptions.limit ?? 10;
+    viewerId = tagNameOrOptions.viewerId ?? null;
+  } else {
+    tagName = tagNameOrOptions;
+    cursor = cursorParam;
+    limit = limitParam;
+    viewerId = viewerIdParam;
+  }
 
-  const { data: tagRecord } = await supabase
+  const supabase = await createUserClient();
+  const clean = (tagName || "").trim().toLowerCase().replace(/^#/, "");
+  if (!clean) return { tag: null, posts: [], nextCursor: null };
+
+  const { data: tagRecord, error: tagErr } = await supabase
     .from("tags")
     .select("id, name, posts_count")
-    .ilike("name", tagName.toLowerCase())
+    .ilike("name", clean)
     .maybeSingle();
 
-  if (!tagRecord) return { tag: null, posts: [], nextCursor: null };
+  if (tagErr || !tagRecord) {
+    return { tag: null, posts: [], nextCursor: null };
+  }
 
   let query = supabase
-    .from("post_tags")
+    .from("posts")
     .select(`
-      post:posts!inner(
+      id,
+      title,
+      body,
+      image_url,
+      status,
+      likes_count,
+      comments_count,
+      shares_count,
+      created_at,
+      author:profiles!posts_author_id_fkey(
         id,
-        title,
+        username,
+        display_name,
+        avatar_url
+      ),
+      post_tags!inner(tag_id),
+      tags:post_tags(
+        tag:tags(id, name)
+      )
+    `)
+    .eq("status", "published")
+    .eq("post_tags.tag_id", tagRecord.id)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(limit);
+
+  if (cursor) {
+    query = query.lt("created_at", cursor);
+  }
+
+  const { data: rawPosts, error } = await query;
+  if (error || !rawPosts) {
+    console.error("Error fetching tag posts:", error);
+    return { tag: tagRecord, posts: [], nextCursor: null };
+  }
+
+  let likedPostIds = new Set();
+  let followedAuthorIds = new Set();
+  let sharedPostIds = new Set();
+  if (viewerId && rawPosts.length > 0) {
+    const postIds = rawPosts.map((p) => p.id);
+    const authorIds = [
+      ...new Set(
+        rawPosts
+          .map((p) => p.author?.id)
+          .filter((id) => id && id !== viewerId)
+      ),
+    ];
+
+    const [userLikesResult, userFollowsResult, userSharesResult] = await Promise.all([
+      supabase
+        .from("likes")
+        .select("post_id")
+        .eq("user_id", viewerId)
+        .in("post_id", postIds),
+      authorIds.length > 0
+        ? supabase
+            .from("follows")
+            .select("following_id")
+            .eq("follower_id", viewerId)
+            .in("following_id", authorIds)
+        : Promise.resolve({ data: [] }),
+      supabase
+        .from("shares")
+        .select("post_id")
+        .eq("user_id", viewerId)
+        .in("post_id", postIds),
+    ]);
+
+    if (userLikesResult.data) {
+      likedPostIds = new Set(userLikesResult.data.map((l) => l.post_id));
+    }
+    if (userFollowsResult.data) {
+      followedAuthorIds = new Set(
+        userFollowsResult.data.map((f) => f.following_id)
+      );
+    }
+    if (userSharesResult.data) {
+      sharedPostIds = new Set(userSharesResult.data.map((s) => s.post_id));
+    }
+  }
+
+  // Fetch recent comments for preview on post cards
+  const recentCommentsMap = new Map();
+  if (rawPosts.length > 0) {
+    const postIds = rawPosts.map((p) => p.id);
+    const { data: recentCommentsData } = await supabase
+      .from("comments")
+      .select(`
+        id,
+        post_id,
+        author_id,
         body,
-        image_url,
-        likes_count,
-        comments_count,
-        shares_count,
         created_at,
-        status,
-        author:profiles!posts_author_id_fkey(
+        author:profiles!comments_author_id_fkey(
           id,
           username,
           display_name,
           avatar_url
         )
-      )
-    `)
-    .eq("tag_id", tagRecord.id)
-    .eq("post.status", "published")
-    .order("post(created_at)", { ascending: false })
-    .limit(limit);
+      `)
+      .in("post_id", postIds)
+      .eq("status", "published")
+      .order("created_at", { ascending: true });
 
-  const { data: rawPostTags, error } = await query;
-  if (error || !rawPostTags) return { tag: tagRecord, posts: [], nextCursor: null };
+    if (recentCommentsData) {
+      for (const c of recentCommentsData) {
+        if (!recentCommentsMap.has(c.post_id)) {
+          recentCommentsMap.set(c.post_id, []);
+        }
+        recentCommentsMap.get(c.post_id).push({
+          id: c.id,
+          postId: c.post_id,
+          body: c.body,
+          createdAt: c.created_at,
+          author: c.author,
+        });
+      }
+    }
+  }
 
-  const posts = rawPostTags
-    .filter((pt) => pt.post)
-    .map((pt) => ({
-      id: pt.post.id,
-      title: pt.post.title,
-      body: pt.post.body,
-      imageUrl: pt.post.image_url,
-      likesCount: pt.post.likes_count || 0,
-      commentsCount: pt.post.comments_count || 0,
-      sharesCount: pt.post.shares_count || 0,
-      createdAt: pt.post.created_at,
-      author: pt.post.author,
-    }));
+  const posts = rawPosts.map((post) => ({
+    id: post.id,
+    title: post.title,
+    body: post.body,
+    imageUrl: post.image_url,
+    status: post.status,
+    likesCount: post.likes_count || 0,
+    commentsCount: post.comments_count || 0,
+    sharesCount: post.shares_count || 0,
+    createdAt: post.created_at,
+    author: post.author,
+    tags: (post.tags || []).map((t) => t.tag?.name).filter(Boolean),
+    isLiked: likedPostIds.has(post.id),
+    isFollowingAuthor: followedAuthorIds.has(post.author?.id),
+    isShared: sharedPostIds.has(post.id),
+    recentComments: (recentCommentsMap.get(post.id) || []).slice(-2),
+  }));
 
-  return { tag: tagRecord, posts, nextCursor: null };
+  const nextCursor =
+    posts.length === limit ? posts[posts.length - 1].createdAt : null;
+
+  return { tag: tagRecord, posts, nextCursor };
 }
+
+export async function getTagPosts(options = {}) {
+  return getPostsByTag(options);
+}
+
 
 export async function getExplorePosts({ limit = 18 } = {}) {
   const supabase = await createUserClient();
