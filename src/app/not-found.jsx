@@ -21,7 +21,7 @@ export default function NotFound() {
       </p>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <Link href="/">
-          <Button variant="primary" className="!text-white active:!text-white flex items-center gap-2">
+          <Button variant="primary" className="flex items-center gap-2">
             <Home size={18} aria-hidden="true" />
             <span>Back to Home</span>
           </Button>

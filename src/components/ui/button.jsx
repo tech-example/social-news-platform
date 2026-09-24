@@ -10,6 +10,7 @@ export function Button({
   disabled = false,
   type = "button",
   className = "",
+  style,
   asChild,
   ...props
 }) {
@@ -24,7 +25,7 @@ export function Button({
 
   const variantStyles = {
     primary:
-      "bg-[var(--accent)] !text-white active:!text-white focus:!text-white hover:!text-white disabled:!text-white hover:opacity-90 active:opacity-100",
+      "bg-[var(--accent)] hover:opacity-90 active:opacity-100",
     secondary:
       "bg-[var(--surface-strong)] text-[var(--ink)] hover:bg-[var(--line)]",
     outline:
@@ -32,14 +33,21 @@ export function Button({
     ghost:
       "bg-transparent text-[var(--ink)] hover:bg-[var(--surface-strong)]",
     danger:
-      "bg-[var(--danger)] !text-white active:!text-white focus:!text-white hover:!text-white disabled:!text-white hover:opacity-90 active:opacity-100",
+      "bg-[var(--danger)] hover:opacity-90 active:opacity-100",
   };
+
+  // Force white text via inline style for primary/danger — immune to CSS class conflicts
+  const forceWhiteText = variant === "primary" || variant === "danger";
+  const mergedStyle = forceWhiteText
+    ? { color: "#ffffff", ...style }
+    : style;
 
   return (
     <button
       type={type}
       disabled={disabled || loading}
       className={cn(baseStyles, sizeStyles[size], variantStyles[variant], className)}
+      style={mergedStyle}
       {...props}
     >
       {loading ? (
