@@ -1,12 +1,13 @@
 import Image from "next/image";
 import { cn } from "@/lib/cn";
+import { SKELETON_SIZES } from "@/lib/constants";
 
 const SIZE_MAP = {
-  xs: 20,
-  sm: 24,
-  md: 32,
-  lg: 40,
-  xl: 56,
+  xs: SKELETON_SIZES.AVATAR.XS,
+  sm: SKELETON_SIZES.AVATAR.SM,
+  md: SKELETON_SIZES.AVATAR.MD,
+  lg: SKELETON_SIZES.AVATAR.LG,
+  xl: SKELETON_SIZES.AVATAR.XL,
 };
 
 export function Avatar({

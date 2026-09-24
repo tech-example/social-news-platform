@@ -2,6 +2,7 @@
 import { Suspense } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { CalendarDays } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function DateRangePickerInner({ className = "" }) {
   const router = useRouter();
@@ -51,7 +52,7 @@ function DateRangePickerInner({ className = "" }) {
 
 export function DateRangePicker(props) {
   return (
-    <Suspense fallback={<div className="h-8 w-44 bg-[var(--surface)] rounded-lg animate-pulse" />}>
+    <Suspense fallback={<Skeleton className="h-8 w-44 rounded-lg" />}>
       <DateRangePickerInner {...props} />
     </Suspense>
   );

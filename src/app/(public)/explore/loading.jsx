@@ -8,7 +8,7 @@ export default function ExploreLoading() {
         <Skeleton className="h-4 w-20" />
       </div>
       <div className="bg-[var(--bg)] border border-[var(--line)] rounded-xl overflow-hidden shadow-xs">
-        <ProfileGridSkeleton count={12} />
+        <ProfileGridSkeleton count={9} />
       </div>
     </div>
   );

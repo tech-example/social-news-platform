@@ -16,7 +16,7 @@ export default function SearchLoading() {
       </div>
 
       {/* Results Skeletons */}
-      <div className="space-y-4">
+      <div role="status" aria-busy="true" aria-label="Loading search results..." className="space-y-4">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3 p-3 bg-[var(--bg)] border border-[var(--line)] rounded-xl">
             <Skeleton className="w-11 h-11 rounded-full shrink-0" />

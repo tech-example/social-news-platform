@@ -54,6 +54,7 @@ body {
   background: linear-gradient(90deg, var(--surface) 25%, var(--surface-strong) 37%, var(--surface) 63%);
   background-size: 400% 100%;
   animation: skeleton-shimmer 1.4s ease infinite;
+  will-change: background-position;
 }
 
 @keyframes skeleton-shimmer {
@@ -127,9 +128,14 @@ body {
   animation: fadeIn 0.18s ease-out forwards;
 }
 
-/* Feed item rendering optimization for low-spec devices & large feeds */
+/* Feed and grid rendering optimization for low-spec devices & large lists */
 .feed-card-contain {
   content-visibility: auto;
   contain-intrinsic-size: 550px;
+}
+
+.grid-card-contain {
+  content-visibility: auto;
+  contain-intrinsic-size: 280px;
 }
 

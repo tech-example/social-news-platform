@@ -5,7 +5,7 @@ import { getSuggestedProfiles } from "@/server/dal/profiles";
 import { getTrendingTags } from "@/server/dal/tags";
 import { getSession } from "@/server/auth";
 import { FeedList } from "@/components/feed/FeedList";
-import { FeedSkeleton } from "@/components/ui/skeletons";
+import { FeedSkeleton, SidebarSkeleton } from "@/components/ui/skeletons";
 import { Avatar } from "@/components/ui/avatar";
 import { Hash } from "lucide-react";
 
@@ -30,17 +30,88 @@ async function FeedStream({ filter, viewerId }) {
   );
 }
 
+async function SidebarWidgets({ viewerId }) {
+  const [suggestedUsers, trendingTags] = await Promise.all([
+    getSuggestedProfiles(viewerId, 5),
+    getTrendingTags(6),
+  ]);
+
+  return (
+    <>
+      {/* Suggested Accounts */}
+      {suggestedUsers.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wider">
+              Suggested for you
+            </span>
+            <Link href="/explore" className="text-xs font-semibold text-[var(--ink)] hover:underline">
+              See all
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {suggestedUsers.map((user) => (
+              <div key={user.id} className="flex items-center justify-between gap-2">
+                <Link href={`/u/${user.username}`} className="flex items-center gap-2.5 min-w-0">
+                  <Avatar
+                    src={user.avatar_url}
+                    name={user.display_name || user.username}
+                    size={32}
+                  />
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-semibold text-[var(--ink)] truncate">
+                      {user.username}
+                    </span>
+                    <span className="text-[11px] text-[var(--ink-muted)] truncate">
+                      {user.followers_count || 0} followers
+                    </span>
+                  </div>
+                </Link>
+                <Link
+                  href={`/u/${user.username}`}
+                  className="text-xs font-semibold text-[var(--accent)] hover:underline shrink-0"
+                >
+                  View
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Trending Tags */}
+      {trendingTags.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <span className="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wider">
+            Trending Topics
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {trendingTags.map((tag) => (
+              <Link
+                key={tag.id}
+                href={`/tag/${tag.name}`}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] hover:bg-[var(--surface-strong)] transition-colors"
+              >
+                <Hash size={12} strokeWidth={2} aria-hidden="true" className="text-[var(--ink-muted)]" />
+                <span>{tag.name}</span>
+                <span className="text-[10px] text-[var(--ink-muted)] tabular-nums">
+                  ({tag.posts_count})
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default async function HomeFeedPage({ searchParams }) {
   const resolvedParams = await searchParams;
   const filter = resolvedParams?.filter === "following" ? "following" : "latest";
 
   const session = await getSession();
   const viewerId = session?.user?.id || null;
-
-  const [suggestedUsers, trendingTags] = await Promise.all([
-    getSuggestedProfiles(viewerId, 5),
-    getTrendingTags(6),
-  ]);
 
   return (
     <div className="flex justify-center gap-8 px-0 sm:px-4 py-0 sm:py-6">
@@ -129,70 +200,10 @@ export default async function HomeFeedPage({ searchParams }) {
           </div>
         )}
 
-        {/* Suggested Accounts */}
-        {suggestedUsers.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wider">
-                Suggested for you
-              </span>
-              <Link href="/explore" className="text-xs font-semibold text-[var(--ink)] hover:underline">
-                See all
-              </Link>
-            </div>
-            <div className="space-y-3">
-              {suggestedUsers.map((user) => (
-                <div key={user.id} className="flex items-center justify-between gap-2">
-                  <Link href={`/u/${user.username}`} className="flex items-center gap-2.5 min-w-0">
-                    <Avatar
-                      src={user.avatar_url}
-                      name={user.display_name || user.username}
-                      size={32}
-                    />
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-semibold text-[var(--ink)] truncate">
-                        {user.username}
-                      </span>
-                      <span className="text-[11px] text-[var(--ink-muted)] truncate">
-                        {user.followers_count || 0} followers
-                      </span>
-                    </div>
-                  </Link>
-                  <Link
-                    href={`/u/${user.username}`}
-                    className="text-xs font-semibold text-[var(--accent)] hover:underline shrink-0"
-                  >
-                    View
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Trending Tags */}
-        {trendingTags.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <span className="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wider">
-              Trending Topics
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {trendingTags.map((tag) => (
-                <Link
-                  key={tag.id}
-                  href={`/tag/${tag.name}`}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface)] text-[var(--ink)] border border-[var(--line)] hover:bg-[var(--surface-strong)] transition-colors"
-                >
-                  <Hash size={12} strokeWidth={2} aria-hidden="true" className="text-[var(--ink-muted)]" />
-                  <span>{tag.name}</span>
-                  <span className="text-[10px] text-[var(--ink-muted)] tabular-nums">
-                    ({tag.posts_count})
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Streamed Suggested Accounts and Trending Tags */}
+        <Suspense fallback={<SidebarSkeleton standalone={false} />}>
+          <SidebarWidgets viewerId={viewerId} />
+        </Suspense>
 
         {/* Footer info */}
         <div className="text-[11px] text-[var(--ink-muted)] space-y-1">

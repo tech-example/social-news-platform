@@ -1,19 +1,21 @@
 import { Skeleton } from "./skeleton";
+import { SKELETON_SIZES } from "@/lib/constants";
 
 export { Skeleton };
 
-export function PostCardSkeleton() {
+export function PostCardSkeleton({ standalone = false }) {
   return (
     <div
-      role="status"
-      aria-busy="true"
-      aria-label="Loading post..."
-      className="border-b border-[var(--line)] bg-[var(--bg)] py-4 flex flex-col gap-3 max-w-[470px] w-full mx-auto"
+      {...(standalone ? { role: "status", "aria-busy": "true", "aria-label": "Loading post..." } : {})}
+      className="feed-card-contain border-b border-[var(--line)] bg-[var(--bg)] py-4 flex flex-col gap-3 max-w-[470px] w-full mx-auto"
     >
       {/* Header: Avatar, Username + Follow, Full Page link */}
       <div className="flex items-center justify-between px-4">
         <div className="flex items-center gap-3 min-w-0">
-          <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+          <Skeleton
+            className="rounded-full shrink-0"
+            style={{ width: `${SKELETON_SIZES.AVATAR.MD}px`, height: `${SKELETON_SIZES.AVATAR.MD}px` }}
+          />
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1.5">
               <Skeleton className="h-3.5 w-24" />
@@ -27,7 +29,10 @@ export function PostCardSkeleton() {
       </div>
 
       {/* Media Block (4:5 aspect ratio) */}
-      <Skeleton className="w-full aspect-4/5 max-h-[420px] rounded-none" />
+      <Skeleton
+        className="w-full aspect-4/5 rounded-none"
+        style={{ maxHeight: `${SKELETON_SIZES.POST_CARD.MEDIA_MAX_HEIGHT}px` }}
+      />
 
       {/* Action Icons Row */}
       <div className="px-4 space-y-2 mt-1">
@@ -64,7 +69,7 @@ export function FeedSkeleton({ count = 3 }) {
       className="flex flex-col w-full max-w-[470px] mx-auto divide-y divide-[var(--line)]"
     >
       {Array.from({ length: count }).map((_, i) => (
-        <PostCardSkeleton key={i} />
+        <PostCardSkeleton key={i} standalone={false} />
       ))}
     </div>
   );
@@ -79,7 +84,13 @@ export function ProfileHeaderSkeleton() {
       className="bg-[var(--bg)] border border-[var(--line)] rounded-2xl p-6 sm:p-8 shadow-xs"
     >
       <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-10">
-        <Skeleton className="w-24 h-24 sm:w-32 sm:h-32 rounded-full shrink-0" />
+        <Skeleton
+          className="w-24 h-24 sm:w-32 sm:h-32 rounded-full shrink-0"
+          style={{
+            maxWidth: `${SKELETON_SIZES.AVATAR.PROFILE_DESKTOP}px`,
+            maxHeight: `${SKELETON_SIZES.AVATAR.PROFILE_DESKTOP}px`,
+          }}
+        />
         <div className="flex-1 space-y-4 w-full flex flex-col items-center sm:items-start">
           <div className="flex items-center gap-3">
             <Skeleton className="h-6 w-36" />
@@ -101,16 +112,16 @@ export function ProfileHeaderSkeleton() {
   );
 }
 
-export function ProfileGridSkeleton({ count = 9 }) {
+export function ProfileGridSkeleton({ count = 9, standalone = true }) {
   return (
     <div
-      role="status"
-      aria-busy="true"
-      aria-label="Loading posts grid..."
+      {...(standalone ? { role: "status", "aria-busy": "true", "aria-label": "Loading posts grid..." } : {})}
       className="grid grid-cols-3 gap-1.5 sm:gap-4 p-3 sm:p-6"
     >
       {Array.from({ length: count }).map((_, i) => (
-        <Skeleton key={i} className="aspect-square rounded-lg w-full" />
+        <div key={i} className="grid-card-contain aspect-square rounded-lg w-full overflow-hidden">
+          <Skeleton className="w-full h-full rounded-lg" />
+        </div>
       ))}
     </div>
   );
@@ -119,7 +130,10 @@ export function ProfileGridSkeleton({ count = 9 }) {
 export function CommentItemSkeleton() {
   return (
     <div className="flex items-start gap-3 py-2">
-      <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+      <Skeleton
+        className="rounded-full shrink-0"
+        style={{ width: `${SKELETON_SIZES.AVATAR.SM}px`, height: `${SKELETON_SIZES.AVATAR.SM}px` }}
+      />
       <div className="flex-1 space-y-1.5">
         <Skeleton className="h-3.5 w-24" />
         <Skeleton className="h-3 w-3/4" />
@@ -129,12 +143,10 @@ export function CommentItemSkeleton() {
   );
 }
 
-export function CommentThreadSkeleton({ count = 4 }) {
+export function CommentThreadSkeleton({ count = 4, standalone = true }) {
   return (
     <div
-      role="status"
-      aria-busy="true"
-      aria-label="Loading comments..."
+      {...(standalone ? { role: "status", "aria-busy": "true", "aria-label": "Loading comments..." } : {})}
       className="space-y-3 py-2"
     >
       {Array.from({ length: count }).map((_, i) => (
@@ -148,7 +160,10 @@ export function NotificationItemSkeleton() {
   return (
     <div className="flex items-center justify-between p-3.5 border-b border-[var(--line)] bg-[var(--bg)]">
       <div className="flex items-center gap-3 min-w-0 flex-1">
-        <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+        <Skeleton
+          className="rounded-full shrink-0"
+          style={{ width: `${SKELETON_SIZES.AVATAR.LG}px`, height: `${SKELETON_SIZES.AVATAR.LG}px` }}
+        />
         <div className="space-y-1.5 flex-1 max-w-md">
           <Skeleton className="h-3.5 w-3/4" />
           <Skeleton className="h-2.5 w-20" />
@@ -159,12 +174,10 @@ export function NotificationItemSkeleton() {
   );
 }
 
-export function NotificationListSkeleton({ count = 6 }) {
+export function NotificationListSkeleton({ count = 6, standalone = true }) {
   return (
     <div
-      role="status"
-      aria-busy="true"
-      aria-label="Loading notifications..."
+      {...(standalone ? { role: "status", "aria-busy": "true", "aria-label": "Loading notifications..." } : {})}
       className="divide-y divide-[var(--line)] bg-[var(--bg)] border border-[var(--line)] rounded-xl overflow-hidden shadow-xs"
     >
       {Array.from({ length: count }).map((_, i) => (
@@ -174,12 +187,12 @@ export function NotificationListSkeleton({ count = 6 }) {
   );
 }
 
-export function StatCardSkeleton() {
+export function StatCardSkeleton({ standalone = true }) {
   return (
     <div
-      role="status"
-      aria-busy="true"
-      className="p-5 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs space-y-3"
+      {...(standalone ? { role: "status", "aria-busy": "true", "aria-label": "Loading statistic..." } : {})}
+      style={{ minHeight: `${SKELETON_SIZES.STAT_CARD.ESTIMATED_HEIGHT}px` }}
+      className="p-5 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs space-y-3 flex flex-col justify-between"
     >
       <div className="flex items-center justify-between">
         <Skeleton className="h-3.5 w-24" />
@@ -191,12 +204,10 @@ export function StatCardSkeleton() {
   );
 }
 
-export function ChartSkeleton({ height = 280 }) {
+export function ChartSkeleton({ height = SKELETON_SIZES.CHART.DEFAULT_HEIGHT, standalone = true }) {
   return (
     <div
-      role="status"
-      aria-busy="true"
-      aria-label="Loading chart..."
+      {...(standalone ? { role: "status", "aria-busy": "true", "aria-label": "Loading chart..." } : {})}
       style={{ height }}
       className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] p-5 flex flex-col justify-between shadow-xs"
     >
@@ -222,11 +233,10 @@ export function ChartSkeleton({ height = 280 }) {
   );
 }
 
-export function BarListSkeleton({ count = 5 }) {
+export function BarListSkeleton({ count = 5, standalone = false }) {
   return (
     <div
-      role="status"
-      aria-busy="true"
+      {...(standalone ? { role: "status", "aria-busy": "true" } : {})}
       className="p-5 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs space-y-3"
     >
       <Skeleton className="h-4 w-32 mb-4" />
@@ -240,12 +250,14 @@ export function BarListSkeleton({ count = 5 }) {
   );
 }
 
-export function TableSkeleton({ rows = 6, cols = 4 }) {
+export function TableSkeleton({
+  rows = SKELETON_SIZES.TABLE.DEFAULT_ROWS,
+  cols = SKELETON_SIZES.TABLE.DEFAULT_COLS,
+  standalone = true,
+}) {
   return (
     <div
-      role="status"
-      aria-busy="true"
-      aria-label="Loading table data..."
+      {...(standalone ? { role: "status", "aria-busy": "true", "aria-label": "Loading table data..." } : {})}
       className="w-full overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs"
     >
       {/* Header row */}
@@ -257,7 +269,11 @@ export function TableSkeleton({ rows = 6, cols = 4 }) {
       {/* Body rows */}
       <div className="divide-y divide-[var(--line)]">
         {Array.from({ length: rows }).map((_, r) => (
-          <div key={r} className="flex items-center gap-4 p-4">
+          <div
+            key={r}
+            style={{ minHeight: `${SKELETON_SIZES.TABLE.ROW_HEIGHT}px` }}
+            className="flex items-center gap-4 p-4"
+          >
             {Array.from({ length: cols }).map((_, c) => (
               <Skeleton key={c} className="h-3.5 flex-1" />
             ))}
@@ -268,11 +284,10 @@ export function TableSkeleton({ rows = 6, cols = 4 }) {
   );
 }
 
-export function ReportCardSkeleton() {
+export function ReportCardSkeleton({ standalone = false }) {
   return (
     <div
-      role="status"
-      aria-busy="true"
+      {...(standalone ? { role: "status", "aria-busy": "true" } : {})}
       className="p-4 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs space-y-3"
     >
       <div className="flex items-center justify-between">
@@ -285,17 +300,19 @@ export function ReportCardSkeleton() {
   );
 }
 
-export function SidebarSkeleton() {
+export function SidebarSkeleton({ standalone = true }) {
   return (
     <div
-      role="status"
-      aria-busy="true"
-      aria-label="Loading sidebar..."
-      className="flex flex-col gap-6 w-[300px]"
+      {...(standalone ? { role: "status", "aria-busy": "true", "aria-label": "Loading sidebar..." } : {})}
+      style={{ width: `${SKELETON_SIZES.SIDEBAR.WIDTH}px` }}
+      className="flex flex-col gap-6"
     >
       {/* Current user mini card */}
       <div className="flex items-center gap-3">
-        <Skeleton className="w-11 h-11 rounded-full shrink-0" />
+        <Skeleton
+          className="rounded-full shrink-0"
+          style={{ width: `${SKELETON_SIZES.AVATAR.XL}px`, height: `${SKELETON_SIZES.AVATAR.XL}px` }}
+        />
         <div className="space-y-1.5 flex-1">
           <Skeleton className="h-3.5 w-24" />
           <Skeleton className="h-3 w-32" />
@@ -311,7 +328,10 @@ export function SidebarSkeleton() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <Skeleton className="w-8 h-8 rounded-full" />
+              <Skeleton
+                className="rounded-full shrink-0"
+                style={{ width: `${SKELETON_SIZES.AVATAR.SM}px`, height: `${SKELETON_SIZES.AVATAR.SM}px` }}
+              />
               <div className="space-y-1">
                 <Skeleton className="h-3 w-20" />
                 <Skeleton className="h-2.5 w-14" />
@@ -333,22 +353,22 @@ export function DashboardSkeleton() {
       aria-label="Loading dashboard..."
       className="space-y-6"
     >
-      {/* Stat cards row */}
+      {/* Stat cards row - exactly 1 status wrapper on parent, children standalone=false */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCardSkeleton />
-        <StatCardSkeleton />
-        <StatCardSkeleton />
-        <StatCardSkeleton />
+        <StatCardSkeleton standalone={false} />
+        <StatCardSkeleton standalone={false} />
+        <StatCardSkeleton standalone={false} />
+        <StatCardSkeleton standalone={false} />
       </div>
 
-      {/* Charts row */}
+      {/* Charts row - children standalone=false */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChartSkeleton height={300} />
-        <ChartSkeleton height={300} />
+        <ChartSkeleton height={SKELETON_SIZES.CHART.ADMIN_HEIGHT} standalone={false} />
+        <ChartSkeleton height={SKELETON_SIZES.CHART.ADMIN_HEIGHT} standalone={false} />
       </div>
 
-      {/* Table section */}
-      <TableSkeleton rows={5} cols={4} />
+      {/* Table section - standalone=false */}
+      <TableSkeleton rows={5} cols={4} standalone={false} />
     </div>
   );
 }
@@ -359,7 +379,8 @@ export function PostDetailSkeleton() {
       role="status"
       aria-busy="true"
       aria-label="Loading post details..."
-      className="max-w-[935px] mx-auto px-4 py-4 sm:py-6"
+      style={{ maxWidth: `${SKELETON_SIZES.POST_DETAIL.CONTAINER_MAX_WIDTH}px` }}
+      className="mx-auto px-4 py-4 sm:py-6"
     >
       {/* Back link */}
       <div className="mb-4">
@@ -373,11 +394,20 @@ export function PostDetailSkeleton() {
         </div>
 
         {/* Right column */}
-        <div className="w-full md:w-[380px] shrink-0 flex flex-col h-[550px] bg-[var(--bg)]">
+        <div
+          style={{
+            maxWidth: `${SKELETON_SIZES.POST_DETAIL.SIDEBAR_WIDTH}px`,
+            height: `${SKELETON_SIZES.POST_DETAIL.SIDEBAR_HEIGHT}px`,
+          }}
+          className="w-full md:w-[380px] shrink-0 flex flex-col bg-[var(--bg)]"
+        >
           {/* Author Header */}
           <div className="flex items-center justify-between p-4 border-b border-[var(--line)]">
             <div className="flex items-center gap-3 min-w-0">
-              <Skeleton className="w-9 h-9 rounded-full shrink-0" />
+              <Skeleton
+                className="rounded-full shrink-0"
+                style={{ width: `${SKELETON_SIZES.AVATAR.MD}px`, height: `${SKELETON_SIZES.AVATAR.MD}px` }}
+              />
               <div className="flex flex-col gap-1">
                 <Skeleton className="h-3.5 w-24" />
                 <Skeleton className="h-2.5 w-16" />
@@ -422,4 +452,3 @@ export function PostDetailSkeleton() {
     </div>
   );
 }
-

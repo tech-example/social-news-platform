@@ -15,25 +15,20 @@ import {
   CartesianGrid,
 } from "recharts";
 
-const COLORS = ["#0095F6", "#0E8F8F", "#B7791F", "#6D4FD1", "#ED4956", "#737373"];
+import { ChartSkeleton } from "@/components/ui/skeletons";
+import { SKELETON_SIZES } from "@/lib/constants";
 
-export function ChartSkeleton({ height = 280 }) {
-  return (
-    <div
-      style={{ height }}
-      className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] p-4 flex flex-col justify-between animate-pulse"
-    >
-      <div className="h-4 w-32 bg-[var(--surface-strong)] rounded" />
-      <div className="h-48 w-full bg-[var(--surface)] rounded-lg" />
-      <div className="h-3 w-24 bg-[var(--surface-strong)] rounded" />
-    </div>
-  );
-}
+export { ChartSkeleton };
+
+const COLORS = ["#0095F6", "#0E8F8F", "#B7791F", "#6D4FD1", "#ED4956", "#737373"];
 
 export function TimeseriesChart({ data = [], title, metricLabel = "Count" }) {
   if (!data || data.length === 0) {
     return (
-      <div className="h-[280px] w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] p-4 flex flex-col items-center justify-center text-center">
+      <div
+        style={{ height: `${SKELETON_SIZES.CHART.DEFAULT_HEIGHT}px` }}
+        className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] p-4 flex flex-col items-center justify-center text-center"
+      >
         <h3 className="text-sm font-semibold text-[var(--ink)] mb-1">{title}</h3>
         <p className="text-xs text-[var(--ink-muted)]">No data for this range. Try a wider date range.</p>
       </div>

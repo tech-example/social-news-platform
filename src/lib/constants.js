@@ -66,3 +66,43 @@ export const PAGINATION = {
   REPORTS_DEFAULT: 15,
   USERS_DEFAULT: 20,
 };
+
+export const SKELETON_SIZES = {
+  AVATAR: {
+    XS: 20,
+    SM: 24,
+    MD: 36,
+    LG: 40,
+    XL: 44,
+    PROFILE_MOBILE: 96,
+    PROFILE_DESKTOP: 128,
+  },
+  POST_CARD: {
+    MAX_WIDTH: 470,
+    MEDIA_MAX_HEIGHT: 420,
+    ESTIMATED_HEIGHT: 550,
+  },
+  GRID_ITEM: {
+    ESTIMATED_HEIGHT: 280,
+  },
+  STAT_CARD: {
+    ESTIMATED_HEIGHT: 132,
+  },
+  CHART: {
+    DEFAULT_HEIGHT: 280,
+    ADMIN_HEIGHT: 300,
+  },
+  TABLE: {
+    ROW_HEIGHT: 52,
+    DEFAULT_ROWS: 6,
+    DEFAULT_COLS: 4,
+  },
+  SIDEBAR: {
+    WIDTH: 300,
+  },
+  POST_DETAIL: {
+    CONTAINER_MAX_WIDTH: 935,
+    SIDEBAR_WIDTH: 380,
+    SIDEBAR_HEIGHT: 550,
+  },
+};

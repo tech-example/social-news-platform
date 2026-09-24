@@ -1,5 +1,6 @@
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { formatCompactNumber } from "@/lib/format";
+import { SKELETON_SIZES } from "@/lib/constants";
 
 export function StatCard({
   title,
@@ -29,7 +30,10 @@ export function StatCard({
       : value;
 
   return (
-    <div className="flex flex-col justify-between p-4 sm:p-5 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs">
+    <div
+      style={{ minHeight: `${SKELETON_SIZES.STAT_CARD.ESTIMATED_HEIGHT}px` }}
+      className="flex flex-col justify-between p-4 sm:p-5 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs"
+    >
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wider">
           {title}
