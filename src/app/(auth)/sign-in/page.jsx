@@ -93,11 +93,10 @@ function SignInContent() {
               autoComplete="email"
               spellCheck={false}
               placeholder="name@domain.com"
-              className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 bg-white text-[#262626] placeholder:text-[#8E8E8E] ${
-                emailError
-                  ? "border-[#C8323C] bg-red-50/20 focus-visible:outline-[#C8323C]"
-                  : "border-[#DBDBDB] hover:border-[#737373] focus:border-[#0095F6] focus-visible:outline-[#0095F6]"
-              }`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 bg-white text-[#262626] placeholder:text-[#8E8E8E] ${emailError
+                ? "border-[#C8323C] bg-red-50/20 focus-visible:outline-[#C8323C]"
+                : "border-[#DBDBDB] hover:border-[#737373] focus:border-[#0095F6] focus-visible:outline-[#0095F6]"
+                }`}
             />
             {emailError && (
               <span className="text-xs font-medium text-[#C8323C] mt-0.5">
@@ -117,11 +116,10 @@ function SignInContent() {
               type="password"
               autoComplete="current-password"
               placeholder="••••••••"
-              className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 bg-white text-[#262626] placeholder:text-[#8E8E8E] ${
-                passwordError
-                  ? "border-[#C8323C] bg-red-50/20 focus-visible:outline-[#C8323C]"
-                  : "border-[#DBDBDB] hover:border-[#737373] focus:border-[#0095F6] focus-visible:outline-[#0095F6]"
-              }`}
+              className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 bg-white text-[#262626] placeholder:text-[#8E8E8E] ${passwordError
+                ? "border-[#C8323C] bg-red-50/20 focus-visible:outline-[#C8323C]"
+                : "border-[#DBDBDB] hover:border-[#737373] focus:border-[#0095F6] focus-visible:outline-[#0095F6]"
+                }`}
             />
             {passwordError && (
               <span className="text-xs font-medium text-[#C8323C] mt-0.5">
@@ -134,9 +132,9 @@ function SignInContent() {
             type="submit"
             disabled={isPending}
             loading={isPending}
-            className="w-full mt-2 font-semibold bg-[#0095F6] hover:bg-[#0074CC]"
+            className="w-full mt-2 font-semibold bg-[#0095F6] text-white hover:bg-[#0074CC] disabled:bg-[#0095F6]/70 disabled:text-white"
           >
-            {isPending ? "Signing in..." : COPY.auth.signIn}
+            {isPending ? "Signing in..." : (COPY.auth.signIn || "Sign In")}
           </Button>
         </form>
 
