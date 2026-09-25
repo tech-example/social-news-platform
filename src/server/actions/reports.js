@@ -63,15 +63,31 @@ export async function createReportAction(input) {
 }
 
 export async function transitionReportAction({ reportId, nextStatus, actionTaken, note }) {
-  const session = await requireRole("moderator");
+  const requiresAdmin =
+    nextStatus === "resolved_actioned" ||
+    actionTaken === "remove" ||
+    actionTaken === "suspend_user";
+
+  const session = await requireRole(requiresAdmin ? "admin" : "moderator");
   const adminSupabase = getAdminClient();
 
-  // Call the atomic report transition RPC from migration 00002
+  // If report is currently escalated, resolving it requires admin role
+  const { data: currentReport } = await adminSupabase
+    .from("reports")
+    .select("status")
+    .eq("id", reportId)
+    .single();
+
+  if (currentReport?.status === "escalated" && session.profile.role !== "admin") {
+    return { ok: false, error: "Only administrators can make final decisions on escalated reports." };
+  }
+
+  // Call the atomic report transition RPC
   const { error } = await adminSupabase.rpc("report_transition", {
     p_report_id: reportId,
-    p_next_status: nextStatus,
+    p_to_status: nextStatus,
     p_actor_id: session.user.id,
-    p_action_taken: actionTaken || null,
+    p_content_action: actionTaken || null,
     p_note: note || null,
   });
 

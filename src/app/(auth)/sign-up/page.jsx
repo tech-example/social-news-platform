@@ -253,16 +253,19 @@ export default function SignUpPage() {
                   onBlur={handleBlur}
                   autoComplete="new-password"
                   placeholder="••••••••"
-                  className={getInputClasses(isTouched("password"), fieldError("password"))}
+                  className={`${getInputClasses(isTouched("password"), fieldError("password"))} pr-10`}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#737373] hover:text-[#262626] transition-colors"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                {fields.password.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#737373] hover:text-[#262626] transition-colors p-1 rounded-md focus-visible:outline-2 focus-visible:outline-[#0095F6]"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-pressed={showPassword}
+                  >
+                    {showPassword ? <EyeOff size={20} strokeWidth={1.75} /> : <Eye size={20} strokeWidth={1.75} />}
+                  </button>
+                )}
               </div>
               {isTouched("password") && fieldError("password") && (
                 <span className="text-xs font-medium text-[#C8323C] mt-0.5">
@@ -286,16 +289,19 @@ export default function SignUpPage() {
                   onBlur={handleBlur}
                   autoComplete="new-password"
                   placeholder="••••••••"
-                  className={getInputClasses(isTouched("confirmPassword"), fieldError("confirmPassword"))}
+                  className={`${getInputClasses(isTouched("confirmPassword"), fieldError("confirmPassword"))} pr-10`}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#737373] hover:text-[#262626] transition-colors"
-                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                {fields.confirmPassword.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#737373] hover:text-[#262626] transition-colors p-1 rounded-md focus-visible:outline-2 focus-visible:outline-[#0095F6]"
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                    aria-pressed={showConfirmPassword}
+                  >
+                    {showConfirmPassword ? <EyeOff size={20} strokeWidth={1.75} /> : <Eye size={20} strokeWidth={1.75} />}
+                  </button>
+                )}
               </div>
               {isTouched("confirmPassword") && fieldError("confirmPassword") && (
                 <span className="text-xs font-medium text-[#C8323C] mt-0.5">

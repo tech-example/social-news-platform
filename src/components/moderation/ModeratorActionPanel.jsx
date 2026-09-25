@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { transitionReportAction } from "@/server/actions/reports";
 import { hidePostAction, restorePostAction, hideCommentAction, restoreCommentAction } from "@/server/actions/moderation";
 import { useToast } from "@/components/ui/toast";
-import { ShieldCheck, EyeOff, Eye, ArrowUpRight, CheckCircle2, XCircle } from "lucide-react";
+import { ShieldCheck, EyeOff, Eye, ArrowUpRight, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 
 export function ModeratorActionPanel({ report: initialReport, currentRole = "moderator", onStatusChange }) {
   const { addToast } = useToast();
@@ -13,12 +13,14 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
   const [isPending, startTransition] = useTransition();
   const [report, setReport] = useState(initialReport);
 
-  const handleTransition = (nextStatus) => {
+  const isAdmin = currentRole === "admin";
+
+  const handleTransition = (nextStatus, extraAction) => {
     startTransition(async () => {
       const res = await transitionReportAction({
         reportId: report.id,
         nextStatus,
-        actionTaken: nextStatus.startsWith("resolved") ? actionTaken : undefined,
+        actionTaken: extraAction || (nextStatus.startsWith("resolved") ? actionTaken : undefined),
         note: note.trim() || undefined,
       });
 
@@ -72,7 +74,7 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
         />
       </div>
 
-      {/* Target Content Visibility Quick Toggles */}
+      {/* Target Content Visibility Quick Toggles (Preliminary action for moderators and admins) */}
       {(report.target_type === "post" || report.target_type === "comment") && (
         <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--line)]">
           <Button
@@ -123,30 +125,40 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
           </Button>
         )}
 
-        {/* Final resolution options (Admin, or Moderator if not escalated) */}
-        {(!report.status.startsWith("resolved")) && (currentRole === "admin" || report.status !== "escalated") && (
-          <>
-            <Button
-              variant="danger"
-              type="button"
-              onClick={() => handleTransition("resolved_actioned")}
-              disabled={isPending}
-            >
-              <CheckCircle2 size={16} strokeWidth={1.75} aria-hidden="true" className="mr-1.5" />
-              Resolve & Action
-            </Button>
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={() => handleTransition("resolved_dismissed")}
-              disabled={isPending}
-            >
-              <XCircle size={16} strokeWidth={1.75} aria-hidden="true" className="mr-1.5 text-[var(--ink-muted)]" />
-              Dismiss Report
-            </Button>
-          </>
+        {/* Dismiss Report: Allowed for moderator if in_review, or admin anytime before resolution */}
+        {!isResolved && (isAdmin || report.status === "in_review") && (
+          <Button
+            variant="ghost"
+            type="button"
+            onClick={() => handleTransition("resolved_dismissed")}
+            disabled={isPending}
+          >
+            <XCircle size={16} strokeWidth={1.75} aria-hidden="true" className="mr-1.5 text-[var(--ink-muted)]" />
+            Dismiss Report
+          </Button>
+        )}
+
+        {/* Final Decision (Resolve & Action): ADMIN ONLY */}
+        {!isResolved && isAdmin && (
+          <Button
+            variant="danger"
+            type="button"
+            onClick={() => handleTransition("resolved_actioned")}
+            disabled={isPending}
+          >
+            <CheckCircle2 size={16} strokeWidth={1.75} aria-hidden="true" className="mr-1.5" />
+            Resolve & Action (Final Decision)
+          </Button>
         )}
       </div>
+
+      {/* Notice for moderators when report is escalated */}
+      {!isAdmin && report.status === "escalated" && (
+        <div className="flex items-center gap-2 p-3 bg-amber-50/50 border border-[var(--warning)]/30 rounded-lg text-xs text-[var(--ink)]">
+          <AlertCircle size={15} strokeWidth={1.75} className="text-[var(--warning)] shrink-0" aria-hidden="true" />
+          <span>This report has been escalated. Awaiting final decision from an administrator.</span>
+        </div>
+      )}
 
       {isResolved && (
         <div className="p-3 bg-[var(--surface)] border border-[var(--line)] rounded-lg text-xs text-[var(--ink-muted)]">

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signInAction } from "@/server/actions/auth";
 import { Button } from "@/components/ui/button";
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, Eye, EyeOff } from "lucide-react";
 import { COPY } from "@/lib/copy";
 
 function SignInContent() {
@@ -14,6 +14,8 @@ function SignInContent() {
   const [state, formAction, isPending] = useActionState(signInAction, null);
   const [email, setEmail] = useState("");
   const [emailClientError, setEmailClientError] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const validateEmail = (val) => {
     const trimmed = val.trim();
@@ -110,17 +112,32 @@ function SignInContent() {
             <label htmlFor="password" className="text-xs font-semibold text-[#262626] tracking-tight">
               {COPY.auth.password}
             </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="••••••••"
-              className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-lg border text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 bg-white text-[#262626] placeholder:text-[#8E8E8E] ${passwordError
-                ? "border-[#C8323C] bg-red-50/20 focus-visible:outline-[#C8323C]"
-                : "border-[#DBDBDB] hover:border-[#737373] focus:border-[#0095F6] focus-visible:outline-[#0095F6]"
-                }`}
-            />
+            <div className="relative">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                placeholder="••••••••"
+                className={`w-full min-h-[44px] px-3.5 py-2.5 pr-10 rounded-lg border text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 bg-white text-[#262626] placeholder:text-[#8E8E8E] ${passwordError
+                  ? "border-[#C8323C] bg-red-50/20 focus-visible:outline-[#C8323C]"
+                  : "border-[#DBDBDB] hover:border-[#737373] focus:border-[#0095F6] focus-visible:outline-[#0095F6]"
+                  }`}
+              />
+              {password.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#737373] hover:text-[#262626] transition-colors p-1 rounded-md focus-visible:outline-2 focus-visible:outline-[#0095F6]"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? <EyeOff size={20} strokeWidth={1.75} /> : <Eye size={20} strokeWidth={1.75} />}
+                </button>
+              )}
+            </div>
             {passwordError && (
               <span className="text-xs font-medium text-[#C8323C] mt-0.5">
                 {passwordError}

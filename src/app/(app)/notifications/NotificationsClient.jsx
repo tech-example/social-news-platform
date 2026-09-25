@@ -6,8 +6,9 @@ import useSWR from "swr";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/format";
-import { Inbox, CheckCheck } from "lucide-react";
+import { Inbox, CheckCheck, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { deleteNotificationAction } from "@/server/actions/notifications";
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
 
@@ -38,6 +39,38 @@ export function NotificationsClient({ initialNotifications = [] }) {
     }
   };
 
+  const handleDelete = async (notificationId) => {
+    const previousNotifications = notifications;
+    const previousUnread = unreadCount;
+    const target = notifications.find((n) => n.id === notificationId);
+
+    // Optimistic UI removal
+    mutate(
+      {
+        ...data,
+        notifications: notifications.filter((n) => n.id !== notificationId),
+        unreadCount: target && !target.isRead ? Math.max(0, unreadCount - 1) : unreadCount,
+      },
+      false
+    );
+
+    try {
+      const res = await deleteNotificationAction(notificationId);
+      if (!res.ok) {
+        // Rollback on failure
+        mutate({ ...data, notifications: previousNotifications, unreadCount: previousUnread }, false);
+        addToast(res.error || "Failed to delete notification.");
+      } else {
+        addToast("Notification deleted.");
+      }
+    } catch (err) {
+      console.error("Failed to delete notification:", err);
+      // Rollback on failure
+      mutate({ ...data, notifications: previousNotifications, unreadCount: previousUnread }, false);
+      addToast("Failed to delete notification.");
+    }
+  };
+
   const renderSentence = (n) => {
     const actorName = n.actor?.display_name || n.actor?.username || "Someone";
     switch (n.type) {
@@ -52,7 +85,7 @@ export function NotificationsClient({ initialNotifications = [] }) {
       case "report_update":
         return <span>Your submitted report status was updated.</span>;
       case "moderation":
-        return <span>A moderation update was posted on your content.</span>;
+        return <span>A moderation update requires attention.</span>;
       default:
         return <span>You have a new activity notification.</span>;
     }
@@ -132,6 +165,15 @@ export function NotificationsClient({ initialNotifications = [] }) {
                     aria-label="Unread notification"
                   />
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => handleDelete(n.id)}
+                  aria-label="Delete notification"
+                  className="p-1.5 rounded-md text-[var(--ink-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors focus-visible:outline-2 focus-visible:outline-[var(--accent)] cursor-pointer"
+                >
+                  <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" />
+                </button>
               </div>
             </div>
           ))}

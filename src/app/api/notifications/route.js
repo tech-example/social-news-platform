@@ -43,13 +43,13 @@ export async function POST(request) {
     const supabase = await createUserClient();
     let query = supabase
       .from("notifications")
-      .update({ is_read: true })
-      .eq("user_id", session.user.id);
+      .update({ read_at: new Date().toISOString() })
+      .eq("recipient_id", session.user.id);
 
     if (notificationId) {
       query = query.eq("id", notificationId);
     } else {
-      query = query.eq("is_read", false);
+      query = query.is("read_at", null);
     }
 
     const { error } = await query;

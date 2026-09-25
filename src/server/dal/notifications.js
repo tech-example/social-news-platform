@@ -9,12 +9,13 @@ export async function getNotifications(userId, limit = 30, cursor = null) {
     .from("notifications")
     .select(`
       id,
-      user_id,
+      recipient_id,
       actor_id,
       type,
       post_id,
       comment_id,
-      is_read,
+      report_id,
+      read_at,
       created_at,
       actor:profiles!notifications_actor_id_fkey(
         id,
@@ -28,7 +29,7 @@ export async function getNotifications(userId, limit = 30, cursor = null) {
         image_url
       )
     `)
-    .eq("user_id", userId)
+    .eq("recipient_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -42,11 +43,13 @@ export async function getNotifications(userId, limit = 30, cursor = null) {
   const notifications = data.map((n) => ({
     id: n.id,
     type: n.type,
-    isRead: n.is_read,
+    isRead: !!n.read_at,
+    readAt: n.read_at,
     createdAt: n.created_at,
     actor: n.actor,
     post: n.post,
     commentId: n.comment_id,
+    reportId: n.report_id,
   }));
 
   const nextCursor =
@@ -64,8 +67,8 @@ export async function getUnreadNotificationCount(userId) {
   const { count, error } = await supabase
     .from("notifications")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .eq("is_read", false);
+    .eq("recipient_id", userId)
+    .is("read_at", null);
 
   if (error) return 0;
   return count || 0;

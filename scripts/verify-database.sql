@@ -18,11 +18,11 @@ from pg_type
 where typnamespace = 'public'::regnamespace and typtype = 'e'
 order by typname;
 
--- 4. Verify all RPC and statistics functions exist
+-- 4. Verify all RPC, cleanup, and statistics functions exist
 select routine_name
 from information_schema.routines
 where routine_schema = 'public'
-  and (routine_name like 'stats_%' or routine_name in ('toggle_like', 'toggle_follow', 'set_post_tags', 'report_transition', 'search_posts', 'current_role_is'))
+  and (routine_name like 'stats_%' or routine_name in ('toggle_like', 'toggle_follow', 'set_post_tags', 'report_transition', 'search_posts', 'current_role_is', 'delete_old_notifications'))
 order by routine_name;
 
 -- 5. Verify all active triggers

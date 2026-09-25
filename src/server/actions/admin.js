@@ -74,3 +74,43 @@ export async function setUserSuspendedAction(targetUserId, isSuspended, reason =
   revalidatePath("/admin/users");
   return { ok: true };
 }
+
+export async function deleteUserAction(targetUserId) {
+  const session = await requireRole("admin");
+
+  if (!targetUserId || typeof targetUserId !== "string") {
+    return { ok: false, error: "Invalid user ID." };
+  }
+
+  if (targetUserId === session.user.id) {
+    return { ok: false, error: "Administrators cannot delete their own account." };
+  }
+
+  const adminSupabase = getAdminClient();
+
+  // 1. Delete from Supabase Auth
+  const { error: authError } = await adminSupabase.auth.admin.deleteUser(targetUserId);
+
+  // 2. Cascade delete from profiles
+  const { error: profileError } = await adminSupabase
+    .from("profiles")
+    .delete()
+    .eq("id", targetUserId);
+
+  if (authError && profileError) {
+    console.error("deleteUserAction error:", authError || profileError);
+    return { ok: false, error: authError?.message || profileError?.message || "Failed to delete user." };
+  }
+
+  // 3. Audit log the deletion
+  await adminSupabase.from("audit_logs").insert({
+    actor_id: session.user.id,
+    action: "delete_user",
+    target_type: "user",
+    target_id: targetUserId,
+    details: { deletedUserId: targetUserId },
+  });
+
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
