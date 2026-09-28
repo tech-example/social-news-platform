@@ -5,6 +5,7 @@ import { getAdminClient } from "@/server/admin-client";
 import { commentSchema, shareSchema } from "@/lib/validators";
 import { revalidatePath } from "next/cache";
 import { getCommentsForPost } from "@/server/dal/posts";
+import { containsProfanity } from "@/lib/profanity";
 
 export async function toggleLikeAction(postId) {
   let session;
@@ -173,16 +174,25 @@ export async function createCommentAction(postId, body, parentId = null) {
     return { ok: false, error: parsed.error.issues[0]?.message || "Invalid comment." };
   }
 
+  const profanityCheck = containsProfanity(parsed.data.body);
+  const isFlagged = profanityCheck.flagged;
+  const flaggedReason = isFlagged ? "profanity" : null;
+
   const adminSupabase = getAdminClient();
-  const { data: newComment, error } = await adminSupabase
+
+  const insertPayload = {
+    post_id: postId,
+    author_id: session.user.id,
+    parent_id: parentId || null,
+    body: parsed.data.body,
+    status: "published",
+    is_flagged: isFlagged,
+    flagged_reason: flaggedReason,
+  };
+
+  let { data: newComment, error } = await adminSupabase
     .from("comments")
-    .insert({
-      post_id: postId,
-      author_id: session.user.id,
-      parent_id: parentId || null,
-      body: parsed.data.body,
-      status: "published",
-    })
+    .insert(insertPayload)
     .select(`
       id,
       post_id,
@@ -190,6 +200,8 @@ export async function createCommentAction(postId, body, parentId = null) {
       parent_id,
       body,
       status,
+      is_flagged,
+      flagged_reason,
       created_at,
       author:profiles!comments_author_id_fkey(
         id,
@@ -200,19 +212,57 @@ export async function createCommentAction(postId, body, parentId = null) {
     `)
     .single();
 
+  // Fallback if is_flagged column hasn't been migrated in DB yet
+  if (error && error.code === "42703") {
+    const { is_flagged, flagged_reason, ...legacyPayload } = insertPayload;
+    const retry = await adminSupabase
+      .from("comments")
+      .insert(legacyPayload)
+      .select(`
+        id,
+        post_id,
+        author_id,
+        parent_id,
+        body,
+        status,
+        created_at,
+        author:profiles!comments_author_id_fkey(
+          id,
+          username,
+          display_name,
+          avatar_url
+        )
+      `)
+      .single();
+    newComment = retry.data;
+    error = retry.error;
+  }
+
   if (error || !newComment) {
     // Fallback to simple insert if join hint fails
-    const { data: simpleComment, error: simpleError } = await adminSupabase
+    const simplePayload = {
+      post_id: postId,
+      author_id: session.user.id,
+      parent_id: parentId || null,
+      body: parsed.data.body,
+      status: "published",
+    };
+
+    let { data: simpleComment, error: simpleError } = await adminSupabase
       .from("comments")
-      .insert({
-        post_id: postId,
-        author_id: session.user.id,
-        parent_id: parentId || null,
-        body: parsed.data.body,
-        status: "published",
-      })
-      .select("id, post_id, author_id, parent_id, body, status, created_at")
+      .insert({ ...simplePayload, is_flagged: isFlagged, flagged_reason: flaggedReason })
+      .select("id, post_id, author_id, parent_id, body, status, is_flagged, created_at")
       .single();
+
+    if (simpleError && simpleError.code === "42703") {
+      const retrySimple = await adminSupabase
+        .from("comments")
+        .insert(simplePayload)
+        .select("id, post_id, author_id, parent_id, body, status, created_at")
+        .single();
+      simpleComment = retrySimple.data;
+      simpleError = retrySimple.error;
+    }
 
     if (simpleError || !simpleComment) {
       return { ok: false, error: error?.message || simpleError?.message || "Failed to post comment." };
@@ -227,6 +277,7 @@ export async function createCommentAction(postId, body, parentId = null) {
         parentId: simpleComment.parent_id,
         body: simpleComment.body,
         status: simpleComment.status,
+        isFlagged: simpleComment.is_flagged !== undefined ? !!simpleComment.is_flagged : isFlagged,
         createdAt: simpleComment.created_at,
         author: {
           id: session.profile?.id || session.user.id,
@@ -247,6 +298,7 @@ export async function createCommentAction(postId, body, parentId = null) {
       parentId: newComment.parent_id,
       body: newComment.body,
       status: newComment.status,
+      isFlagged: newComment.is_flagged !== undefined ? !!newComment.is_flagged : isFlagged,
       createdAt: newComment.created_at,
       author: newComment.author,
     },

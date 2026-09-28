@@ -8,13 +8,16 @@
     "build": "next build",
     "postbuild": "node scripts/check-secrets.mjs",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:profanity": "node --test tests/profanity/profanity.test.mjs"
   },
   "dependencies": {
+    "@sit-sandbox/thai-bad-words": "1.1.9",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.116.0",
     "browser-image-compression": "^2.0.2",
     "framer-motion": "^13.4.0",
+    "glin-profanity": "3.3.0",
     "lucide-react": "1.47.0",
     "next": "16.3.5",
     "react": "19.2.8",

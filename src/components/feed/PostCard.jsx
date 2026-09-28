@@ -10,6 +10,7 @@ import { FollowButton } from "@/components/ui/follow-button";
 import { ExternalLink, Hash, Loader2 } from "lucide-react";
 import { getCommentsAction } from "@/server/actions/interactions";
 import { useToast } from "@/components/ui/toast";
+import { ProfanityNotice } from "@/components/feed/ProfanityNotice";
 
 export function PostCard({ post, currentUserId = null }) {
   const { addToast } = useToast();
@@ -178,67 +179,75 @@ export function PostCard({ post, currentUserId = null }) {
         </div>
       </div>
 
-      {/* Media or Text Body */}
-      {currentPost.imageUrl ? (
-        <div className="relative w-full aspect-4/5 bg-[var(--surface)] max-h-[580px] overflow-hidden">
-          <Image
-            src={currentPost.imageUrl}
-            alt={currentPost.title || "Post image"}
-            fill
-            sizes="(min-width: 768px) 470px, 100vw"
-            className="object-cover"
-            unoptimized
-          />
-        </div>
-      ) : null}
-
-      {/* Content & Title */}
-      <div className="px-4 flex flex-col gap-1.5">
-        {currentPost.title && (
-          <Link href={`/p/${currentPost.id}`} className="hover:underline">
-            <h2 className="text-base font-bold text-[var(--ink)] line-clamp-2">
-              {currentPost.title}
-            </h2>
-          </Link>
-        )}
-
-        <div className="text-sm leading-snug">
-          {!currentPost.imageUrl && (
-            <span className="font-semibold mr-2 text-[var(--ink)]">{author.username}</span>
-          )}
-          <span className={expanded ? "break-words" : "line-clamp-3 break-words text-[var(--ink)]"}>
-            {renderBody(currentPost.body)}
-          </span>
-          {currentPost.body && currentPost.body.length > 140 && !expanded && (
-            <button
-              type="button"
-              className="text-[var(--ink-muted)] text-sm ml-1 hover:underline cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
-              onClick={() => setExpanded(true)}
-            >
-              more
-            </button>
-          )}
-        </div>
-
-        {/* Tags */}
-        {currentPost.tags && currentPost.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {currentPost.tags.map((tag) => {
-              const normalized = tag.toLowerCase().replace(/^#/, "");
-              return (
-                <Link
-                  key={tag}
-                  href={`/tag/${encodeURIComponent(normalized)}`}
-                  className="inline-flex items-center gap-0.5 text-xs font-medium text-[var(--accent)] hover:underline"
-                >
-                  <Hash size={12} strokeWidth={2} aria-hidden="true" className="shrink-0" />
-                  <span>{normalized}</span>
-                </Link>
-              );
-            })}
+      {/* Media and Content Body wrapped in ProfanityNotice */}
+      <ProfanityNotice
+        isFlagged={Boolean(currentPost.is_flagged)}
+        isAuthor={isAuthor}
+        contentType="post"
+        noticeClassName="mx-4 my-2"
+      >
+        {/* Media */}
+        {currentPost.imageUrl ? (
+          <div className="relative w-full aspect-4/5 bg-[var(--surface)] max-h-[580px] overflow-hidden">
+            <Image
+              src={currentPost.imageUrl}
+              alt={currentPost.title || "Post image"}
+              fill
+              sizes="(min-width: 768px) 470px, 100vw"
+              className="object-cover"
+              unoptimized
+            />
           </div>
-        )}
-      </div>
+        ) : null}
+
+        {/* Content & Title */}
+        <div className="px-4 flex flex-col gap-1.5">
+          {currentPost.title && (
+            <Link href={`/p/${currentPost.id}`} className="hover:underline">
+              <h2 className="text-base font-bold text-[var(--ink)] line-clamp-2">
+                {currentPost.title}
+              </h2>
+            </Link>
+          )}
+
+          <div className="text-sm leading-snug">
+            {!currentPost.imageUrl && (
+              <span className="font-semibold mr-2 text-[var(--ink)]">{author.username}</span>
+            )}
+            <span className={expanded ? "break-words" : "line-clamp-3 break-words text-[var(--ink)]"}>
+              {renderBody(currentPost.body)}
+            </span>
+            {currentPost.body && currentPost.body.length > 140 && !expanded && (
+              <button
+                type="button"
+                className="text-[var(--ink-muted)] text-sm ml-1 hover:underline cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
+                onClick={() => setExpanded(true)}
+              >
+                more
+              </button>
+            )}
+          </div>
+
+          {/* Tags */}
+          {currentPost.tags && currentPost.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {currentPost.tags.map((tag) => {
+                const normalized = tag.toLowerCase().replace(/^#/, "");
+                return (
+                  <Link
+                    key={tag}
+                    href={`/tag/${encodeURIComponent(normalized)}`}
+                    className="inline-flex items-center gap-0.5 text-xs font-medium text-[var(--accent)] hover:underline"
+                  >
+                    <Hash size={12} strokeWidth={2} aria-hidden="true" className="shrink-0" />
+                    <span>{normalized}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </ProfanityNotice>
 
       {/* Interactive Actions (Like, Comment, Share, Ellipsis, Edit) */}
       <div className="px-4 pt-1">
@@ -273,31 +282,41 @@ export function PostCard({ post, currentUserId = null }) {
         {/* Comments Display */}
         {displayedComments.length > 0 && (
           <div className={`mt-2 space-y-2 ${showComments ? "max-h-72 overflow-y-auto pr-1" : ""}`}>
-            {displayedComments.map((c) => (
-              <div key={c.id} className="flex items-start gap-2 text-sm leading-snug">
-                <Link
-                  href={`/u/${c.author?.username || "anonymous"}`}
-                  className="shrink-0 pt-0.5 focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)] rounded-full"
-                  title={c.author?.display_name || c.author?.username}
-                >
-                  <Avatar
-                    src={c.author?.avatar_url}
-                    alt={c.author?.display_name || c.author?.username || "User avatar"}
-                    name={c.author?.display_name || c.author?.username}
-                    size={22}
-                  />
-                </Link>
-                <div className="flex-1 min-w-0 break-words">
+            {displayedComments.map((c) => {
+              const isCommentAuthor = Boolean(currentUserId && (c.authorId === currentUserId || c.author?.id === currentUserId));
+              const isFlaggedComment = Boolean(c.is_flagged ?? c.isFlagged);
+              return (
+                <div key={c.id} className="flex items-start gap-2 text-sm leading-snug">
                   <Link
                     href={`/u/${c.author?.username || "anonymous"}`}
-                    className="font-semibold text-[var(--ink)] hover:underline mr-1.5"
+                    className="shrink-0 pt-0.5 focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)] rounded-full"
+                    title={c.author?.display_name || c.author?.username}
                   >
-                    {c.author?.username}
+                    <Avatar
+                      src={c.author?.avatar_url}
+                      alt={c.author?.display_name || c.author?.username || "User avatar"}
+                      name={c.author?.display_name || c.author?.username}
+                      size={22}
+                    />
                   </Link>
-                  <span className="text-[var(--ink)]">{c.body}</span>
+                  <div className="flex-1 min-w-0 break-words">
+                    <Link
+                      href={`/u/${c.author?.username || "anonymous"}`}
+                      className="font-semibold text-[var(--ink)] hover:underline mr-1.5"
+                    >
+                      {c.author?.username}
+                    </Link>
+                    <ProfanityNotice
+                      isFlagged={isFlaggedComment}
+                      isAuthor={isCommentAuthor}
+                      contentType="comment"
+                    >
+                      <span className="text-[var(--ink)]">{c.body}</span>
+                    </ProfanityNotice>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

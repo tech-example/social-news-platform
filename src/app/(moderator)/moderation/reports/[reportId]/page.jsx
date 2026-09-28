@@ -6,6 +6,8 @@ import { ModeratorActionPanel } from "@/components/moderation/ModeratorActionPan
 import { Badge } from "@/components/ui/badge";
 import { formatRelativeTime } from "@/lib/format";
 import { ChevronLeft, Flag, User, FileText, MessageSquare } from "lucide-react";
+import { ProfanityNotice } from "@/components/feed/ProfanityNotice";
+import { SuggestTermsDialog } from "@/components/moderation/SuggestTermsDialog";
 
 export const metadata = {
   title: "Review Report - Moderation",
@@ -97,18 +99,41 @@ export default async function ReportDetailPage({ params }) {
           </div>
 
           {/* Target Content Snapshot */}
-          <div className="p-5 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs space-y-3">
-            <h2 className="text-sm font-bold text-[var(--ink)] flex items-center gap-2">
-              {report.target_type === "post" && <FileText size={16} strokeWidth={2} aria-hidden="true" className="text-[var(--accent)]" />}
-              {report.target_type === "comment" && <MessageSquare size={16} strokeWidth={2} aria-hidden="true" className="text-[var(--accent)]" />}
-              {report.target_type === "user" && <User size={16} strokeWidth={2} aria-hidden="true" className="text-[var(--accent)]" />}
-              <span className="capitalize">Target {report.target_type} Snapshot</span>
-            </h2>
+          {(() => {
+            const contentText =
+              report.target_type === "post"
+                ? [report.targetDetails?.title, report.targetDetails?.body].filter(Boolean).join(" ")
+                : report.target_type === "comment"
+                ? report.targetDetails?.body || ""
+                : "";
 
-            {report.targetDetails ? (
+            return (
+              <div className="p-5 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <h2 className="text-sm font-bold text-[var(--ink)] flex items-center gap-2">
+                    {report.target_type === "post" && <FileText size={16} strokeWidth={2} aria-hidden="true" className="text-[var(--accent)]" />}
+                    {report.target_type === "comment" && <MessageSquare size={16} strokeWidth={2} aria-hidden="true" className="text-[var(--accent)]" />}
+                    {report.target_type === "user" && <User size={16} strokeWidth={2} aria-hidden="true" className="text-[var(--accent)]" />}
+                    <span className="capitalize">Target {report.target_type} Snapshot</span>
+                  </h2>
+
+                  {contentText && (
+                    <SuggestTermsDialog
+                      contentText={contentText}
+                      reportId={report.id}
+                      triggerLabel="Suggest terms from content"
+                    />
+                  )}
+                </div>
+
+                {report.targetDetails ? (
               <div className="p-4 rounded-lg bg-[var(--surface)] border border-[var(--line)] space-y-2 text-sm">
                 {report.target_type === "post" && (
-                  <>
+                  <ProfanityNotice
+                    isFlagged={Boolean(report.is_flagged || report.targetDetails.is_flagged)}
+                    forceUnfold={true}
+                    contentType="post"
+                  >
                     <div className="flex items-center justify-between text-xs text-[var(--ink-muted)]">
                       <span>Author: <strong>@{report.targetDetails.author?.username}</strong></span>
                       <span className="capitalize">Status: <strong>{report.targetDetails.status}</strong></span>
@@ -122,16 +147,20 @@ export default async function ReportDetailPage({ params }) {
                         Open post in new tab &rarr;
                       </Link>
                     </div>
-                  </>
+                  </ProfanityNotice>
                 )}
 
                 {report.target_type === "comment" && (
-                  <>
+                  <ProfanityNotice
+                    isFlagged={Boolean(report.is_flagged || report.targetDetails.is_flagged)}
+                    forceUnfold={true}
+                    contentType="comment"
+                  >
                     <div className="text-xs text-[var(--ink-muted)]">
                       Author: <strong>@{report.targetDetails.author?.username}</strong>
                     </div>
                     <p className="text-xs text-[var(--ink)] whitespace-pre-wrap">{report.targetDetails.body}</p>
-                  </>
+                  </ProfanityNotice>
                 )}
 
                 {report.target_type === "user" && (
@@ -149,6 +178,8 @@ export default async function ReportDetailPage({ params }) {
               </p>
             )}
           </div>
+            );
+          })()}
         </div>
 
         {/* Right Col: Moderator Action Panel */}

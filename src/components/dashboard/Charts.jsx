@@ -50,12 +50,20 @@ export function TimeseriesChart({
     );
   }
 
-  const chartData = data.map((d) => ({
-    time: d.bucket
-      ? new Date(d.bucket).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-      : d.time || "",
-    value: Number(d.value !== undefined ? d.value : d.count) || 0,
-  }));
+  const chartData = data.map((d) => {
+    const raw = d.bucket || d.day || d.time;
+    let timeStr = "";
+    if (raw) {
+      const dateObj = new Date(typeof raw === "string" && raw.length === 10 ? raw + "T00:00:00" : raw);
+      timeStr = !isNaN(dateObj.getTime())
+        ? dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        : String(raw);
+    }
+    return {
+      time: timeStr,
+      value: Number(d.value !== undefined ? d.value : d.count) || 0,
+    };
+  });
 
   return (
     <div
@@ -159,14 +167,22 @@ export function EngagementBarChart({ data = [], title = "Engagement Composition 
     );
   }
 
-  const chartData = data.map((d) => ({
-    time: d.day
-      ? new Date(d.day).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-      : d.time || "",
-    likes: Number(d.likes) || 0,
-    comments: Number(d.comments) || 0,
-    shares: Number(d.shares) || 0,
-  }));
+  const chartData = data.map((d) => {
+    const raw = d.day || d.bucket || d.time;
+    let timeStr = "";
+    if (raw) {
+      const dateObj = new Date(typeof raw === "string" && raw.length === 10 ? raw + "T00:00:00" : raw);
+      timeStr = !isNaN(dateObj.getTime())
+        ? dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        : String(raw);
+    }
+    return {
+      time: timeStr,
+      likes: Number(d.likes) || 0,
+      comments: Number(d.comments) || 0,
+      shares: Number(d.shares) || 0,
+    };
+  });
 
   return (
     <div

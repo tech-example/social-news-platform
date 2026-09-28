@@ -9,6 +9,7 @@ import { formatRelativeTime } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
 import { Trash2, CornerDownRight } from "lucide-react";
 import { LIMITS } from "@/lib/constants";
+import { ProfanityNotice } from "@/components/feed/ProfanityNotice";
 
 export function CommentThread({ postId, initialComments = [], currentUserId = null }) {
   const [comments, setComments] = useState(initialComments);
@@ -130,7 +131,13 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
                       >
                         {comment.author?.username}
                       </Link>
-                      <span className="text-[var(--ink)]">{comment.body}</span>
+                      <ProfanityNotice
+                        isFlagged={Boolean(comment.is_flagged ?? comment.isFlagged)}
+                        isAuthor={Boolean(currentUserId && (comment.authorId === currentUserId || comment.author?.id === currentUserId))}
+                        contentType="comment"
+                      >
+                        <span className="text-[var(--ink)]">{comment.body}</span>
+                      </ProfanityNotice>
                       <div className="flex items-center gap-3 mt-1 text-xs text-[var(--ink-muted)]">
                         <span suppressHydrationWarning>{formatRelativeTime(comment.createdAt)}</span>
                         {currentUserId && (
@@ -182,7 +189,13 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
                             >
                               {reply.author?.username}
                             </Link>
-                            <span className="text-[var(--ink)]">{reply.body}</span>
+                            <ProfanityNotice
+                              isFlagged={Boolean(reply.is_flagged ?? reply.isFlagged)}
+                              isAuthor={Boolean(currentUserId && (reply.authorId === currentUserId || reply.author?.id === currentUserId))}
+                              contentType="comment"
+                            >
+                              <span className="text-[var(--ink)]">{reply.body}</span>
+                            </ProfanityNotice>
                             <div className="flex items-center gap-2 mt-0.5 text-xs text-[var(--ink-muted)]">
                               <span suppressHydrationWarning>{formatRelativeTime(reply.createdAt)}</span>
                             </div>

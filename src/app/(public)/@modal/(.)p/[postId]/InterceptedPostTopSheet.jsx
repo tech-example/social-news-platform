@@ -10,6 +10,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { FollowButton } from "@/components/ui/follow-button";
 import { X, ExternalLink, Hash } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format";
+import { ProfanityNotice } from "@/components/feed/ProfanityNotice";
 
 export function InterceptedPostTopSheet({ post: initialPost, comments = [], viewerId = null }) {
   const router = useRouter();
@@ -163,51 +164,58 @@ export function InterceptedPostTopSheet({ post: initialPost, comments = [], view
 
         {/* Scrollable Content Container */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
-          {/* Post Image (if any) */}
-          {post.imageUrl && (
-            <div className="relative w-full aspect-4/3 max-h-[360px] bg-[var(--surface)] border-b border-[var(--line)]">
-              <Image
-                src={post.imageUrl}
-                alt={post.title || "Post image preview"}
-                fill
-                sizes="(min-width: 640px) 670px, 100vw"
-                className="object-contain"
-                unoptimized
-                priority
-              />
-            </div>
-          )}
-
-          {/* Post Text & Hashtags */}
-          <div className="p-4 space-y-2">
-            {post.title && (
-              <h2 className="text-base font-bold text-[var(--ink)] leading-snug">
-                {post.title}
-              </h2>
-            )}
-            <p className="text-sm text-[var(--ink)] leading-relaxed whitespace-pre-wrap">
-              {renderBodyWithLinks(post.body)}
-            </p>
-
-            {post.tags && post.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {post.tags.map((tag) => {
-                  const normalized = tag.toLowerCase().replace(/^#/, "");
-                  return (
-                    <Link
-                      key={tag}
-                      href={`/tag/${encodeURIComponent(normalized)}`}
-                      onClick={handleClose}
-                      className="inline-flex items-center gap-0.5 text-xs font-semibold text-[var(--accent)] hover:underline"
-                    >
-                      <Hash size={12} strokeWidth={2} aria-hidden="true" className="shrink-0" />
-                      <span>{normalized}</span>
-                    </Link>
-                  );
-                })}
+          <ProfanityNotice
+            isFlagged={Boolean(post.is_flagged)}
+            isAuthor={isAuthor}
+            contentType="post"
+            noticeClassName="m-4"
+          >
+            {/* Post Image (if any) */}
+            {post.imageUrl && (
+              <div className="relative w-full aspect-4/3 max-h-[360px] bg-[var(--surface)] border-b border-[var(--line)]">
+                <Image
+                  src={post.imageUrl}
+                  alt={post.title || "Post image preview"}
+                  fill
+                  sizes="(min-width: 640px) 670px, 100vw"
+                  className="object-contain"
+                  unoptimized
+                  priority
+                />
               </div>
             )}
-          </div>
+
+            {/* Post Text & Hashtags */}
+            <div className="p-4 space-y-2">
+              {post.title && (
+                <h2 className="text-base font-bold text-[var(--ink)] leading-snug">
+                  {post.title}
+                </h2>
+              )}
+              <p className="text-sm text-[var(--ink)] leading-relaxed whitespace-pre-wrap">
+                {renderBodyWithLinks(post.body)}
+              </p>
+
+              {post.tags && post.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {post.tags.map((tag) => {
+                    const normalized = tag.toLowerCase().replace(/^#/, "");
+                    return (
+                      <Link
+                        key={tag}
+                        href={`/tag/${encodeURIComponent(normalized)}`}
+                        onClick={handleClose}
+                        className="inline-flex items-center gap-0.5 text-xs font-semibold text-[var(--accent)] hover:underline"
+                      >
+                        <Hash size={12} strokeWidth={2} aria-hidden="true" className="shrink-0" />
+                        <span>{normalized}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </ProfanityNotice>
 
           {/* Action Row */}
           <div className="px-4 py-2 border-y border-[var(--line)] bg-[var(--bg)]">

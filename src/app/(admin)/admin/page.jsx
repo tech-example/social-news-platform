@@ -67,12 +67,12 @@ export const metadata = {
 // ==========================================
 // ROW 1: KPI STAT CARDS (9 cards with deltas)
 // ==========================================
-async function AdminKPISection({ range }) {
+async function AdminKPISection({ range, from, to }) {
   const [kpis, postsSeries, usersSeries, engagementSeries] = await Promise.all([
-    getAdminKPIs(range),
-    getTimeseries("posts", "day", range),
-    getTimeseries("users", "day", range),
-    getEngagementComposition("day", range),
+    getAdminKPIs(range, from, to),
+    getTimeseries("posts", "day", range, from, to),
+    getTimeseries("users", "day", range, from, to),
+    getEngagementComposition("day", range, from, to),
   ]);
 
   const postsSparkline = postsSeries.map((d) => Number(d.value || d.count) || 0);
@@ -180,12 +180,12 @@ async function AdminKPISection({ range }) {
 // ==========================================
 // ROW 2: GROWTH & ACTIVITY CHARTS
 // ==========================================
-async function AdminGrowthChartsSection({ range, bucket }) {
+async function AdminGrowthChartsSection({ range, bucket, from, to }) {
   const [usersSeries, postsSeries, engagementSeries, dauSeries] = await Promise.all([
-    getTimeseries("users", bucket, range),
-    getTimeseries("posts", bucket, range),
-    getEngagementComposition(bucket, range),
-    getTimeseries("active_users", bucket, range),
+    getTimeseries("users", bucket, range, from, to),
+    getTimeseries("posts", bucket, range, from, to),
+    getEngagementComposition(bucket, range, from, to),
+    getTimeseries("active_users", bucket, range, from, to),
   ]);
 
   return (
@@ -223,12 +223,12 @@ async function AdminGrowthChartsSection({ range, bucket }) {
 // ==========================================
 // ROW 3: CONTENT PERFORMANCE & MIX
 // ==========================================
-async function AdminContentPerformanceSection({ range }) {
+async function AdminContentPerformanceSection({ range, from, to }) {
   const [topPosts, topUsers, topTags, contentMix] = await Promise.all([
-    getTopPosts(5, range),
-    getTopUsers(5, range),
-    getTopTags(5, range),
-    getContentMix(range),
+    getTopPosts(5, range, from, to),
+    getTopUsers(5, range, from, to),
+    getTopTags(5, range, from, to),
+    getContentMix(range, from, to),
   ]);
 
   return (
@@ -375,13 +375,13 @@ async function AdminContentPerformanceSection({ range }) {
 // ==========================================
 // ROW 4: MODERATION & SAFETY
 // ==========================================
-async function AdminModerationSafetySection({ range }) {
+async function AdminModerationSafetySection({ range, from, to }) {
   const [reportsStatus, reportsReason, resolutionTime, moderatorWorkload, recentAudit] =
     await Promise.all([
-      getReportsByStatus(range),
-      getReportsByReason(range),
-      getModerationResolutionTime(range),
-      getModeratorWorkload(range),
+      getReportsByStatus(range, from, to),
+      getReportsByReason(range, from, to),
+      getModerationResolutionTime(range, from, to),
+      getModeratorWorkload(range, from, to),
       getRecentAuditLogs(5),
     ]);
 
@@ -486,10 +486,10 @@ async function AdminModerationSafetySection({ range }) {
 // ==========================================
 // ROW 5: SEARCH & DISCOVERY
 // ==========================================
-async function AdminSearchDiscoverySection({ range, bucket }) {
+async function AdminSearchDiscoverySection({ range, bucket, from, to }) {
   const [searchAnalytics, followsSeries, followerDist] = await Promise.all([
-    getSearchAnalytics(6, range),
-    getTimeseries("follows", bucket, range),
+    getSearchAnalytics(6, range, from, to),
+    getTimeseries("follows", bucket, range, from, to),
     getFollowerDistribution(),
   ]);
 
@@ -694,8 +694,8 @@ async function AdminGovernanceSecuritySection() {
 // ==========================================
 // IMPACT PANEL WIDGET (B1-B6 + Heatmap)
 // ==========================================
-async function AdminImpactSection({ range }) {
-  const heatmapData = await getPostingHeatmap(range);
+async function AdminImpactSection({ range, from, to }) {
+  const heatmapData = await getPostingHeatmap(range, from, to);
   return <BenefitsPanel heatmapData={heatmapData} />;
 }
 
@@ -706,6 +706,8 @@ export default async function AdminDashboardPage({ searchParams }) {
   await requireRole("admin");
   const resolvedParams = await searchParams;
   const range = resolvedParams?.range || "30d";
+  const from = resolvedParams?.from || null;
+  const to = resolvedParams?.to || null;
   const bucket =
     resolvedParams?.bucket ||
     (range === "today" ? "day" : range === "90d" ? "week" : "day");
@@ -733,8 +735,8 @@ export default async function AdminDashboardPage({ searchParams }) {
       <DashboardControls isAdmin={true} showBucket={true} showCompare={true} />
 
       {/* Section: Expected Benefits (B1–B6) & Impact Mapping */}
-      <Suspense fallback={<TableSkeleton rows={3} cols={3} standalone={false} />}>
-        <AdminImpactSection range={range} />
+      <Suspense key={`impact-${range}-${from}-${to}`} fallback={<TableSkeleton rows={3} cols={3} standalone={false} />}>
+        <AdminImpactSection range={range} from={from} to={to} />
       </Suspense>
 
       {/* ROW 1: KPI Stat Cards */}
@@ -743,6 +745,7 @@ export default async function AdminDashboardPage({ searchParams }) {
           Row 1 · Executive Key Performance Indicators
         </h2>
         <Suspense
+          key={`kpi-${range}-${from}-${to}`}
           fallback={
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-3">
               {Array.from({ length: 9 }).map((_, i) => (
@@ -751,7 +754,7 @@ export default async function AdminDashboardPage({ searchParams }) {
             </div>
           }
         >
-          <AdminKPISection range={range} />
+          <AdminKPISection range={range} from={from} to={to} />
         </Suspense>
       </div>
 
@@ -761,6 +764,7 @@ export default async function AdminDashboardPage({ searchParams }) {
           Row 2 · Growth & Platform Activity
         </h2>
         <Suspense
+          key={`growth-${range}-${bucket}-${from}-${to}`}
           fallback={
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -769,7 +773,7 @@ export default async function AdminDashboardPage({ searchParams }) {
             </div>
           }
         >
-          <AdminGrowthChartsSection range={range} bucket={bucket} />
+          <AdminGrowthChartsSection range={range} bucket={bucket} from={from} to={to} />
         </Suspense>
       </div>
 
@@ -779,6 +783,7 @@ export default async function AdminDashboardPage({ searchParams }) {
           Row 3 · Content Performance & Mix
         </h2>
         <Suspense
+          key={`content-${range}-${from}-${to}`}
           fallback={
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <div className="lg:col-span-5"><TableSkeleton rows={5} cols={5} standalone={false} /></div>
@@ -787,7 +792,7 @@ export default async function AdminDashboardPage({ searchParams }) {
             </div>
           }
         >
-          <AdminContentPerformanceSection range={range} />
+          <AdminContentPerformanceSection range={range} from={from} to={to} />
         </Suspense>
       </div>
 
@@ -797,6 +802,7 @@ export default async function AdminDashboardPage({ searchParams }) {
           Row 4 · Moderation & Platform Safety
         </h2>
         <Suspense
+          key={`moderation-${range}-${from}-${to}`}
           fallback={
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />
@@ -806,7 +812,7 @@ export default async function AdminDashboardPage({ searchParams }) {
             </div>
           }
         >
-          <AdminModerationSafetySection range={range} />
+          <AdminModerationSafetySection range={range} from={from} to={to} />
         </Suspense>
       </div>
 
@@ -816,6 +822,7 @@ export default async function AdminDashboardPage({ searchParams }) {
           Row 5 · Search & Discovery
         </h2>
         <Suspense
+          key={`search-${range}-${bucket}-${from}-${to}`}
           fallback={
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <TableSkeleton rows={5} cols={3} standalone={false} />
@@ -824,7 +831,7 @@ export default async function AdminDashboardPage({ searchParams }) {
             </div>
           }
         >
-          <AdminSearchDiscoverySection range={range} bucket={bucket} />
+          <AdminSearchDiscoverySection range={range} bucket={bucket} from={from} to={to} />
         </Suspense>
       </div>
 

@@ -10,6 +10,7 @@ import {
   User,
   Menu,
   ShieldCheck,
+  ShieldAlert,
   LayoutDashboard,
   Settings,
   LogIn,
@@ -243,19 +244,34 @@ export function AppShell({ children, session = null }) {
 
                   {/* Show Admin Dashboard only if admin */}
                   {isAdmin && (
-                    <Link
-                      href="/admin"
-                      onClick={() => setMoreOpen(false)}
-                      className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
-                    >
-                      <LayoutDashboard
-                        size={18}
-                        strokeWidth={1.75}
-                        aria-hidden="true"
-                        className="text-[var(--ink)]"
-                      />
-                      <span>Admin Dashboard</span>
-                    </Link>
+                    <>
+                      <Link
+                        href="/admin"
+                        onClick={() => setMoreOpen(false)}
+                        className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
+                      >
+                        <LayoutDashboard
+                          size={18}
+                          strokeWidth={1.75}
+                          aria-hidden="true"
+                          className="text-[var(--ink)]"
+                        />
+                        <span>Admin Dashboard</span>
+                      </Link>
+                      <Link
+                        href="/admin/profanity"
+                        onClick={() => setMoreOpen(false)}
+                        className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
+                      >
+                        <ShieldAlert
+                          size={18}
+                          strokeWidth={1.75}
+                          aria-hidden="true"
+                          className="text-[var(--ink)]"
+                        />
+                        <span>Profanity Filter</span>
+                      </Link>
+                    </>
                   )}
 
                   <div className="my-1 border-t border-[var(--line)]" />
@@ -363,14 +379,24 @@ export function AppShell({ children, session = null }) {
                 </Link>
               )}
               {isAdmin && (
-                <Link
-                  href="/admin"
-                  onClick={() => setMoreOpen(false)}
-                  className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)]"
-                >
-                  <LayoutDashboard size={18} strokeWidth={1.75} aria-hidden="true" />
-                  <span>Admin Dashboard</span>
-                </Link>
+                <>
+                  <Link
+                    href="/admin"
+                    onClick={() => setMoreOpen(false)}
+                    className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)]"
+                  >
+                    <LayoutDashboard size={18} strokeWidth={1.75} aria-hidden="true" />
+                    <span>Admin Dashboard</span>
+                  </Link>
+                  <Link
+                    href="/admin/profanity"
+                    onClick={() => setMoreOpen(false)}
+                    className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)]"
+                  >
+                    <ShieldAlert size={18} strokeWidth={1.75} aria-hidden="true" />
+                    <span>Profanity Filter</span>
+                  </Link>
+                </>
               )}
               <div className="border-t border-[var(--line)] my-1" />
               <form action={signOutAction} className="w-full">

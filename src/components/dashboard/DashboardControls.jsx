@@ -54,15 +54,85 @@ export function DashboardControls({
     { id: "month", label: "Month" },
   ];
 
-  const updateParam = (key, value) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (value === null || value === undefined) {
-      params.delete(key);
+  // Calculate from & to ISO timestamps based on selected range preset
+  const calculateDatesForRange = (rangeId) => {
+    const now = new Date();
+    let from = new Date();
+
+    if (rangeId === "today") {
+      from.setHours(0, 0, 0, 0);
+    } else if (rangeId === "7d") {
+      from.setDate(now.getDate() - 7);
+    } else if (rangeId === "90d") {
+      from.setDate(now.getDate() - 90);
     } else {
-      params.set(key, value);
+      // 30d default
+      from.setDate(now.getDate() - 30);
     }
+
+    return {
+      from: from.toISOString(),
+      to: now.toISOString(),
+    };
+  };
+
+  const handleRangeChange = (rangeId) => {
+    const params = new URLSearchParams(searchParams.toString());
+    const { from, to } = calculateDatesForRange(rangeId);
+
+    params.set("range", rangeId);
+    params.set("from", from);
+    params.set("to", to);
+
+    // Sensible default bucket for the range if not compatible or not set
+    const currentB = params.get("bucket");
+    if (rangeId === "today") {
+      params.set("bucket", "day");
+    } else if (rangeId === "90d" && currentB === "day") {
+      params.set("bucket", "week");
+    } else if (!currentB) {
+      params.set("bucket", rangeId === "90d" ? "week" : "day");
+    }
+
     startTransition(() => {
-      router.push(`${pathname}?${params.toString()}`);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    });
+  };
+
+  const handleBucketChange = (bucketId) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("bucket", bucketId);
+
+    // If from and to aren't present yet, populate them based on current range
+    if (!params.get("from") || !params.get("to")) {
+      const { from, to } = calculateDatesForRange(currentRange);
+      params.set("range", currentRange);
+      params.set("from", from);
+      params.set("to", to);
+    }
+
+    startTransition(() => {
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    });
+  };
+
+  const handleCompareChange = (checked) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (checked) {
+      params.set("compare", "1");
+    } else {
+      params.delete("compare");
+    }
+
+    if (!params.get("from") || !params.get("to")) {
+      const { from, to } = calculateDatesForRange(currentRange);
+      params.set("range", currentRange);
+      params.set("from", from);
+      params.set("to", to);
+    }
+
+    startTransition(() => {
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     });
   };
 
@@ -98,8 +168,8 @@ export function DashboardControls({
               <button
                 key={r.id}
                 type="button"
-                onClick={() => updateParam("range", r.id)}
-                className={`px-2.5 py-1 rounded transition-colors text-xs ${
+                onClick={() => handleRangeChange(r.id)}
+                className={`px-2.5 py-1 rounded transition-colors text-xs cursor-pointer ${
                   isActive
                     ? "bg-[var(--surface-strong)] text-[var(--ink)] font-semibold shadow-2xs"
                     : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
@@ -124,8 +194,8 @@ export function DashboardControls({
                 <button
                   key={b.id}
                   type="button"
-                  onClick={() => updateParam("bucket", b.id)}
-                  className={`px-2 py-1 rounded transition-colors text-xs ${
+                  onClick={() => handleBucketChange(b.id)}
+                  className={`px-2 py-1 rounded transition-colors text-xs cursor-pointer ${
                     isActive
                       ? "bg-[var(--surface-strong)] text-[var(--ink)] font-semibold shadow-2xs"
                       : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
@@ -144,7 +214,7 @@ export function DashboardControls({
             <input
               type="checkbox"
               checked={compareEnabled}
-              onChange={(e) => updateParam("compare", e.target.checked ? "1" : "0")}
+              onChange={(e) => handleCompareChange(e.target.checked)}
               className="rounded border-[var(--line)] text-[var(--accent)] focus:ring-[var(--accent-bright)]"
             />
             <span className="font-medium">Compare period</span>

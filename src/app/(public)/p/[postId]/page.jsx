@@ -7,8 +7,9 @@ import { Avatar } from "@/components/ui/avatar";
 import { InteractiveActions } from "@/components/feed/InteractiveActions";
 import { CommentThread } from "@/components/feed/CommentThread";
 import { FollowButton } from "@/components/ui/follow-button";
-import { ChevronLeft, Hash } from "lucide-react";
+import { ChevronLeft, Hash, ShieldAlert } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format";
+import { ProfanityNotice } from "@/components/feed/ProfanityNotice";
 
 export async function generateMetadata({ params }) {
   const { postId } = await params;
@@ -101,13 +102,22 @@ export default async function PostDetailPage({ params }) {
               />
             </div>
           ) : (
-            <div className="p-8 max-w-lg text-center flex flex-col items-center justify-center gap-3">
-              {post.title && (
-                <h1 className="text-2xl font-bold text-[var(--ink)]">{post.title}</h1>
-              )}
-              <p className="text-sm text-[var(--ink)] leading-relaxed whitespace-pre-wrap">
-                {renderBodyWithLinks(post.body)}
-              </p>
+            <div className="p-8 max-w-lg w-full text-center flex flex-col items-center justify-center">
+              <ProfanityNotice
+                isFlagged={Boolean(post.is_flagged)}
+                isAuthor={isAuthor}
+                contentType="post"
+                className="w-full"
+              >
+                <div className="flex flex-col items-center justify-center gap-3">
+                  {post.title && (
+                    <h1 className="text-2xl font-bold text-[var(--ink)]">{post.title}</h1>
+                  )}
+                  <p className="text-sm text-[var(--ink)] leading-relaxed whitespace-pre-wrap">
+                    {renderBodyWithLinks(post.body)}
+                  </p>
+                </div>
+              </ProfanityNotice>
             </div>
           )}
         </div>
@@ -143,39 +153,49 @@ export default async function PostDetailPage({ params }) {
               )}
             </div>
 
-            {post.createdAt && (
-              <span className="text-xs text-[var(--ink-muted)] shrink-0" suppressHydrationWarning>
-                {formatRelativeTime(post.createdAt)}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {post.createdAt && (
+                <span className="text-xs text-[var(--ink-muted)] shrink-0" suppressHydrationWarning>
+                  {formatRelativeTime(post.createdAt)}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Post Caption + Hashtags (if image exists) */}
           {post.imageUrl && (
-            <div className="p-4 border-b border-[var(--line)] space-y-2 bg-[var(--surface)]">
-              {post.title && (
-                <h2 className="text-sm font-bold text-[var(--ink)]">{post.title}</h2>
-              )}
-              <p className="text-sm text-[var(--ink)] whitespace-pre-wrap">
-                {renderBodyWithLinks(post.body)}
-              </p>
-              {post.tags && post.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {post.tags.map((tag) => {
-                    const normalized = tag.toLowerCase().replace(/^#/, "");
-                    return (
-                      <Link
-                        key={tag}
-                        href={`/tag/${encodeURIComponent(normalized)}`}
-                        className="inline-flex items-center gap-0.5 text-xs font-medium text-[var(--accent)] hover:underline"
-                      >
-                        <Hash size={12} strokeWidth={2} aria-hidden="true" className="shrink-0" />
-                        <span>{normalized}</span>
-                      </Link>
-                    );
-                  })}
+            <div className="p-4 border-b border-[var(--line)] bg-[var(--surface)]">
+              <ProfanityNotice
+                isFlagged={Boolean(post.is_flagged)}
+                isAuthor={isAuthor}
+                contentType="post"
+              >
+                <div className="space-y-2">
+                  {post.title && (
+                    <h2 className="text-sm font-bold text-[var(--ink)]">{post.title}</h2>
+                  )}
+                  <p className="text-sm text-[var(--ink)] whitespace-pre-wrap">
+                    {renderBodyWithLinks(post.body)}
+                  </p>
+                  {post.tags && post.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {post.tags.map((tag) => {
+                        const normalized = tag.toLowerCase().replace(/^#/, "");
+                        return (
+                          <Link
+                            key={tag}
+                            href={`/tag/${encodeURIComponent(normalized)}`}
+                            className="inline-flex items-center gap-0.5 text-xs font-medium text-[var(--accent)] hover:underline"
+                          >
+                            <Hash size={12} strokeWidth={2} aria-hidden="true" className="shrink-0" />
+                            <span>{normalized}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
+              </ProfanityNotice>
             </div>
           )}
 

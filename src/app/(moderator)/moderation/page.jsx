@@ -38,8 +38,8 @@ export const metadata = {
 };
 
 // 1. KPI Cards Widget
-async function ModeratorKPIsWidget({ range }) {
-  const kpis = await getModeratorKPIs(range);
+async function ModeratorKPIsWidget({ range, from, to }) {
+  const kpis = await getModeratorKPIs(range, from, to);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -72,8 +72,8 @@ async function ModeratorKPIsWidget({ range }) {
 }
 
 // 2. Reports Over Time Widget
-async function ReportsTimeseriesWidget({ range, bucket }) {
-  const data = await getTimeseries("reports", bucket, range);
+async function ReportsTimeseriesWidget({ range, bucket, from, to }) {
+  const data = await getTimeseries("reports", bucket, range, from, to);
   return (
     <TimeseriesChart
       data={data}
@@ -86,8 +86,8 @@ async function ReportsTimeseriesWidget({ range, bucket }) {
 }
 
 // 3. Reports By Status Donut Widget
-async function ReportsStatusWidget({ range }) {
-  const data = await getReportsByStatus(range);
+async function ReportsStatusWidget({ range, from, to }) {
+  const data = await getReportsByStatus(range, from, to);
   return (
     <DonutChart
       data={data}
@@ -98,8 +98,8 @@ async function ReportsStatusWidget({ range }) {
 }
 
 // 4. Reports By Reason Horizontal Bar Widget
-async function ReportsReasonWidget({ range }) {
-  const data = await getReportsByReason(range);
+async function ReportsReasonWidget({ range, from, to }) {
+  const data = await getReportsByReason(range, from, to);
   return (
     <HorizontalBarChart
       data={data}
@@ -126,6 +126,8 @@ export default async function ModerationDashboardPage({ searchParams }) {
   await requireRole("moderator");
   const resolvedParams = await searchParams;
   const range = resolvedParams?.range || "30d";
+  const from = resolvedParams?.from || null;
+  const to = resolvedParams?.to || null;
   const bucket =
     resolvedParams?.bucket ||
     (range === "today" ? "day" : range === "90d" ? "week" : "day");
@@ -163,6 +165,7 @@ export default async function ModerationDashboardPage({ searchParams }) {
 
       {/* Row 1: KPI Stat Cards */}
       <Suspense
+        key={`kpis-${range}-${from}-${to}`}
         fallback={
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatCardSkeleton standalone={false} />
@@ -171,21 +174,21 @@ export default async function ModerationDashboardPage({ searchParams }) {
           </div>
         }
       >
-        <ModeratorKPIsWidget range={range} />
+        <ModeratorKPIsWidget range={range} from={from} to={to} />
       </Suspense>
 
       {/* Row 2: Charts (Timeseries + Donut + Reason Bars) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Suspense fallback={<ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />}>
-          <ReportsTimeseriesWidget range={range} bucket={bucket} />
+        <Suspense key={`reports-ts-${range}-${bucket}-${from}-${to}`} fallback={<ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />}>
+          <ReportsTimeseriesWidget range={range} bucket={bucket} from={from} to={to} />
         </Suspense>
 
-        <Suspense fallback={<ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />}>
-          <ReportsStatusWidget range={range} />
+        <Suspense key={`reports-status-${range}-${from}-${to}`} fallback={<ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />}>
+          <ReportsStatusWidget range={range} from={from} to={to} />
         </Suspense>
 
-        <Suspense fallback={<ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />}>
-          <ReportsReasonWidget range={range} />
+        <Suspense key={`reports-reason-${range}-${from}-${to}`} fallback={<ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />}>
+          <ReportsReasonWidget range={range} from={from} to={to} />
         </Suspense>
       </div>
 

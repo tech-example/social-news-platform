@@ -1,6 +1,7 @@
 import "server-only";
 import { createUserClient } from "@/server/supabase";
 import { getAdminClient } from "@/server/admin-client";
+import { containsProfanity } from "@/lib/profanity";
 
 export async function getFeedPosts({
   cursor = null,
@@ -26,6 +27,8 @@ export async function getFeedPosts({
         body: p.body,
         imageUrl: p.image_url,
         status: p.status,
+        is_flagged: p.is_flagged !== undefined && p.is_flagged !== null ? !!p.is_flagged : containsProfanity((p.title || "") + " " + (p.body || "")).flagged,
+        flagged_reason: p.flagged_reason || (containsProfanity((p.title || "") + " " + (p.body || "")).flagged ? "profanity" : null),
         likesCount: p.likes_count || 0,
         commentsCount: p.comments_count || 0,
         sharesCount: p.shares_count || 0,
@@ -185,6 +188,8 @@ export async function getFeedPosts({
           id: c.id,
           postId: c.post_id,
           body: c.body,
+          is_flagged: c.is_flagged !== undefined && c.is_flagged !== null ? !!c.is_flagged : containsProfanity(c.body || "").flagged,
+          isFlagged: c.is_flagged !== undefined && c.is_flagged !== null ? !!c.is_flagged : containsProfanity(c.body || "").flagged,
           createdAt: c.created_at,
           author: c.author,
         });
@@ -198,6 +203,8 @@ export async function getFeedPosts({
     body: post.body,
     imageUrl: post.image_url,
     status: post.status,
+    is_flagged: post.is_flagged !== undefined && post.is_flagged !== null ? !!post.is_flagged : containsProfanity((post.title || "") + " " + (post.body || "")).flagged,
+    flagged_reason: post.flagged_reason || (containsProfanity((post.title || "") + " " + (post.body || "")).flagged ? "profanity" : null),
     likesCount: post.likes_count || 0,
     commentsCount: post.comments_count || 0,
     sharesCount: post.shares_count || 0,
@@ -286,6 +293,8 @@ export async function getPostById(postId, viewerId = null) {
     body: post.body,
     imageUrl: post.image_url,
     status: post.status,
+    is_flagged: post.is_flagged !== undefined && post.is_flagged !== null ? !!post.is_flagged : containsProfanity((post.title || "") + " " + (post.body || "")).flagged,
+    flagged_reason: post.flagged_reason || (containsProfanity((post.title || "") + " " + (post.body || "")).flagged ? "profanity" : null),
     likesCount: post.likes_count || 0,
     commentsCount: post.comments_count || 0,
     sharesCount: post.shares_count || 0,
@@ -330,6 +339,9 @@ export async function getCommentsForPost(postId, viewerId = null) {
     userId: c.author_id,
     parentId: c.parent_id,
     body: c.body,
+    is_flagged: c.is_flagged !== undefined && c.is_flagged !== null ? !!c.is_flagged : containsProfanity(c.body || "").flagged,
+    isFlagged: c.is_flagged !== undefined && c.is_flagged !== null ? !!c.is_flagged : containsProfanity(c.body || "").flagged,
+    flaggedReason: c.flagged_reason || (containsProfanity(c.body || "").flagged ? "profanity" : null),
     createdAt: c.created_at,
     author: c.author,
     isOwner: viewerId ? c.author_id === viewerId : false,

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { formatRelativeTime } from "@/lib/format";
-import { Eye, FileText, MessageSquare } from "lucide-react";
+import { Eye, FileText, MessageSquare, ShieldAlert } from "lucide-react";
 
 export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComments: initialComments = [] }) {
   const { addToast } = useToast();
@@ -92,6 +92,14 @@ export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComm
                     <TableCell className="text-xs max-w-md">
                       {p.title && <strong className="block text-[var(--ink)]">{p.title}</strong>}
                       <span className="text-[var(--ink-muted)] line-clamp-2">{p.body}</span>
+                      {p.is_flagged && (
+                        <div className="mt-1">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[var(--surface-strong)] text-[var(--warning)] border border-[var(--line)]">
+                            <ShieldAlert size={10} strokeWidth={2} aria-hidden="true" />
+                            <span>Flagged for language</span>
+                          </span>
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="text-xs text-[var(--ink-muted)]" suppressHydrationWarning>
                       {formatRelativeTime(p.created_at)}
@@ -137,8 +145,16 @@ export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComm
                     <TableCell className="text-xs font-semibold">
                       @{c.author?.username || "anonymous"}
                     </TableCell>
-                    <TableCell className="text-xs text-[var(--ink)] max-w-md line-clamp-2">
-                      {c.body}
+                    <TableCell className="text-xs max-w-md">
+                      <span className="text-[var(--ink)]">{c.body}</span>
+                      {c.is_flagged && (
+                        <div className="mt-1">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[var(--surface-strong)] text-[var(--warning)] border border-[var(--line)]">
+                            <ShieldAlert size={10} strokeWidth={2} aria-hidden="true" />
+                            <span>Flagged for language</span>
+                          </span>
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="text-xs text-[var(--ink-muted)]" suppressHydrationWarning>
                       {formatRelativeTime(c.created_at)}

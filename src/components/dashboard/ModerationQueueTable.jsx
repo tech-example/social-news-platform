@@ -9,6 +9,7 @@ import { useCurrentTimestamp } from "@/lib/use-mounted";
 
 export function ModerationQueueTable({ reports = [], now: propNow }) {
   const [sortOrder, setSortOrder] = useState("newest"); // "newest" | "oldest"
+  const [filterFlagged, setFilterFlagged] = useState(false);
   const clientNow = useCurrentTimestamp();
   const now = propNow || clientNow;
 
@@ -17,6 +18,13 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
     const timeB = new Date(b.created_at).getTime();
     return sortOrder === "newest" ? timeB - timeA : timeA - timeB;
   });
+
+  const displayedReports = sortedReports.filter((r) => {
+    if (filterFlagged) return Boolean(r.is_flagged);
+    return true;
+  });
+
+  const flaggedCount = reports.filter((r) => r.is_flagged).length;
 
   const isOverdue = (createdAt, status) => {
     if (!now || (status !== "pending" && status !== "in_review")) return false;
@@ -43,7 +51,7 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
 
   return (
     <div className="border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs space-y-4">
-      {/* Header with Title, Count, and Sort Toggle */}
+      {/* Header with Title, Count, Filter and Sort Toggle */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
@@ -55,7 +63,19 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {flaggedCount > 0 && (
+            <Button
+              variant={filterFlagged ? "primary" : "secondary"}
+              size="sm"
+              onClick={() => setFilterFlagged(!filterFlagged)}
+              className="text-xs h-8 px-2.5 flex items-center gap-1.5"
+            >
+              <ShieldAlert size={13} strokeWidth={2} aria-hidden="true" />
+              <span>{filterFlagged ? `Flagged Only (${flaggedCount})` : `Filter Flagged (${flaggedCount})`}</span>
+            </Button>
+          )}
+
           <Button
             variant="secondary"
             size="sm"
@@ -76,10 +96,16 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
         </div>
       </div>
 
-      {sortedReports.length === 0 ? (
+      {displayedReports.length === 0 ? (
         <div className="py-12 text-center text-sm text-[var(--ink-muted)] space-y-1">
-          <p className="font-semibold text-[var(--ink)]">No pending reports in the queue</p>
-          <p className="text-xs">All content reports have been reviewed. Queue is clear.</p>
+          <p className="font-semibold text-[var(--ink)]">
+            {filterFlagged ? "No flagged reports in the queue" : "No pending reports in the queue"}
+          </p>
+          <p className="text-xs">
+            {filterFlagged
+              ? "None of the pending reports target content flagged for inappropriate language."
+              : "All content reports have been reviewed. Queue is clear."}
+          </p>
         </div>
       ) : (
         <>
@@ -97,7 +123,7 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--line)]">
-                {sortedReports.map((r) => {
+                {displayedReports.map((r) => {
                   const overdue = isOverdue(r.created_at, r.status);
                   return (
                     <tr
@@ -107,7 +133,15 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
                       }`}
                     >
                       <td className="py-3 px-3 font-semibold capitalize text-[var(--ink)]">
-                        {r.target_type}
+                        <div className="inline-flex items-center gap-1.5 flex-wrap">
+                          <span>{r.target_type}</span>
+                          {r.is_flagged && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[var(--surface-strong)] text-[var(--warning)] border border-[var(--line)]">
+                              <ShieldAlert size={10} strokeWidth={2} aria-hidden="true" />
+                              <span>Flagged</span>
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-3">
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-[var(--surface-strong)] text-[var(--danger)] capitalize">
@@ -153,7 +187,7 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
 
           {/* Mobile Stacked Cards (< 768px per section 8.3) */}
           <div className="md:hidden space-y-3">
-            {sortedReports.map((r) => {
+            {displayedReports.map((r) => {
               const overdue = isOverdue(r.created_at, r.status);
               return (
                 <div
@@ -163,9 +197,17 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-[var(--ink)] capitalize">
-                      {r.target_type} Report
-                    </span>
+                    <div className="inline-flex items-center gap-1.5">
+                      <span className="font-bold text-[var(--ink)] capitalize">
+                        {r.target_type} Report
+                      </span>
+                      {r.is_flagged && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[var(--surface-strong)] text-[var(--warning)] border border-[var(--line)]">
+                          <ShieldAlert size={10} strokeWidth={2} aria-hidden="true" />
+                          <span>Flagged</span>
+                        </span>
+                      )}
+                    </div>
                     <Badge variant={getStatusVariant(r.status)} size="sm">
                       {r.status?.replace("_", " ")}
                     </Badge>

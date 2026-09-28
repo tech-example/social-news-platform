@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/server/auth";
 import { createUserClient } from "@/server/supabase";
 import { postSchema } from "@/lib/validators";
+import { containsProfanity } from "@/lib/profanity";
 
 export async function createPostAction(input) {
   const session = await requireRole("user");
@@ -13,19 +14,36 @@ export async function createPostAction(input) {
   }
 
   const { title, body, imageUrl, tags } = parsed.data;
+  const titleCheck = containsProfanity(title || "");
+  const bodyCheck = containsProfanity(body || "");
+  const isFlagged = titleCheck.flagged || bodyCheck.flagged;
+  const flaggedReason = isFlagged ? "profanity" : null;
+
   const supabase = await createUserClient();
 
-  const { data: newPost, error: postError } = await supabase
+  const insertPayload = {
+    author_id: session.user.id,
+    title: title || null,
+    body,
+    image_url: imageUrl || null,
+    status: "published",
+    is_flagged: isFlagged,
+    flagged_reason: flaggedReason,
+  };
+
+  let { data: newPost, error: postError } = await supabase
     .from("posts")
-    .insert({
-      author_id: session.user.id,
-      title: title || null,
-      body,
-      image_url: imageUrl || null,
-      status: "published",
-    })
+    .insert(insertPayload)
     .select("id")
     .single();
+
+  // Graceful fallback if is_flagged column hasn't been migrated in DB yet
+  if (postError && postError.code === "42703") {
+    const { is_flagged, flagged_reason, ...legacyPayload } = insertPayload;
+    const retry = await supabase.from("posts").insert(legacyPayload).select("id").single();
+    newPost = retry.data;
+    postError = retry.error;
+  }
 
   if (postError || !newPost) {
     return { ok: false, error: postError?.message || "Failed to create post." };
@@ -44,7 +62,7 @@ export async function createPostAction(input) {
   revalidatePath("/");
   revalidatePath("/explore");
   revalidatePath(`/u/${session.profile.username}`);
-  return { ok: true, postId: newPost.id };
+  return { ok: true, postId: newPost.id, isFlagged };
 }
 
 export async function editPostAction(postId, input) {
@@ -56,6 +74,11 @@ export async function editPostAction(postId, input) {
   }
 
   const { title, body, imageUrl, tags } = parsed.data;
+  const titleCheck = containsProfanity(title || "");
+  const bodyCheck = containsProfanity(body || "");
+  const isFlagged = titleCheck.flagged || bodyCheck.flagged;
+  const flaggedReason = isFlagged ? "profanity" : null;
+
   const supabase = await createUserClient();
 
   // Verify ownership
@@ -70,15 +93,26 @@ export async function editPostAction(postId, input) {
     return { ok: false, error: "You are not authorized to edit this post." };
   }
 
-  const { error: updateError } = await supabase
+  const updatePayload = {
+    title: title || null,
+    body,
+    image_url: imageUrl || null,
+    updated_at: new Date().toISOString(),
+    is_flagged: isFlagged,
+    flagged_reason: flaggedReason,
+  };
+
+  let { error: updateError } = await supabase
     .from("posts")
-    .update({
-      title: title || null,
-      body,
-      image_url: imageUrl || null,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq("id", postId);
+
+  // Graceful fallback if is_flagged column hasn't been migrated in DB yet
+  if (updateError && updateError.code === "42703") {
+    const { is_flagged, flagged_reason, ...legacyPayload } = updatePayload;
+    const retry = await supabase.from("posts").update(legacyPayload).eq("id", postId);
+    updateError = retry.error;
+  }
 
   if (updateError) {
     return { ok: false, error: updateError.message || "Failed to update post." };

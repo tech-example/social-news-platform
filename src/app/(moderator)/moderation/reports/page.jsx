@@ -5,7 +5,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/format";
-import { ShieldCheck, ChevronLeft } from "lucide-react";
+import { ShieldCheck, ChevronLeft, ShieldAlert } from "lucide-react";
 
 export const metadata = {
   title: "Reports Queue - Moderation",
@@ -117,7 +117,15 @@ export default async function ReportsQueuePage({ searchParams }) {
               {reports.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-semibold capitalize text-xs">
-                    {r.target_type}
+                    <div className="inline-flex items-center gap-1.5 flex-wrap">
+                      <span>{r.target_type}</span>
+                      {r.is_flagged && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[var(--surface-strong)] text-[var(--warning)] border border-[var(--line)]">
+                          <ShieldAlert size={10} strokeWidth={2} aria-hidden="true" />
+                          <span>Flagged</span>
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="capitalize text-xs font-medium text-[var(--danger)]">
                     {r.reason}

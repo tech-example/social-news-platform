@@ -110,3 +110,13 @@ export const SKELETON_SIZES = {
     MIN_WIDTH: 72,
   },
 };
+
+export const PROFANITY_EXTRA_WORDS = [];
+
+export const PROFANITY_ALLOW_LIST = [
+  "pass",
+  "class",
+  "assume",
+  "hello",
+];
+

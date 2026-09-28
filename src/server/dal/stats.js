@@ -5,8 +5,24 @@ import { requireRole } from "@/server/auth";
 export function getDateRanges(rangePreset = "30d", customFrom = null, customTo = null) {
   const now = new Date();
   let from = new Date();
+  let to = new Date(now.getTime());
   let prevFrom = new Date();
   let prevTo = new Date();
+
+  // If explicit customFrom and customTo are provided as valid dates, use them
+  if (customFrom && customTo && !isNaN(new Date(customFrom).getTime()) && !isNaN(new Date(customTo).getTime())) {
+    from = new Date(customFrom);
+    to = new Date(customTo);
+    const duration = to.getTime() - from.getTime();
+    prevTo = new Date(from.getTime());
+    prevFrom = new Date(from.getTime() - duration);
+    return {
+      from: from.toISOString(),
+      to: to.toISOString(),
+      prevFrom: prevFrom.toISOString(),
+      prevTo: prevTo.toISOString(),
+    };
+  }
 
   if (rangePreset === "today") {
     from.setHours(0, 0, 0, 0);
@@ -21,18 +37,6 @@ export function getDateRanges(rangePreset = "30d", customFrom = null, customTo =
     from.setDate(now.getDate() - 90);
     prevTo = new Date(from.getTime());
     prevFrom.setDate(now.getDate() - 180);
-  } else if (rangePreset === "custom" && customFrom && customTo) {
-    from = new Date(customFrom);
-    const to = new Date(customTo);
-    const duration = to.getTime() - from.getTime();
-    prevTo = new Date(from.getTime());
-    prevFrom = new Date(from.getTime() - duration);
-    return {
-      from: from.toISOString(),
-      to: to.toISOString(),
-      prevFrom: prevFrom.toISOString(),
-      prevTo: prevTo.toISOString(),
-    };
   } else {
     // Default 30d
     from.setDate(now.getDate() - 30);
@@ -42,15 +46,15 @@ export function getDateRanges(rangePreset = "30d", customFrom = null, customTo =
 
   return {
     from: from.toISOString(),
-    to: now.toISOString(),
+    to: to.toISOString(),
     prevFrom: prevFrom.toISOString(),
     prevTo: prevTo.toISOString(),
   };
 }
 
-export async function getAdminKPIs(rangePreset = "30d") {
+export async function getAdminKPIs(rangePreset = "30d", customFrom = null, customTo = null) {
   await requireRole("admin");
-  const { from, to, prevFrom, prevTo } = getDateRanges(rangePreset);
+  const { from, to, prevFrom, prevTo } = getDateRanges(rangePreset, customFrom, customTo);
   const adminSupabase = getAdminClient();
 
   // Try stats_kpis RPC first
@@ -104,45 +108,79 @@ export async function getAdminKPIs(rangePreset = "30d") {
 
   // Direct table counts fallback if migration not run yet
   try {
-    const [usersRes, postsRes, likesRes, commentsRes, sharesRes, reportsOpen, reportsEsc, suspendedRes] = await Promise.all([
+    const [
+      usersRes,
+      newUsersRes,
+      prevNewUsersRes,
+      postsRes,
+      newPostsRes,
+      prevNewPostsRes,
+      likesRes,
+      prevLikesRes,
+      commentsRes,
+      prevCommentsRes,
+      sharesRes,
+      prevSharesRes,
+      followsRes,
+      prevFollowsRes,
+      reportsOpen,
+      prevReportsOpen,
+      reportsEsc,
+      prevReportsEsc,
+      suspendedRes,
+    ] = await Promise.all([
       adminSupabase.from("profiles").select("id", { count: "exact", head: true }),
+      adminSupabase.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", from).lte("created_at", to),
+      adminSupabase.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", prevFrom).lte("created_at", prevTo),
       adminSupabase.from("posts").select("id", { count: "exact", head: true }).neq("status", "removed"),
+      adminSupabase.from("posts").select("id", { count: "exact", head: true }).neq("status", "removed").gte("created_at", from).lte("created_at", to),
+      adminSupabase.from("posts").select("id", { count: "exact", head: true }).neq("status", "removed").gte("created_at", prevFrom).lte("created_at", prevTo),
       adminSupabase.from("likes").select("user_id", { count: "exact", head: true }).gte("created_at", from).lte("created_at", to),
+      adminSupabase.from("likes").select("user_id", { count: "exact", head: true }).gte("created_at", prevFrom).lte("created_at", prevTo),
       adminSupabase.from("comments").select("id", { count: "exact", head: true }).neq("status", "removed").gte("created_at", from).lte("created_at", to),
+      adminSupabase.from("comments").select("id", { count: "exact", head: true }).neq("status", "removed").gte("created_at", prevFrom).lte("created_at", prevTo),
       adminSupabase.from("shares").select("id", { count: "exact", head: true }).gte("created_at", from).lte("created_at", to),
+      adminSupabase.from("shares").select("id", { count: "exact", head: true }).gte("created_at", prevFrom).lte("created_at", prevTo),
+      adminSupabase.from("follows").select("follower_id", { count: "exact", head: true }).gte("created_at", from).lte("created_at", to),
+      adminSupabase.from("follows").select("follower_id", { count: "exact", head: true }).gte("created_at", prevFrom).lte("created_at", prevTo),
       adminSupabase.from("reports").select("id", { count: "exact", head: true }).in("status", ["pending", "in_review"]),
+      adminSupabase.from("reports").select("id", { count: "exact", head: true }).in("status", ["pending", "in_review"]).lte("created_at", prevTo),
       adminSupabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "escalated"),
+      adminSupabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "escalated").lte("created_at", prevTo),
       adminSupabase.from("profiles").select("id", { count: "exact", head: true }).eq("is_suspended", true),
     ]);
 
     const likesCount = likesRes.count || 0;
+    const prevLikesCount = prevLikesRes.count || 0;
     const commentsCount = commentsRes.count || 0;
+    const prevCommentsCount = prevCommentsRes.count || 0;
     const sharesCount = sharesRes.count || 0;
+    const prevSharesCount = prevSharesRes.count || 0;
 
     return {
       total_users: usersRes.count || 0,
-      new_users: 0,
-      prev_new_users: 0,
+      new_users: newUsersRes.count || 0,
+      prev_new_users: prevNewUsersRes.count || 0,
       total_posts: postsRes.count || 0,
-      new_posts: 0,
-      prev_new_posts: 0,
+      new_posts: newPostsRes.count || 0,
+      prev_new_posts: prevNewPostsRes.count || 0,
       total_engagement: likesCount + commentsCount + sharesCount,
-      prev_total_engagement: 0,
+      prev_total_engagement: prevLikesCount + prevCommentsCount + prevSharesCount,
       likes: likesCount,
-      prev_likes: 0,
+      prev_likes: prevLikesCount,
       comments: commentsCount,
-      prev_comments: 0,
+      prev_comments: prevCommentsCount,
       shares: sharesCount,
-      prev_shares: 0,
-      follows: 0,
-      prev_follows: 0,
+      prev_shares: prevSharesCount,
+      follows: followsRes.count || 0,
+      prev_follows: prevFollowsRes.count || 0,
       active_users_dau: 0,
       active_users_wau: 0,
       active_users_mau: 0,
       open_reports: reportsOpen.count || 0,
-      prev_open_reports: 0,
+      prev_open_reports: prevReportsOpen.count || 0,
       escalated_reports: reportsEsc.count || 0,
-      prev_escalated_reports: 0,
+      prev_escalated_reports: prevReportsEsc.count || 0,
       suspended_users: suspendedRes.count || 0,
     };
   } catch (err) {
@@ -177,9 +215,9 @@ export async function getAdminKPIs(rangePreset = "30d") {
   };
 }
 
-export async function getTimeseries(metric = "posts", bucket = "day", rangePreset = "30d") {
+export async function getTimeseries(metric = "posts", bucket = "day", rangePreset = "30d", customFrom = null, customTo = null) {
   await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset);
+  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
   const adminSupabase = getAdminClient();
 
   const { data, error } = await adminSupabase.rpc("stats_timeseries", {
@@ -201,14 +239,21 @@ export async function getTimeseries(metric = "posts", bucket = "day", rangePrese
       shares: "shares",
       follows: "follows",
       reports: "reports",
+      active_users: "activity_events",
     };
     const tableName = tableMap[metric];
     if (tableName) {
-      const { data: rows } = await adminSupabase
+      let query = adminSupabase
         .from(tableName)
         .select("created_at")
         .gte("created_at", from)
         .lte("created_at", to);
+
+      if (metric === "posts") {
+        query = query.neq("status", "removed");
+      }
+
+      const { data: rows } = await query;
 
       if (rows && rows.length > 0) {
         const bucketCounts = {};
@@ -238,19 +283,19 @@ export async function getTimeseries(metric = "posts", bucket = "day", rangePrese
   return [];
 }
 
-export async function getEngagementComposition(bucket = "day", rangePreset = "30d") {
+export async function getEngagementComposition(bucket = "day", rangePreset = "30d", customFrom = null, customTo = null) {
   await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset);
+  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
   const adminSupabase = getAdminClient();
 
-  const { data, error } = await adminSupabase.rpc("stats_engagement_by_day", {
-    p_from: from,
-    p_to: to,
-  });
+  if (bucket === "day") {
+    const { data, error } = await adminSupabase.rpc("stats_engagement_by_day", {
+      p_from: from,
+      p_to: to,
+    });
+    if (!error && Array.isArray(data)) return data;
+  }
 
-  if (!error && Array.isArray(data)) return data;
-
-  // Fallback to stats_engagement_composition if named differently
   const fallback = await adminSupabase.rpc("stats_engagement_composition", {
     p_bucket: bucket,
     p_from: from,
@@ -258,12 +303,58 @@ export async function getEngagementComposition(bucket = "day", rangePreset = "30
   });
 
   if (!fallback.error && Array.isArray(fallback.data)) return fallback.data;
+
+  // Direct table aggregation fallback
+  try {
+    const [likesRes, commentsRes, sharesRes] = await Promise.all([
+      adminSupabase.from("likes").select("created_at").gte("created_at", from).lte("created_at", to),
+      adminSupabase.from("comments").select("created_at").neq("status", "removed").gte("created_at", from).lte("created_at", to),
+      adminSupabase.from("shares").select("created_at").gte("created_at", from).lte("created_at", to),
+    ]);
+
+    const buckets = {};
+    const getKey = (dateStr) => {
+      const d = new Date(dateStr);
+      if (bucket === "week") {
+        const startOfWeek = new Date(d);
+        startOfWeek.setDate(d.getDate() - d.getDay());
+        return startOfWeek.toISOString().slice(0, 10);
+      } else if (bucket === "month") {
+        return d.toISOString().slice(0, 7) + "-01";
+      }
+      return d.toISOString().slice(0, 10);
+    };
+
+    (likesRes.data || []).forEach((r) => {
+      const k = getKey(r.created_at);
+      if (!buckets[k]) buckets[k] = { day: k, likes: 0, comments: 0, shares: 0, total: 0 };
+      buckets[k].likes++;
+      buckets[k].total++;
+    });
+    (commentsRes.data || []).forEach((r) => {
+      const k = getKey(r.created_at);
+      if (!buckets[k]) buckets[k] = { day: k, likes: 0, comments: 0, shares: 0, total: 0 };
+      buckets[k].comments++;
+      buckets[k].total++;
+    });
+    (sharesRes.data || []).forEach((r) => {
+      const k = getKey(r.created_at);
+      if (!buckets[k]) buckets[k] = { day: k, likes: 0, comments: 0, shares: 0, total: 0 };
+      buckets[k].shares++;
+      buckets[k].total++;
+    });
+
+    return Object.values(buckets).sort((a, b) => a.day.localeCompare(b.day));
+  } catch (err) {
+    console.error("Engagement composition fallback error:", err);
+  }
+
   return [];
 }
 
-export async function getTopPosts(limit = 10, rangePreset = "30d") {
+export async function getTopPosts(limit = 10, rangePreset = "30d", customFrom = null, customTo = null) {
   await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset);
+  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
   const adminSupabase = getAdminClient();
 
   const { data, error } = await adminSupabase.rpc("stats_top_posts", {
@@ -307,9 +398,9 @@ export async function getTopPosts(limit = 10, rangePreset = "30d") {
   return [];
 }
 
-export async function getTopUsers(limit = 10, rangePreset = "30d") {
+export async function getTopUsers(limit = 10, rangePreset = "30d", customFrom = null, customTo = null) {
   await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset);
+  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
   const adminSupabase = getAdminClient();
 
   const { data, error } = await adminSupabase.rpc("stats_top_users", {
@@ -347,9 +438,9 @@ export async function getTopUsers(limit = 10, rangePreset = "30d") {
   return [];
 }
 
-export async function getTopTags(limit = 10, rangePreset = "30d") {
+export async function getTopTags(limit = 10, rangePreset = "30d", customFrom = null, customTo = null) {
   await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset);
+  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
   const adminSupabase = getAdminClient();
 
   const { data, error } = await adminSupabase.rpc("stats_top_tags", {
@@ -382,9 +473,9 @@ export async function getTopTags(limit = 10, rangePreset = "30d") {
   return [];
 }
 
-export async function getContentMix(rangePreset = "30d") {
+export async function getContentMix(rangePreset = "30d", customFrom = null, customTo = null) {
   await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset);
+  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
   const adminSupabase = getAdminClient();
 
   const { data, error } = await adminSupabase.rpc("stats_content_mix", {
@@ -427,9 +518,9 @@ export async function getContentMix(rangePreset = "30d") {
   };
 }
 
-export async function getReportsByStatus(rangePreset = "30d") {
+export async function getReportsByStatus(rangePreset = "30d", customFrom = null, customTo = null) {
   await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset);
+  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
   const adminSupabase = getAdminClient();
 
   // Try overloaded with range first
@@ -451,7 +542,9 @@ export async function getReportsByStatus(rangePreset = "30d") {
   try {
     const { data: reports } = await adminSupabase
       .from("reports")
-      .select("status");
+      .select("status")
+      .gte("created_at", from)
+      .lte("created_at", to);
 
     if (reports) {
       const counts = {};
@@ -467,9 +560,9 @@ export async function getReportsByStatus(rangePreset = "30d") {
   return [];
 }
 
-export async function getReportsByReason(rangePreset = "30d") {
+export async function getReportsByReason(rangePreset = "30d", customFrom = null, customTo = null) {
   await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset);
+  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
   const adminSupabase = getAdminClient();
 
   const { data, error } = await adminSupabase.rpc("stats_reports_by_reason", {
@@ -501,9 +594,9 @@ export async function getReportsByReason(rangePreset = "30d") {
   return [];
 }
 
-export async function getModerationResolutionTime(rangePreset = "30d") {
+export async function getModerationResolutionTime(rangePreset = "30d", customFrom = null, customTo = null) {
   await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset);
+  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
   const adminSupabase = getAdminClient();
 
   const { data, error } = await adminSupabase.rpc("stats_report_resolution_time", {
@@ -516,6 +609,35 @@ export async function getModerationResolutionTime(rangePreset = "30d") {
     if (res) return res;
   }
 
+  // Fallback calculation from reports
+  try {
+    const { data: reports } = await adminSupabase
+      .from("reports")
+      .select("created_at, updated_at")
+      .in("status", ["resolved_actioned", "resolved_dismissed"])
+      .gte("created_at", from)
+      .lte("created_at", to);
+
+    if (reports && reports.length > 0) {
+      const durations = reports
+        .map((r) => (new Date(r.updated_at).getTime() - new Date(r.created_at).getTime()) / (1000 * 3600))
+        .filter((d) => d >= 0)
+        .sort((a, b) => a - b);
+
+      if (durations.length > 0) {
+        const median = durations[Math.floor(durations.length / 2)];
+        const p90 = durations[Math.floor(durations.length * 0.9)] || durations[durations.length - 1];
+        return {
+          median_hours: Math.round(median * 10) / 10,
+          p90_hours: Math.round(p90 * 10) / 10,
+          resolved_count: durations.length,
+        };
+      }
+    }
+  } catch (err) {
+    console.error("Resolution time fallback error:", err);
+  }
+
   return {
     median_hours: 0,
     p90_hours: 0,
@@ -523,9 +645,9 @@ export async function getModerationResolutionTime(rangePreset = "30d") {
   };
 }
 
-export async function getModeratorWorkload(rangePreset = "30d") {
+export async function getModeratorWorkload(rangePreset = "30d", customFrom = null, customTo = null) {
   await requireRole("admin");
-  const { from, to } = getDateRanges(rangePreset);
+  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
   const adminSupabase = getAdminClient();
 
   const { data, error } = await adminSupabase.rpc("stats_moderator_workload", {
@@ -534,12 +656,50 @@ export async function getModeratorWorkload(rangePreset = "30d") {
   });
 
   if (!error && Array.isArray(data)) return data;
+
+  // Fallback from audit_logs
+  try {
+    const { data: logs } = await adminSupabase
+      .from("audit_logs")
+      .select("actor_id, action, created_at, actor:profiles!audit_logs_actor_id_fkey(username, display_name)")
+      .in("action", [
+        "report_resolved",
+        "report_dismissed",
+        "report_escalated",
+        "post_removed",
+        "post_restored",
+        "user_suspended",
+        "user_unsuspended",
+      ])
+      .gte("created_at", from)
+      .lte("created_at", to);
+
+    if (logs && logs.length > 0) {
+      const map = {};
+      for (const log of logs) {
+        const id = log.actor_id || "unknown";
+        if (!map[id]) {
+          map[id] = {
+            moderator_id: id,
+            username: log.actor?.username || "Unknown",
+            display_name: log.actor?.display_name || "Unknown",
+            handled_count: 0,
+          };
+        }
+        map[id].handled_count++;
+      }
+      return Object.values(map);
+    }
+  } catch (err) {
+    console.error("Moderator workload fallback error:", err);
+  }
+
   return [];
 }
 
-export async function getSearchAnalytics(limit = 10, rangePreset = "30d") {
+export async function getSearchAnalytics(limit = 10, rangePreset = "30d", customFrom = null, customTo = null) {
   await requireRole("admin");
-  const { from, to } = getDateRanges(rangePreset);
+  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
   const adminSupabase = getAdminClient();
 
   const { data, error } = await adminSupabase.rpc("stats_search_terms", {
@@ -632,9 +792,9 @@ export async function getFollowerDistribution() {
   ];
 }
 
-export async function getPostingHeatmap(rangePreset = "30d") {
+export async function getPostingHeatmap(rangePreset = "30d", customFrom = null, customTo = null) {
   await requireRole("admin");
-  const { from, to } = getDateRanges(rangePreset);
+  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
   const adminSupabase = getAdminClient();
 
   const { data, error } = await adminSupabase.rpc("stats_posting_heatmap", {
@@ -852,9 +1012,9 @@ export async function getSystemSummary() {
   };
 }
 
-export async function getModeratorKPIs(rangePreset = "30d") {
+export async function getModeratorKPIs(rangePreset = "30d", customFrom = null, customTo = null) {
   await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset);
+  const { from, to, prevFrom, prevTo } = getDateRanges(rangePreset, customFrom, customTo);
   const adminSupabase = getAdminClient();
 
   const { data, error } = await adminSupabase.rpc("stats_moderator_kpis", {
@@ -869,19 +1029,22 @@ export async function getModeratorKPIs(rangePreset = "30d") {
 
   // Fallback query directly
   try {
-    const [awaitingAction, awaitingFinal, resolved] = await Promise.all([
+    const [awaitingAction, prevAwaitingAction, awaitingFinal, prevAwaitingFinal, resolved, prevResolved] = await Promise.all([
       adminSupabase.from("reports").select("id", { count: "exact", head: true }).in("status", ["pending", "in_review"]),
+      adminSupabase.from("reports").select("id", { count: "exact", head: true }).in("status", ["pending", "in_review"]).lte("created_at", prevTo),
       adminSupabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "escalated"),
+      adminSupabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "escalated").lte("created_at", prevTo),
       adminSupabase.from("reports").select("id", { count: "exact", head: true }).in("status", ["resolved_actioned", "resolved_dismissed"]).gte("created_at", from).lte("created_at", to),
+      adminSupabase.from("reports").select("id", { count: "exact", head: true }).in("status", ["resolved_actioned", "resolved_dismissed"]).gte("created_at", prevFrom).lte("created_at", prevTo),
     ]);
 
     return {
       awaiting_action: awaitingAction.count || 0,
-      prev_awaiting_action: 0,
+      prev_awaiting_action: prevAwaitingAction.count || 0,
       awaiting_final: awaitingFinal.count || 0,
-      prev_awaiting_final: 0,
+      prev_awaiting_final: prevAwaitingFinal.count || 0,
       resolved_in_range: resolved.count || 0,
-      prev_resolved_in_range: 0,
+      prev_resolved_in_range: prevResolved.count || 0,
     };
   } catch (err) {
     console.error("Moderator KPIs fallback error:", err);

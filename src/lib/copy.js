@@ -127,4 +127,14 @@ export const COPY = {
     submitting: "Submitting…",
     errorGeneric: "An unexpected error occurred. Please check your connection and try again.",
   },
+
+  profanity: {
+    noticePost: "This post may contain inappropriate language.",
+    noticeComment: "This comment may contain inappropriate language.",
+    showAnyway: "Show anyway",
+    hideAgain: "Hide again",
+    flaggedIndicator: "Flagged for language",
+    filterFlagged: "Flagged Content",
+  },
 };
+
