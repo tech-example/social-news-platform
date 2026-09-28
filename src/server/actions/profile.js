@@ -35,3 +35,26 @@ export async function updateProfileAction(prevState, formData) {
   revalidatePath(`/u/${session.profile.username}`);
   return { ok: true, message: "Profile updated successfully." };
 }
+
+export async function updateProfanityPreferenceAction(hideFlaggedContent) {
+  const session = await requireRole("user");
+  const parsed = typeof hideFlaggedContent === "boolean" ? hideFlaggedContent : Boolean(hideFlaggedContent);
+
+  const supabase = await createUserClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      hide_flagged_content: parsed,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", session.user.id);
+
+  if (error) {
+    return { ok: false, error: error.message || "Failed to update preference." };
+  }
+
+  revalidatePath("/settings");
+  revalidatePath("/");
+  return { ok: true, hideFlaggedContent: parsed };
+}
+

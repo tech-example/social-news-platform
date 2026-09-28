@@ -340,6 +340,58 @@ export async function deleteCommentAction(commentId, postId) {
   return { ok: true };
 }
 
+export async function editCommentAction(commentId, newBody) {
+  let session;
+  try {
+    session = await requireRoleOrThrow("user");
+  } catch (err) {
+    if (err instanceof AuthError && err.code === "UNAUTHENTICATED") {
+      return { ok: false, error: "UNAUTHENTICATED", code: "UNAUTHENTICATED" };
+    }
+    return { ok: false, error: "You do not have permission.", code: "FORBIDDEN" };
+  }
+
+  const cleanBody = (newBody || "").trim();
+  if (!cleanBody) {
+    return { ok: false, error: "Comment cannot be empty." };
+  }
+
+  const adminSupabase = getAdminClient();
+  const { data: comment } = await adminSupabase
+    .from("comments")
+    .select("id, author_id, post_id")
+    .eq("id", commentId)
+    .single();
+
+  if (!comment) return { ok: false, error: "Comment not found." };
+
+  const isOwner = comment.author_id === session.user.id;
+  const isAdmin = session.profile.role === "admin";
+  if (!isOwner && !isAdmin) {
+    return { ok: false, error: "Not authorized to edit this comment." };
+  }
+
+  const profanityCheck = containsProfanity(cleanBody);
+  const isFlagged = profanityCheck.flagged;
+  const flaggedReason = isFlagged ? "profanity" : null;
+
+  const { error } = await adminSupabase
+    .from("comments")
+    .update({
+      body: cleanBody,
+      is_flagged: isFlagged,
+      flagged_reason: flaggedReason,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", commentId);
+
+  if (error) {
+    return { ok: false, error: error.message || "Failed to edit comment." };
+  }
+
+  return { ok: true, isFlagged };
+}
+
 export async function sharePostAction(postId, note = null) {
   let session;
   try {

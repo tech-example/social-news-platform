@@ -1,6 +1,6 @@
 "use client";
 import { useState, useActionState } from "react";
-import { updateProfileAction } from "@/server/actions/profile";
+import { updateProfileAction, updateProfanityPreferenceAction } from "@/server/actions/profile";
 import { signOutAction } from "@/server/actions/auth";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,28 @@ export function SettingsForm({ session }) {
   const { addToast } = useToast();
 
   const [state, formAction, isPending] = useActionState(updateProfileAction, null);
+  const [hideFlagged, setHideFlagged] = useState(profile.hide_flagged_content !== false);
+  const [isUpdatingPreference, setIsUpdatingPreference] = useState(false);
+
+  const handleToggleFlagged = async () => {
+    const nextVal = !hideFlagged;
+    setHideFlagged(nextVal);
+    setIsUpdatingPreference(true);
+    try {
+      const res = await updateProfanityPreferenceAction(nextVal);
+      if (res?.ok) {
+        addToast(nextVal ? "Flagged content will be hidden by default." : "Flagged content will be shown by default.");
+      } else {
+        setHideFlagged(!nextVal);
+        addToast(res?.error || "Failed to update preference.", "error");
+      }
+    } catch {
+      setHideFlagged(!nextVal);
+      addToast("Failed to update preference.", "error");
+    } finally {
+      setIsUpdatingPreference(false);
+    }
+  };
 
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -156,6 +178,42 @@ export function SettingsForm({ session }) {
             </Button>
           </div>
         </form>
+      </div>
+ 
+      {/* Content Safety Preferences */}
+      <div className="bg-[var(--bg)] border border-[var(--line)] rounded-xl p-6 shadow-xs space-y-4">
+        <h2 className="text-base font-semibold text-[var(--ink)]">Content Preferences</h2>
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-0.5">
+            <label htmlFor="hide-flagged-content-switch" className="text-sm font-medium text-[var(--ink)] block cursor-pointer">
+              Hide flagged content
+            </label>
+            <p className="text-xs text-[var(--ink-muted)]">
+              Automatically conceal posts and comments detected to contain inappropriate language behind a reveal button.
+            </p>
+          </div>
+          <button
+            id="hide-flagged-content-switch"
+            role="switch"
+            type="button"
+            aria-checked={hideFlagged}
+            onClick={handleToggleFlagged}
+            disabled={isUpdatingPreference}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-lg cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
+          >
+            <span
+              className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
+                hideFlagged ? "bg-[var(--accent)]" : "bg-[var(--line-strong)]"
+              }`}
+            >
+              <span
+                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  hideFlagged ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Account Info & Sign Out */}

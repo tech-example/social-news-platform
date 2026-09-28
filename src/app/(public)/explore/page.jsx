@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getExplorePosts } from "@/server/dal/posts";
 import { ProfileGridSkeleton } from "@/components/ui/skeletons";
-import { Heart, MessageCircle, FileText } from "lucide-react";
+import { Heart, MessageCircle, FileText, EyeOff } from "lucide-react";
 import { formatCompactNumber } from "@/lib/format";
 
 export const metadata = {
@@ -39,6 +39,11 @@ async function ExploreGrid() {
               className="object-cover transition-transform duration-200 group-hover:scale-105"
               unoptimized
             />
+          ) : post.is_flagged ? (
+            <div className="p-3 sm:p-4 h-full flex flex-col items-center justify-center text-center bg-[var(--surface)] text-[var(--ink-muted)] gap-1">
+              <EyeOff size={18} strokeWidth={1.75} aria-hidden="true" className="text-[var(--ink-muted)]" />
+              <span className="text-[10px] sm:text-xs font-medium">Inappropriate language</span>
+            </div>
           ) : (
             <div className="p-3 sm:p-4 h-full flex flex-col justify-between bg-[var(--surface)] text-[var(--ink)]">
               <FileText size={20} strokeWidth={1.75} aria-hidden="true" className="text-[var(--ink-muted)]" />

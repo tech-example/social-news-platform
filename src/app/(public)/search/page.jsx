@@ -6,6 +6,7 @@ import { searchPosts } from "@/server/dal/posts";
 import { Avatar } from "@/components/ui/avatar";
 import { SearchInput } from "./SearchInput";
 import { TagChip } from "@/components/feed/TagChip";
+import { FlaggedContent } from "@/components/feed/FlaggedContent";
 import { Skeleton, TagChipsSkeleton } from "@/components/ui/skeletons";
 import { Hash, Heart, MessageCircle, SearchX } from "lucide-react";
 import { formatCompactNumber, formatRelativeTime } from "@/lib/format";
@@ -144,13 +145,12 @@ export default async function SearchPage({ searchParams }) {
                 const time = p.createdAt ? formatRelativeTime(p.createdAt) : "";
 
                 return (
-                  <Link
+                  <div
                     key={p.id}
-                    href={`/p/${p.id}`}
                     className="flex flex-col p-4 rounded-xl border border-[var(--line)] bg-[var(--surface)] hover:border-[var(--line-strong)] hover:shadow-xs transition-all gap-2"
                   >
                     <div className="flex items-center justify-between text-xs text-[var(--ink-muted)]">
-                      <div className="flex items-center gap-2 min-w-0">
+                      <Link href={`/u/${username}`} className="flex items-center gap-2 min-w-0 hover:underline">
                         <Avatar src={avatarUrl} name={authorName} size={24} />
                         <span className="font-semibold text-[var(--ink)] truncate">@{username}</span>
                         {time && (
@@ -159,7 +159,7 @@ export default async function SearchPage({ searchParams }) {
                             <span>{time}</span>
                           </>
                         )}
-                      </div>
+                      </Link>
                       <div className="flex items-center gap-3 shrink-0">
                         <span className="flex items-center gap-1">
                           <Heart size={13} strokeWidth={1.75} className="text-[var(--ink-muted)]" aria-hidden="true" />
@@ -171,15 +171,21 @@ export default async function SearchPage({ searchParams }) {
                         </span>
                       </div>
                     </div>
-                    {p.title && (
-                      <h2 className="text-sm font-semibold text-[var(--ink)] line-clamp-1">
-                        {p.title}
-                      </h2>
-                    )}
-                    <p className="text-xs text-[var(--ink-muted)] line-clamp-2 leading-relaxed">
-                      {p.body}
-                    </p>
-                  </Link>
+                    <FlaggedContent isFlagged={Boolean(p.is_flagged)}>
+                      {p.title && (
+                        <Link href={`/p/${p.id}`} className="hover:underline block">
+                          <h2 className="text-sm font-semibold text-[var(--ink)] line-clamp-1">
+                            {p.title}
+                          </h2>
+                        </Link>
+                      )}
+                      <Link href={`/p/${p.id}`} className="hover:underline block">
+                        <p className="text-xs text-[var(--ink-muted)] line-clamp-2 leading-relaxed">
+                          {p.body}
+                        </p>
+                      </Link>
+                    </FlaggedContent>
+                  </div>
                 );
               })
             )

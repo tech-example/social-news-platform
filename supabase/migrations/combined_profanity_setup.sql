@@ -1,7 +1,7 @@
 -- Combined Idempotent Migration: Profanity Flagging and Dynamic Management
 -- Ready to run directly in Supabase SQL Editor
 
--- 1. Add flagging columns to posts and comments
+-- 1. Add flagging columns to posts, comments, and profiles
 alter table public.posts
   add column if not exists is_flagged boolean not null default false,
   add column if not exists flagged_reason text;
@@ -9,6 +9,9 @@ alter table public.posts
 alter table public.comments
   add column if not exists is_flagged boolean not null default false,
   add column if not exists flagged_reason text;
+
+alter table public.profiles
+  add column if not exists hide_flagged_content boolean not null default true;
 
 create index if not exists idx_posts_is_flagged
   on public.posts (is_flagged) where is_flagged = true;

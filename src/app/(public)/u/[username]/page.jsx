@@ -8,7 +8,7 @@ import { getSession } from "@/server/auth";
 import { ProfileHeaderClient } from "./ProfileHeaderClient";
 import { DeleteShareButton } from "@/components/profile/DeleteShareButton";
 import { ProfileGridSkeleton } from "@/components/ui/skeletons";
-import { Grid3x3, Repeat2, Heart, MessageCircle, FileText, Inbox } from "lucide-react";
+import { Grid3x3, Repeat2, Heart, MessageCircle, FileText, Inbox, EyeOff } from "lucide-react";
 import { formatCompactNumber } from "@/lib/format";
 
 export async function generateMetadata({ params }) {
@@ -62,6 +62,11 @@ async function UserPostsStream({ userId, tab, isViewer }) {
                 className="object-cover transition-transform duration-200 group-hover:scale-105"
                 unoptimized
               />
+            ) : post.is_flagged ? (
+              <div className="p-3 sm:p-4 h-full flex flex-col items-center justify-center text-center bg-[var(--surface)] text-[var(--ink-muted)] gap-1">
+                <EyeOff size={18} strokeWidth={1.75} aria-hidden="true" className="text-[var(--ink-muted)]" />
+                <span className="text-[10px] sm:text-xs font-medium">Inappropriate language</span>
+              </div>
             ) : (
               <div className="p-3 sm:p-4 h-full flex flex-col justify-between bg-[var(--surface)] text-[var(--ink)]">
                 <FileText size={20} strokeWidth={1.75} aria-hidden="true" className="text-[var(--ink-muted)]" />
