@@ -478,3 +478,123 @@ export function TagChipsSkeleton({ count = 8, standalone = true, className = "" 
     </div>
   );
 }
+
+export function PostDialogSkeleton() {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Loading post..."
+      className="fixed inset-0 z-50 flex justify-center items-start pt-2 sm:pt-6 px-2 sm:px-4 pointer-events-auto overscroll-contain"
+    >
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/40 backdrop-blur-[2px] pointer-events-auto transition-opacity duration-200"
+        aria-hidden="true"
+      />
+
+      {/* Top Dropdown Sheet Card */}
+      <div
+        className="relative pointer-events-auto w-full max-w-2xl bg-[var(--bg)] border border-[var(--line)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[88dvh] animate-slideDown z-10"
+      >
+        {/* Top Handle Bar */}
+        <div className="w-10 h-1 bg-[var(--line)] rounded-full mx-auto mt-2 mb-1 shrink-0" />
+
+        {/* Top Header */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--line)] shrink-0 bg-[var(--bg)]">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Skeleton
+              className="rounded-full shrink-0"
+              style={{ width: `${SKELETON_SIZES.AVATAR.SM}px`, height: `${SKELETON_SIZES.AVATAR.SM}px` }}
+            />
+            <div className="flex flex-col gap-1 min-w-0">
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-2.5 w-16" />
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Skeleton className="h-6 w-16 rounded-md" />
+            <Skeleton className="h-7 w-7 rounded-full" />
+          </div>
+        </div>
+
+        {/* Scrollable Content Container */}
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4">
+          {/* Media placeholder */}
+          <Skeleton className="w-full aspect-4/5 max-h-[420px] rounded-xl" />
+
+          {/* Title and Body */}
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3.5 w-full" />
+            <Skeleton className="h-3.5 w-4/5" />
+            <div className="flex gap-1.5 pt-1">
+              <Skeleton className="h-3 w-12" />
+              <Skeleton className="h-3 w-14" />
+            </div>
+          </div>
+
+          {/* Action Row */}
+          <div className="flex items-center gap-3 py-2 border-y border-[var(--line)]">
+            <Skeleton className="h-6 w-6 rounded-full" />
+            <Skeleton className="h-6 w-6 rounded-full" />
+            <Skeleton className="h-6 w-6 rounded-full" />
+            <div className="flex-1" />
+            <Skeleton className="h-6 w-6 rounded-full" />
+          </div>
+
+          {/* Comments list placeholder */}
+          <div className="space-y-3 pt-1">
+            <CommentItemSkeleton />
+            <CommentItemSkeleton />
+            <CommentItemSkeleton />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function SearchResultsSkeleton({ type = "posts" }) {
+  if (type === "accounts") {
+    return (
+      <div role="status" aria-busy="true" aria-label="Loading accounts..." className="space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-[var(--line)] bg-[var(--surface)]">
+            <div className="flex items-center gap-3 min-w-0">
+              <Skeleton className="w-11 h-11 rounded-full shrink-0" />
+              <div className="space-y-1.5 min-w-0">
+                <Skeleton className="h-3.5 w-28" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+            <Skeleton className="h-7 w-16 rounded-md" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (type === "tags") {
+    return (
+      <div role="status" aria-busy="true" aria-label="Loading tags..." className="space-y-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-[var(--line)] bg-[var(--surface)]">
+            <div className="flex items-center gap-2">
+              <Skeleton className="w-4 h-4 rounded" />
+              <Skeleton className="h-3.5 w-24" />
+            </div>
+            <Skeleton className="h-3 w-16" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div role="status" aria-busy="true" aria-label="Loading posts..." className="space-y-3">
+      <PostCardSkeleton standalone={false} />
+      <PostCardSkeleton standalone={false} />
+    </div>
+  );
+}

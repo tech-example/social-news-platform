@@ -140,6 +140,7 @@ export default async function UserProfilePage({ params, searchParams }) {
         <div className="flex border-b border-[var(--line)] bg-[var(--surface)] justify-center">
           <Link
             href={`/u/${profile.username}`}
+            prefetch
             className={`flex items-center gap-2 py-3.5 px-6 text-xs sm:text-sm font-bold tracking-wider uppercase transition-colors ${
               tab === "posts"
                 ? "text-[var(--ink)] border-b-2 border-[var(--ink)] bg-[var(--bg)]"
@@ -151,6 +152,7 @@ export default async function UserProfilePage({ params, searchParams }) {
           </Link>
           <Link
             href={`/u/${profile.username}?tab=shares`}
+            prefetch
             className={`flex items-center gap-2 py-3.5 px-6 text-xs sm:text-sm font-bold tracking-wider uppercase transition-colors ${
               tab === "shares"
                 ? "text-[var(--ink)] border-b-2 border-[var(--ink)] bg-[var(--bg)]"

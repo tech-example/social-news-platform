@@ -82,6 +82,7 @@ export default async function ReportsQueuePage({ searchParams }) {
             <Link
               key={s.id}
               href={`/moderation/reports?status=${s.id}`}
+              prefetch
               className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                 isActive
                   ? "bg-[var(--bg)] text-[var(--ink)] font-semibold shadow-2xs border border-[var(--line)]"

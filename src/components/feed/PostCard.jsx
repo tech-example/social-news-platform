@@ -176,7 +176,7 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
 
         {/* Full page direct navigation */}
         <div className="flex items-center gap-1.5">
-          <a
+          <Link
             href={`/p/${currentPost.id}`}
             className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
             title="Open standalone full page"
@@ -184,7 +184,7 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
           >
             <span className="hidden sm:inline">Full page</span>
             <ExternalLink size={13} strokeWidth={2} aria-hidden="true" />
-          </a>
+          </Link>
         </div>
       </div>
 
@@ -198,9 +198,10 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
       >
         {/* Media */}
         {currentPost.imageUrl ? (
-          <div
-            className="relative w-full aspect-4/5 bg-[var(--surface)] max-h-[580px] overflow-hidden cursor-pointer"
-            onClick={handleOpenDetail}
+          <Link
+            href={`/p/${currentPost.id}`}
+            scroll={false}
+            className="relative block w-full aspect-4/5 bg-[var(--surface)] max-h-[580px] overflow-hidden cursor-pointer"
           >
             <Image
               src={currentPost.imageUrl}
@@ -210,7 +211,7 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
               className="object-cover"
               unoptimized
             />
-          </div>
+          </Link>
         ) : null}
 
         {/* Content & Title */}
@@ -223,10 +224,6 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
               href={`/p/${currentPost.id}`}
               scroll={false}
               className="hover:underline"
-              onClick={(e) => {
-                e.preventDefault();
-                router.push(`/p/${currentPost.id}`, { scroll: false });
-              }}
             >
               <h2 className="text-base font-bold text-[var(--ink)] line-clamp-2">
                 {currentPost.title}

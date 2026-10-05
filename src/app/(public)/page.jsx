@@ -121,6 +121,7 @@ export default async function HomeFeedPage({ searchParams }) {
           <div className="flex border-b border-[var(--line)] bg-[var(--bg)] mb-2 sticky top-14 md:top-0 z-10">
             <Link
               href="/"
+              prefetch
               className={`flex-1 py-3 text-center text-sm font-semibold transition-colors ${
                 filter === "latest"
                   ? "text-[var(--ink)] border-b-2 border-[var(--ink)]"
@@ -131,6 +132,7 @@ export default async function HomeFeedPage({ searchParams }) {
             </Link>
             <Link
               href="/?filter=following"
+              prefetch
               className={`flex-1 py-3 text-center text-sm font-semibold transition-colors ${
                 filter === "following"
                   ? "text-[var(--ink)] border-b-2 border-[var(--ink)]"

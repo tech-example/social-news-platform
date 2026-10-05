@@ -155,14 +155,14 @@ export function InterceptedPostTopSheet({
           </div>
 
           <div className="flex items-center gap-1.5">
-            <a
+            <Link
               href={`/p/${post.id}`}
               className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-[var(--accent)] hover:bg-[var(--surface)] rounded-md transition-colors"
               title="Open standalone page"
             >
               <span>Full page</span>
               <ExternalLink size={13} strokeWidth={2} aria-hidden="true" />
-            </a>
+            </Link>
             <IconButton label="Close preview" onClick={handleClose}>
               <X size={18} strokeWidth={2} aria-hidden="true" className="text-[var(--ink)]" />
             </IconButton>
