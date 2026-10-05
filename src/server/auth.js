@@ -19,11 +19,22 @@ export const getSession = cache(async () => {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) return null;
 
-    let { data: profile } = await supabase
+    let { data: profile, error: profileErr } = await supabase
       .from("profiles")
       .select("id, username, display_name, avatar_url, role, is_suspended, hide_flagged_content")
       .eq("id", user.id)
       .maybeSingle();
+
+    if (profileErr && (profileErr.code === "42703" || profileErr.message?.includes("hide_flagged_content"))) {
+      const fallback = await supabase
+        .from("profiles")
+        .select("id, username, display_name, avatar_url, role, is_suspended")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (fallback.data) {
+        profile = { ...fallback.data, hide_flagged_content: true };
+      }
+    }
 
     if (!profile) {
       // Auto-heal missing profile record if user exists in auth.users
@@ -32,16 +43,34 @@ export const getSession = cache(async () => {
       const displayName = user.user_metadata?.display_name || user.user_metadata?.full_name || cleanUsername;
 
       const adminSupabase = getAdminClient();
-      const { data: createdProfile } = await adminSupabase
-        .from("profiles")
-        .insert({
-          id: user.id,
-          username: cleanUsername,
-          display_name: displayName.slice(0, 60),
-          role: "user",
-        })
-        .select("id, username, display_name, avatar_url, role, is_suspended, hide_flagged_content")
-        .maybeSingle();
+      let createdProfile = null;
+
+      try {
+        const { data: p1 } = await adminSupabase
+          .from("profiles")
+          .insert({
+            id: user.id,
+            username: cleanUsername,
+            display_name: displayName.slice(0, 60),
+            role: "user",
+          })
+          .select("id, username, display_name, avatar_url, role, is_suspended, hide_flagged_content")
+          .maybeSingle();
+        createdProfile = p1;
+      } catch {
+        // Fallback without hide_flagged_content if column does not exist
+      }
+
+      if (!createdProfile) {
+        const { data: p2 } = await adminSupabase
+          .from("profiles")
+          .select("id, username, display_name, avatar_url, role, is_suspended")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (p2) {
+          createdProfile = { ...p2, hide_flagged_content: true };
+        }
+      }
 
       if (createdProfile) {
         profile = createdProfile;
