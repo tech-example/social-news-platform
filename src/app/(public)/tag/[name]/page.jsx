@@ -38,7 +38,7 @@ async function PopularTagsRow({ currentTag = "" }) {
   );
 }
 
-async function TagFeedStream({ tagName, viewerId }) {
+async function TagFeedStream({ tagName, viewerId, isStaff = false, viewerHideFlagged = true }) {
   const { posts, nextCursor } = await getPostsByTag(tagName, null, 10, viewerId);
 
   if (posts.length === 0) {
@@ -58,6 +58,8 @@ async function TagFeedStream({ tagName, viewerId }) {
       initialCursor={nextCursor}
       tag={tagName}
       currentUserId={viewerId}
+      isStaff={isStaff}
+      viewerHideFlagged={viewerHideFlagged}
       emptyTitle={`No posts for #${tagName}`}
       emptyDescription={`Be the first to publish a post tagged with #${tagName}.`}
     />
@@ -151,7 +153,12 @@ export default async function TagFeedPage({ params }) {
 
       {/* Tag Feed Stream wrapped in Suspense */}
       <Suspense fallback={<FeedSkeleton count={3} standalone={true} />}>
-        <TagFeedStream tagName={tag.name} viewerId={viewerId} />
+        <TagFeedStream
+          tagName={tag.name}
+          viewerId={viewerId}
+          isStaff={session?.profile?.role === "moderator" || session?.profile?.role === "admin"}
+          viewerHideFlagged={session?.profile?.hide_flagged_content ?? true}
+        />
       </Suspense>
     </div>
   );

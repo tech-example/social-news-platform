@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { sharePostAction } from "@/server/actions/interactions";
 import { useToast } from "@/components/ui/toast";
 import { LIMITS } from "@/lib/constants";
+import { FlaggedContent } from "@/components/feed/FlaggedContent";
 
-export function ShareDialog({ open, onClose, postId, postTitle, onShareSuccess }) {
+export function ShareDialog({ open, onClose, postId, postTitle, isFlagged = false, onShareSuccess }) {
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { addToast } = useToast();
@@ -43,7 +44,9 @@ export function ShareDialog({ open, onClose, postId, postTitle, onShareSuccess }
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {postTitle && (
           <div className="p-3 bg-[var(--surface)] border border-[var(--line)] rounded-lg text-sm text-[var(--ink-muted)]">
-            Sharing: <span className="font-semibold text-[var(--ink)]">{postTitle}</span>
+            <FlaggedContent isFlagged={Boolean(isFlagged)} defaultHidden={true} contentType="comment">
+              <span>Sharing: <span className="font-semibold text-[var(--ink)]">{postTitle}</span></span>
+            </FlaggedContent>
           </div>
         )}
         <div className="flex flex-col gap-1.5">

@@ -8,6 +8,7 @@
  */
 
 import { getBadWords as getSitBadWords } from "@sit-sandbox/thai-bad-words";
+import { Filter as GlinFilter } from "glin-profanity";
 
 // Always-block Thai words (severe anatomical insults, extreme profanity that should trigger even inside compound words)
 export const THAI_ALWAYS_BLOCK = new Set([
@@ -122,6 +123,32 @@ export function getDictionarySources() {
     } else {
       englishModerate.add(trimmed);
     }
+  }
+
+  // 4. Ingest glin-profanity words (Thai + English + Leetspeak)
+  try {
+    const glin = new GlinFilter({ languages: ["thai", "english"] });
+    for (const [term] of glin.words.entries()) {
+      const trimmed = term.trim().toLowerCase();
+      if (!trimmed || trimmed.length < 2) continue;
+      if (/[\u0E00-\u0E7F]/.test(trimmed)) {
+        if (THAI_ALWAYS_BLOCK.has(trimmed)) {
+          thaiSevere.add(trimmed);
+        } else {
+          thaiModerate.add(trimmed);
+        }
+      } else {
+        if (ENGLISH_ALWAYS_BLOCK.has(trimmed)) {
+          englishSevere.add(trimmed);
+        } else if (["damn", "crap", "piss"].includes(trimmed)) {
+          englishMild.add(trimmed);
+        } else {
+          englishModerate.add(trimmed);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Failed to load glin-profanity terms:", err);
   }
 
   // Ensure always-block words are in severe sets

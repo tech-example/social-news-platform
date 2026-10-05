@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -7,14 +7,99 @@ import { IconButton } from "@/components/ui/icon-button";
 import { createCommentAction, deleteCommentAction } from "@/server/actions/interactions";
 import { formatRelativeTime } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
-import { Trash2, CornerDownRight } from "lucide-react";
+import { Trash2, CornerDownRight, Ellipsis, Flag } from "lucide-react";
 import { LIMITS } from "@/lib/constants";
-import { ProfanityNotice } from "@/components/feed/ProfanityNotice";
+import { FlaggedContent } from "@/components/feed/FlaggedContent";
+import { ReportDialog } from "@/components/moderation/ReportDialog";
 
-export function CommentThread({ postId, initialComments = [], currentUserId = null }) {
+function CommentMenu({ comment, currentUserId, isStaff, onDelete, onReport }) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
+  const isAuthor = Boolean(
+    currentUserId &&
+      (comment.authorId === currentUserId ||
+        comment.author?.id === currentUserId ||
+        comment.userId === currentUserId ||
+        comment.isOwner)
+  );
+  const canDelete = isAuthor || isStaff;
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  if (!currentUserId && !canDelete) return null;
+
+  return (
+    <div className="relative shrink-0" ref={menuRef}>
+      <IconButton
+        label="Comment options"
+        onClick={() => setOpen((prev) => !prev)}
+        className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+      >
+        <Ellipsis size={14} strokeWidth={1.75} aria-hidden="true" className="text-[var(--ink-muted)] hover:text-[var(--ink)]" />
+      </IconButton>
+
+      {open && (
+        <div
+          role="menu"
+          aria-label="Comment options"
+          className="absolute right-0 top-full mt-1 w-36 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-lg py-1 z-20"
+        >
+          {canDelete && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onDelete(comment.id);
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer"
+            >
+              <Trash2 size={13} strokeWidth={1.75} aria-hidden="true" />
+              <span>Delete</span>
+            </button>
+          )}
+
+          {!isAuthor && currentUserId && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onReport(comment);
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer"
+            >
+              <Flag size={13} strokeWidth={1.75} aria-hidden="true" className="text-[var(--danger)]" />
+              <span>Report</span>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+export function CommentThread({
+  postId,
+  initialComments = [],
+  currentUserId = null,
+  isStaff = false,
+  viewerHideFlagged = true,
+}) {
   const [comments, setComments] = useState(initialComments);
   const [text, setText] = useState("");
   const [replyingTo, setReplyingTo] = useState(null);
+  const [reportingComment, setReportingComment] = useState(null);
   const { addToast } = useToast();
 
   const handlePostComment = (e) => {
@@ -131,13 +216,18 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
                       >
                         {comment.author?.username}
                       </Link>
-                      <ProfanityNotice
+                      <FlaggedContent
+                        key={`comment-${comment.id}`}
                         isFlagged={Boolean(comment.is_flagged ?? comment.isFlagged)}
-                        isAuthor={Boolean(currentUserId && (comment.authorId === currentUserId || comment.author?.id === currentUserId))}
+                        defaultHidden={
+                          (Boolean(currentUserId && (comment.authorId === currentUserId || comment.author?.id === currentUserId || comment.userId === currentUserId)) || isStaff)
+                            ? false
+                            : (viewerHideFlagged ?? true)
+                        }
                         contentType="comment"
                       >
                         <span className="text-[var(--ink)]">{comment.body}</span>
-                      </ProfanityNotice>
+                      </FlaggedContent>
                       <div className="flex items-center gap-3 mt-1 text-xs text-[var(--ink-muted)]">
                         <span suppressHydrationWarning>{formatRelativeTime(comment.createdAt)}</span>
                         {currentUserId && (
@@ -157,15 +247,13 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
                     </div>
                   </div>
 
-                  {(currentUserId === (comment.authorId || comment.author?.id) || comment.isOwner) && (
-                    <IconButton
-                      label="Delete comment"
-                      onClick={() => handleDeleteComment(comment.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 size={14} strokeWidth={1.75} aria-hidden="true" className="text-[var(--danger)]" />
-                    </IconButton>
-                  )}
+                  <CommentMenu
+                    comment={comment}
+                    currentUserId={currentUserId}
+                    isStaff={isStaff}
+                    onDelete={handleDeleteComment}
+                    onReport={setReportingComment}
+                  />
                 </div>
 
                 {/* Nested Replies */}
@@ -189,28 +277,31 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
                             >
                               {reply.author?.username}
                             </Link>
-                            <ProfanityNotice
+                            <FlaggedContent
+                              key={`reply-${reply.id}`}
                               isFlagged={Boolean(reply.is_flagged ?? reply.isFlagged)}
-                              isAuthor={Boolean(currentUserId && (reply.authorId === currentUserId || reply.author?.id === currentUserId))}
+                              defaultHidden={
+                                (Boolean(currentUserId && (reply.authorId === currentUserId || reply.author?.id === currentUserId || reply.userId === currentUserId)) || isStaff)
+                                  ? false
+                                  : (viewerHideFlagged ?? true)
+                              }
                               contentType="comment"
                             >
                               <span className="text-[var(--ink)]">{reply.body}</span>
-                            </ProfanityNotice>
+                            </FlaggedContent>
                             <div className="flex items-center gap-2 mt-0.5 text-xs text-[var(--ink-muted)]">
                               <span suppressHydrationWarning>{formatRelativeTime(reply.createdAt)}</span>
                             </div>
                           </div>
                         </div>
 
-                        {(currentUserId === (reply.authorId || reply.author?.id) || reply.isOwner) && (
-                          <IconButton
-                            label="Delete reply"
-                            onClick={() => handleDeleteComment(reply.id)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Trash2 size={13} strokeWidth={1.75} aria-hidden="true" className="text-[var(--danger)]" />
-                          </IconButton>
-                        )}
+                        <CommentMenu
+                          comment={reply}
+                          currentUserId={currentUserId}
+                          isStaff={isStaff}
+                          onDelete={handleDeleteComment}
+                          onReport={setReportingComment}
+                        />
                       </div>
                     ))}
                   </div>
@@ -265,6 +356,15 @@ export function CommentThread({ postId, initialComments = [], currentUserId = nu
           </Link>{" "}
           to comment.
         </div>
+      )}
+
+      {reportingComment && (
+        <ReportDialog
+          open={Boolean(reportingComment)}
+          onClose={() => setReportingComment(null)}
+          targetType="comment"
+          targetId={reportingComment.id}
+        />
       )}
     </div>
   );

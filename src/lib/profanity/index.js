@@ -130,7 +130,7 @@ export function analyzeTextInternal(text, dbData = {}) {
     for (const badWord of thaiWords) {
       const targetWord = isLoosePass ? stripThaiTones(badWord) : badWord;
       if (!targetWord || targetWord.length < 2) continue;
-      if (isLoosePass && (targetWord === "หา" || (targetWord.length < 3 && badWord !== targetWord))) {
+      if (isLoosePass && (targetWord === "หา" || targetWord === "หลัง" || (targetWord.length < 3 && badWord !== targetWord))) {
         continue;
       }
 

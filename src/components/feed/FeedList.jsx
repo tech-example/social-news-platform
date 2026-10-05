@@ -19,6 +19,8 @@ export function FeedList({
   filter = "latest",
   tag = null,
   currentUserId = null,
+  isStaff = false,
+  viewerHideFlagged = true,
   emptyTitle = null,
   emptyDescription = null,
 }) {
@@ -107,7 +109,13 @@ export function FeedList({
   return (
     <div className="flex flex-col w-full max-w-[470px] mx-auto">
       {posts.map((post) => (
-        <MemoizedPostCard key={post.id} post={post} currentUserId={currentUserId} />
+        <MemoizedPostCard
+          key={post.id}
+          post={post}
+          currentUserId={currentUserId}
+          isStaff={isStaff}
+          viewerHideFlagged={viewerHideFlagged}
+        />
       ))}
 
       {/* Load more: show skeleton placeholder cards while fetching */}

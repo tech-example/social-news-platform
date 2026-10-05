@@ -3,6 +3,7 @@ import Link from "next/link";
 import { searchProfiles } from "@/server/dal/profiles";
 import { searchTags, getPopularTags } from "@/server/dal/tags";
 import { searchPosts } from "@/server/dal/posts";
+import { getSession } from "@/server/auth";
 import { Avatar } from "@/components/ui/avatar";
 import { SearchInput } from "./SearchInput";
 import { TagChip } from "@/components/feed/TagChip";
@@ -65,6 +66,11 @@ export default async function SearchPage({ searchParams }) {
       type = "posts";
     }
   }
+
+  const session = await getSession();
+  const viewerId = session?.user?.id || null;
+  const isStaff = session?.profile?.role === "moderator" || session?.profile?.role === "admin";
+  const viewerHideFlagged = session?.profile?.hide_flagged_content ?? true;
 
   const query = rawQuery;
   let accounts = [];
@@ -171,7 +177,11 @@ export default async function SearchPage({ searchParams }) {
                         </span>
                       </div>
                     </div>
-                    <FlaggedContent isFlagged={Boolean(p.is_flagged)}>
+                    <FlaggedContent
+                      key={`search-post-${p.id}`}
+                      isFlagged={Boolean(p.is_flagged)}
+                      defaultHidden={(Boolean(viewerId && (viewerId === p.author?.id || viewerId === p.author_id)) || isStaff) ? false : viewerHideFlagged}
+                    >
                       {p.title && (
                         <Link href={`/p/${p.id}`} className="hover:underline block">
                           <h2 className="text-sm font-semibold text-[var(--ink)] line-clamp-1">

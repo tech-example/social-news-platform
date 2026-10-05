@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { InteractiveActions } from "@/components/feed/InteractiveActions";
 import { InlineCommentInput } from "@/components/feed/InlineCommentInput";
@@ -10,9 +11,10 @@ import { FollowButton } from "@/components/ui/follow-button";
 import { ExternalLink, Hash, Loader2 } from "lucide-react";
 import { getCommentsAction } from "@/server/actions/interactions";
 import { useToast } from "@/components/ui/toast";
-import { ProfanityNotice } from "@/components/feed/ProfanityNotice";
+import { FlaggedContent } from "@/components/feed/FlaggedContent";
 
-export function PostCard({ post, currentUserId = null }) {
+export function PostCard({ post, currentUserId = null, isStaff = false, viewerHideFlagged = true }) {
+  const router = useRouter();
   const { addToast } = useToast();
   const [currentPost, setCurrentPost] = useState(post);
   const [expanded, setExpanded] = useState(false);
@@ -116,6 +118,13 @@ export function PostCard({ post, currentUserId = null }) {
     ? localComments
     : localComments.slice(-2);
 
+  const handleOpenDetail = (e) => {
+    if (e?.target?.closest("button, a, input, textarea, select, [role='button'], [data-interactive='true']")) {
+      return;
+    }
+    router.push(`/p/${currentPost.id}`, { scroll: false });
+  };
+
   return (
     <article className="feed-card-contain border-b border-[var(--line)] bg-[var(--bg)] py-4 flex flex-col gap-3">
       {/* Header */}
@@ -179,16 +188,20 @@ export function PostCard({ post, currentUserId = null }) {
         </div>
       </div>
 
-      {/* Media and Content Body wrapped in ProfanityNotice */}
-      <ProfanityNotice
+      {/* Media and Content Body wrapped in FlaggedContent */}
+      <FlaggedContent
+        key={`post-${currentPost.id}`}
         isFlagged={Boolean(currentPost.is_flagged)}
-        isAuthor={isAuthor}
+        defaultHidden={(isAuthor || isStaff) ? false : (viewerHideFlagged ?? true)}
         contentType="post"
         noticeClassName="mx-4 my-2"
       >
         {/* Media */}
         {currentPost.imageUrl ? (
-          <div className="relative w-full aspect-4/5 bg-[var(--surface)] max-h-[580px] overflow-hidden">
+          <div
+            className="relative w-full aspect-4/5 bg-[var(--surface)] max-h-[580px] overflow-hidden cursor-pointer"
+            onClick={handleOpenDetail}
+          >
             <Image
               src={currentPost.imageUrl}
               alt={currentPost.title || "Post image"}
@@ -201,9 +214,20 @@ export function PostCard({ post, currentUserId = null }) {
         ) : null}
 
         {/* Content & Title */}
-        <div className="px-4 flex flex-col gap-1.5">
+        <div
+          className="px-4 flex flex-col gap-1.5 cursor-pointer"
+          onClick={handleOpenDetail}
+        >
           {currentPost.title && (
-            <Link href={`/p/${currentPost.id}`} className="hover:underline">
+            <Link
+              href={`/p/${currentPost.id}`}
+              scroll={false}
+              className="hover:underline"
+              onClick={(e) => {
+                e.preventDefault();
+                router.push(`/p/${currentPost.id}`, { scroll: false });
+              }}
+            >
               <h2 className="text-base font-bold text-[var(--ink)] line-clamp-2">
                 {currentPost.title}
               </h2>
@@ -221,7 +245,10 @@ export function PostCard({ post, currentUserId = null }) {
               <button
                 type="button"
                 className="text-[var(--ink-muted)] text-sm ml-1 hover:underline cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
-                onClick={() => setExpanded(true)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpanded(true);
+                }}
               >
                 more
               </button>
@@ -247,7 +274,7 @@ export function PostCard({ post, currentUserId = null }) {
             </div>
           )}
         </div>
-      </ProfanityNotice>
+      </FlaggedContent>
 
       {/* Interactive Actions (Like, Comment, Share, Ellipsis, Edit) */}
       <div className="px-4 pt-1">
@@ -306,13 +333,14 @@ export function PostCard({ post, currentUserId = null }) {
                     >
                       {c.author?.username}
                     </Link>
-                    <ProfanityNotice
+                    <FlaggedContent
+                      key={`comment-${c.id}`}
                       isFlagged={isFlaggedComment}
-                      isAuthor={isCommentAuthor}
+                      defaultHidden={(isCommentAuthor || isStaff) ? false : (viewerHideFlagged ?? true)}
                       contentType="comment"
                     >
                       <span className="text-[var(--ink)]">{c.body}</span>
-                    </ProfanityNotice>
+                    </FlaggedContent>
                   </div>
                 </div>
               );

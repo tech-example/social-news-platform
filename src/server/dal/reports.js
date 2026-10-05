@@ -227,3 +227,36 @@ export async function getReportById(reportId) {
     targetDetails,
   };
 }
+
+export async function getReportEvents(reportId) {
+  await requireRole("moderator");
+  const adminSupabase = getAdminClient();
+
+  const { data, error } = await adminSupabase
+    .from("report_events")
+    .select(`
+      id,
+      report_id,
+      actor_id,
+      from_status,
+      to_status,
+      note,
+      created_at,
+      actor:profiles(
+        id,
+        username,
+        display_name,
+        avatar_url,
+        role
+      )
+    `)
+    .eq("report_id", reportId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching report events:", error);
+    return [];
+  }
+  return data || [];
+}
+

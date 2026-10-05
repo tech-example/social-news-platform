@@ -31,7 +31,7 @@ export const THAI_ALLOW_LIST = [
   "เปลือกหอย",
   "เลี้ยงหอย",
 
-  // Words containing "กะปิ" / "หลั่ง" (falsely flagged in LDNOOBW)
+  // Words containing "กะปิ" / "หลั่ง" / "หลัง"
   "กะปิ",
   "น้ำพริกกะปิ",
   "ข้าวคลุกกะปิ",
@@ -39,6 +39,9 @@ export const THAI_ALLOW_LIST = [
   "หลั่งไหล",
   "หลั่งสาร",
   "น้ำตาหลั่ง",
+  "หลังอาหาร",
+  "ข้างหลัง",
+  "ภายหลัง",
 
   // Words containing "ฟัก"
   "ฟักทอง",

@@ -21,7 +21,7 @@ export const getSession = cache(async () => {
 
     let { data: profile } = await supabase
       .from("profiles")
-      .select("id, username, display_name, avatar_url, role, is_suspended")
+      .select("id, username, display_name, avatar_url, role, is_suspended, hide_flagged_content")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -40,7 +40,7 @@ export const getSession = cache(async () => {
           display_name: displayName.slice(0, 60),
           role: "user",
         })
-        .select("id, username, display_name, avatar_url, role, is_suspended")
+        .select("id, username, display_name, avatar_url, role, is_suspended, hide_flagged_content")
         .maybeSingle();
 
       if (createdProfile) {

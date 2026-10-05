@@ -10,9 +10,16 @@ import { IconButton } from "@/components/ui/icon-button";
 import { FollowButton } from "@/components/ui/follow-button";
 import { X, ExternalLink, Hash } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format";
-import { ProfanityNotice } from "@/components/feed/ProfanityNotice";
+import { FlaggedContent } from "@/components/feed/FlaggedContent";
 
-export function InterceptedPostTopSheet({ post: initialPost, comments = [], viewerId = null }) {
+export function InterceptedPostTopSheet({
+  post: initialPost,
+  comments = [],
+  viewerId = null,
+  defaultHidden = null,
+  isStaff = false,
+  viewerHideFlagged = true,
+}) {
   const router = useRouter();
   const [post, setPost] = useState(initialPost);
 
@@ -164,9 +171,10 @@ export function InterceptedPostTopSheet({ post: initialPost, comments = [], view
 
         {/* Scrollable Content Container */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
-          <ProfanityNotice
+          <FlaggedContent
+            key={`modal-post-${post.id}`}
             isFlagged={Boolean(post.is_flagged)}
-            isAuthor={isAuthor}
+            defaultHidden={typeof defaultHidden === "boolean" ? defaultHidden : ((isAuthor || isStaff) ? false : (viewerHideFlagged ?? true))}
             contentType="post"
             noticeClassName="m-4"
           >
@@ -215,7 +223,7 @@ export function InterceptedPostTopSheet({ post: initialPost, comments = [], view
                 </div>
               )}
             </div>
-          </ProfanityNotice>
+          </FlaggedContent>
 
           {/* Action Row */}
           <div className="px-4 py-2 border-y border-[var(--line)] bg-[var(--bg)]">
@@ -243,6 +251,8 @@ export function InterceptedPostTopSheet({ post: initialPost, comments = [], view
               postId={post.id}
               initialComments={comments}
               currentUserId={viewerId}
+              isStaff={isStaff}
+              viewerHideFlagged={viewerHideFlagged}
             />
           </div>
         </div>

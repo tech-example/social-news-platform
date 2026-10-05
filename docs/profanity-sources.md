@@ -24,6 +24,18 @@ This document records all external libraries, datasets, and design methodologies
 - **Author:** Shutterstock / Robert J. Gabriel & community contributors
 - **Coverage:** Curated multilingual baseline for Thai (`th`) and English (`en`), normalized and deduplicated into the base block list.
 
+### 1.4 Merged Term Counts (Baseline)
+| Source | Language | Raw Terms | Merged / Deduplicated Role |
+|---|---|---|---|
+| `@sit-sandbox/thai-bad-words` | Thai | 741 | Primary Thai vulgarity lexicon |
+| `glin-profanity` | Thai | 31 | Thai base profanity |
+| `glin-profanity` | English / Leetspeak | 415 | Primary English & obfuscated profanity |
+| `LDNOOBW` (Thai) | Thai | 26 | Core Thai slurs & idioms |
+| `LDNOOBW` (English) | English | 75 | Core English vulgarities |
+| `ROMANIZED_THAI_MAP` | Thai (Latin script) | 25+ | Phonetic transliterations (`kuay`, `yed`, `hee`) |
+| `profanity_terms` (Supabase DB) | Dynamic (all) | 0 (initially) | Admin/moderator managed custom block/allow terms |
+| **Merged Deduplicated Total** | **Thai: 746 \| English: 415** | **1,288 raw** | **1,161 unique static terms** |
+
 ---
 
 ## 2. Detection Pipeline Architecture

@@ -464,6 +464,7 @@ export function InteractiveActions({
         onClose={() => setShareOpen(false)}
         postId={postId}
         postTitle={postTitle}
+        isFlagged={Boolean(post?.is_flagged)}
         onShareSuccess={handleShareSuccess}
       />
 

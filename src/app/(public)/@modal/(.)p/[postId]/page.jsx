@@ -19,11 +19,18 @@ export default async function InterceptedPostModalPage({ params }) {
     return notFound();
   }
 
+  const isAuthor = viewerId === post.author?.id;
+  const isStaff = session?.profile?.role === "moderator" || session?.profile?.role === "admin";
+  const defaultHidden = (isAuthor || isStaff) ? false : (session?.profile?.hide_flagged_content ?? true);
+
   return (
     <InterceptedPostTopSheet
       post={post}
       comments={comments || []}
       viewerId={viewerId}
+      defaultHidden={defaultHidden}
+      isStaff={isStaff}
+      viewerHideFlagged={session?.profile?.hide_flagged_content ?? true}
     />
   );
 }

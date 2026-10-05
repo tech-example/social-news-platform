@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -6,10 +7,11 @@ import { getSession } from "@/server/auth";
 import { Avatar } from "@/components/ui/avatar";
 import { InteractiveActions } from "@/components/feed/InteractiveActions";
 import { CommentThread } from "@/components/feed/CommentThread";
+import { CommentThreadSkeleton } from "@/components/ui/skeletons";
 import { FollowButton } from "@/components/ui/follow-button";
-import { ChevronLeft, Hash, ShieldAlert } from "lucide-react";
+import { ChevronLeft, Hash } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format";
-import { ProfanityNotice } from "@/components/feed/ProfanityNotice";
+import { FlaggedContent } from "@/components/feed/FlaggedContent";
 
 export async function generateMetadata({ params }) {
   const { postId } = await params;
@@ -57,21 +59,33 @@ function renderBodyWithLinks(text) {
   });
 }
 
+async function CommentsStream({ postId, viewerId, isStaff, viewerHideFlagged }) {
+  const comments = await getCommentsForPost(postId, viewerId);
+  return (
+    <CommentThread
+      postId={postId}
+      initialComments={comments || []}
+      currentUserId={viewerId}
+      isStaff={isStaff}
+      viewerHideFlagged={viewerHideFlagged}
+    />
+  );
+}
+
 export default async function PostDetailPage({ params }) {
   const { postId } = await params;
   const session = await getSession();
   const viewerId = session?.user?.id || null;
 
-  const [post, comments] = await Promise.all([
-    getPostById(postId, viewerId),
-    getCommentsForPost(postId, viewerId),
-  ]);
+  const post = await getPostById(postId, viewerId);
 
   if (!post) {
     notFound();
   }
 
   const isAuthor = viewerId === post.author?.id;
+  const isStaff = session?.profile?.role === "moderator" || session?.profile?.role === "admin";
+  const defaultHidden = (isAuthor || isStaff) ? false : (session?.profile?.hide_flagged_content ?? true);
 
   return (
     <div className="max-w-[935px] mx-auto px-4 py-4 sm:py-6">
@@ -103,9 +117,9 @@ export default async function PostDetailPage({ params }) {
             </div>
           ) : (
             <div className="p-8 max-w-lg w-full text-center flex flex-col items-center justify-center">
-              <ProfanityNotice
+              <FlaggedContent
                 isFlagged={Boolean(post.is_flagged)}
-                isAuthor={isAuthor}
+                defaultHidden={defaultHidden}
                 contentType="post"
                 className="w-full"
               >
@@ -117,7 +131,7 @@ export default async function PostDetailPage({ params }) {
                     {renderBodyWithLinks(post.body)}
                   </p>
                 </div>
-              </ProfanityNotice>
+              </FlaggedContent>
             </div>
           )}
         </div>
@@ -165,9 +179,9 @@ export default async function PostDetailPage({ params }) {
           {/* Post Caption + Hashtags (if image exists) */}
           {post.imageUrl && (
             <div className="p-4 border-b border-[var(--line)] bg-[var(--surface)]">
-              <ProfanityNotice
+              <FlaggedContent
                 isFlagged={Boolean(post.is_flagged)}
-                isAuthor={isAuthor}
+                defaultHidden={defaultHidden}
                 contentType="post"
               >
                 <div className="space-y-2">
@@ -195,17 +209,20 @@ export default async function PostDetailPage({ params }) {
                     </div>
                   )}
                 </div>
-              </ProfanityNotice>
+              </FlaggedContent>
             </div>
           )}
 
           {/* Comments List (Scrollable) */}
           <div className="flex-1 overflow-y-auto p-4">
-            <CommentThread
-              postId={post.id}
-              initialComments={comments}
-              currentUserId={viewerId}
-            />
+            <Suspense fallback={<CommentThreadSkeleton standalone={false} />}>
+              <CommentsStream
+                postId={post.id}
+                viewerId={viewerId}
+                isStaff={isStaff}
+                viewerHideFlagged={session?.profile?.hide_flagged_content ?? true}
+              />
+            </Suspense>
           </div>
 
           {/* Action Row at Bottom */}

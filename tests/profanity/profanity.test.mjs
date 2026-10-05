@@ -116,6 +116,112 @@ test("Profanity Layered Detector Evaluation Suite", async (t) => {
     );
   });
 
+  await t.test("Recall per Evasion Category >= 95%", async () => {
+    const categories = {
+      plain: [
+        "What the fuck is wrong with this code",
+        "Shut up you bitch",
+        "Get out of here asshole",
+        "This is total bullshit",
+        "What a dumb motherfucker",
+        "You are a piece of shit",
+        "ทำไมทำตัวแบบนี้วะไอ้เหี้ย",
+        "ไปตายซะควย",
+        "มึงพูดจาหมาไม่แหลกวะสัส",
+        "มึงจะเอาอะไรนักหนาวะไอ้หน้าหี",
+        "สัสเอ๊ย",
+        "ไอ้สัตว์นรก",
+      ],
+      spacing: [
+        "f u c k",
+        "s h i t",
+        "b i t c h",
+        "a s s h o l e",
+        "f.u.c.k",
+        "s-h-i-t",
+        "b.i.t.c.h",
+        "f_u_c_k",
+        "ค ว ย",
+        "เ หี้ ย",
+        "เ ย็ ด",
+        "ค-ว-ย",
+        "ค.ว.ย",
+        "เ.หี้.ย",
+        "ไอ้ สั ส",
+        "เ ย็ ด แ ม่",
+        "ค_ว_ย",
+        "เย็_ด",
+        "k u a y",
+        "y e d",
+        "k.u.a.y",
+      ],
+      repeated_characters: [
+        "fuuuuuck",
+        "shiiiit",
+        "biiiiiitch",
+        "เหี้ยยยยย",
+        "ควยยยย",
+        "เย็ดดดด",
+        "ไอ้เหี้ยยยยยยเอ๊ย",
+      ],
+      tone_mark_changes: [
+        "เหีย",
+        "เหียก",
+        "เยดแม่",
+      ],
+      leetspeak: [
+        "fuk",
+        "sh!t",
+        "b!tch",
+        "@sshole",
+        "a$$hole",
+        "b1tch",
+        "f*u*c*k",
+        "c*u*n*t",
+        "d!ck",
+        "b.i.t.c.h.e.s",
+        "ค*ว*ย",
+      ],
+      mixed_language: [
+        "ไอ้ kuay",
+        "ไอ้ hie",
+      ],
+      zero_width: [
+        "f\u200Bu\u200Bc\u200Bk",
+        "s\u200Bh\u200Bi\u200Bt",
+        "ค\u200Bว\u200Bย",
+        "เ\u200Bหี้\u200Bย",
+      ],
+      romanized_thai: [
+        "kuay",
+        "kuy",
+        "hee",
+        "hie",
+        "yed",
+        "kwaay",
+        "ai-hie",
+        "e-hie",
+        "tham kuay rai",
+        "ai hie nee",
+        "kuay jing jing",
+        "phuak hie",
+        "yed mae",
+      ],
+    };
+
+    console.log("\n[Category Breakdown]");
+    for (const [cat, lines] of Object.entries(categories)) {
+      let flagged = 0;
+      for (const line of lines) {
+        const res = analyzeTextSync(line);
+        if (res.isProfane) flagged++;
+      }
+      const rate = (flagged / lines.length) * 100;
+      console.log(`  - ${cat}: ${flagged}/${lines.length} (${rate.toFixed(1)}%)`);
+      assert.ok(rate >= 95, `Category ${cat} recall was ${rate.toFixed(1)}%, expected >= 95%`);
+    }
+  });
+
   await t.test("Async API matches Sync API contract", async () => {
     const sample = "This is a clean document.";
     const syncRes = analyzeTextSync(sample);
@@ -123,3 +229,4 @@ test("Profanity Layered Detector Evaluation Suite", async (t) => {
     assert.equal(syncRes.isProfane, asyncRes.isProfane);
   });
 });
+

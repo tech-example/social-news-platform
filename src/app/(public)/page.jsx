@@ -12,7 +12,7 @@ import { Hash } from "lucide-react";
 
 export const revalidate = 0; // Dynamic feed
 
-async function FeedStream({ filter, viewerId }) {
+async function FeedStream({ filter, viewerId, isStaff = false, viewerHideFlagged = true }) {
   const feedData = await getFeedPosts({
     cursor: null,
     limit: 10,
@@ -27,6 +27,8 @@ async function FeedStream({ filter, viewerId }) {
       initialCursor={feedData.nextCursor}
       filter={filter}
       currentUserId={viewerId}
+      isStaff={isStaff}
+      viewerHideFlagged={viewerHideFlagged}
     />
   );
 }
@@ -107,6 +109,8 @@ export default async function HomeFeedPage({ searchParams }) {
 
   const session = await getSession();
   const viewerId = session?.user?.id || null;
+  const isStaff = session?.profile?.role === "moderator" || session?.profile?.role === "admin";
+  const viewerHideFlagged = session?.profile?.hide_flagged_content ?? true;
 
   return (
     <div className="flex justify-center gap-8 px-0 sm:px-4 py-0 sm:py-6">
@@ -139,7 +143,12 @@ export default async function HomeFeedPage({ searchParams }) {
         )}
 
         <Suspense key={filter} fallback={<FeedSkeleton count={3} />}>
-          <FeedStream filter={filter} viewerId={viewerId} />
+          <FeedStream
+            filter={filter}
+            viewerId={viewerId}
+            isStaff={isStaff}
+            viewerHideFlagged={viewerHideFlagged}
+          />
         </Suspense>
       </div>
 

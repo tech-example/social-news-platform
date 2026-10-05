@@ -1,56 +1,62 @@
 "use client";
-import { useState } from "react";
-import { EyeOff, Eye, Flag } from "lucide-react";
+import { useId, useState } from "react";
+import { EyeOff, Flag } from "lucide-react";
 
 /**
  * FlaggedContent: Universal client component for flagged posts and comments.
  *
- * Rules (every viewer gets a working toggle on every flagged post/comment):
- * - If not flagged: renders children directly.
- * - Guests and normal users viewing others' content: hidden by default.
- * - Author viewing own content: shown by default, with "Flagged for language" badge and a "Hide" button.
- * - Staff (moderators/admins): shown by default in queue/detail, with badge and a "Hide" button.
- * - When hidden: bordered notice, Lucide EyeOff, "This content may contain inappropriate language.",
- *   and "Show" button (Lucide Eye, aria-pressed={false}, aria-label="Show content").
- * - When shown: "Flagged for language" badge (Lucide Flag), "Hide" button (Lucide EyeOff, aria-pressed={true}, aria-label="Hide content"),
- *   and children revealed with opacity transition and reserved min-height to prevent layout shift.
- * - All buttons are real <button type="button"> with min 44px hit area, keyboard Enter/Space support, and focus rings.
+ * Rules:
+ * - isFlagged false: render children only.
+ * - Hidden state: render ONLY the notice (Lucide EyeOff, the sentence, and a "Show" button).
+ *   Do not render the children and do not render the badge.
+ * - Shown state: render ONLY a slim header row (Lucide Flag, "Flagged for language", and a "Hide" button)
+ *   followed by the children. Do not render the notice.
+ * - The button is a real <button type="button"> with aria-expanded, aria-controls pointing at the content region,
+ *   an aria-label ("Show content" / "Hide content"), a 44px minimum hit area, a visible focus-visible ring,
+ *   and Enter/Space keyboard support.
+ * - Initial state comes from defaultHidden prop computed on server:
+ *   false for author, moderators, admins; otherwise viewer's hide_flagged_content (guests: true).
  */
 export function FlaggedContent({
   isFlagged = false,
-  isAuthor = false,
-  isModeratorOrAdmin = false,
-  forceUnfold = false,
-  defaultHidden = null,
+  defaultHidden = true,
   contentType = "post",
   className = "",
   noticeClassName = "",
+  isAuthor = false,
+  isModeratorOrAdmin = false,
   children,
 }) {
-  const isPrivileged = isAuthor || isModeratorOrAdmin || forceUnfold;
-
-  // Determine initial hidden state
   const initialHidden = () => {
-    if (isPrivileged) return false;
     if (typeof defaultHidden === "boolean") return defaultHidden;
+    if (isAuthor || isModeratorOrAdmin) return false;
     return true;
   };
 
   const [hidden, setHidden] = useState(initialHidden);
+  const regionId = useId();
 
   if (!isFlagged) {
     return children;
   }
 
-  // 1. Hidden State (Notice with "Show" button)
+  // Hidden state: render ONLY the notice (Lucide EyeOff, the sentence, and a "Show" button)
   if (hidden) {
+    const isComment = contentType === "comment";
+
     return (
       <div
-        className={`min-h-[52px] rounded-xl border border-[var(--line)] bg-[var(--surface)] p-2.5 sm:p-3 flex items-center justify-between gap-3 text-left transition-opacity duration-200 ${noticeClassName} ${className}`}
+        role="group"
+        aria-label="Hidden content"
+        className={`${
+          isComment
+            ? "min-h-[44px] py-1.5 px-3 flex items-center justify-between gap-2.5 rounded-lg border border-[var(--line)] bg-[var(--surface)]"
+            : "min-h-[110px] sm:min-h-[130px] p-4 flex flex-col items-center justify-center text-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)]"
+        } transition-colors text-left ${noticeClassName} ${className}`}
       >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="p-1.5 rounded-full bg-[var(--bg)] border border-[var(--line)] shrink-0 text-[var(--ink-muted)]">
-            <EyeOff size={16} strokeWidth={2} aria-hidden="true" />
+        <div className={`flex items-center gap-2.5 min-w-0 ${isComment ? "" : "flex-col sm:flex-row text-center sm:text-left"}`}>
+          <div className="p-1.5 rounded-full bg-[var(--bg)] border border-[var(--line)] text-[var(--ink-muted)] shrink-0">
+            <EyeOff size={16} strokeWidth={1.75} aria-hidden="true" />
           </div>
           <p className="text-xs sm:text-sm font-medium text-[var(--ink-muted)]">
             This content may contain inappropriate language.
@@ -59,43 +65,43 @@ export function FlaggedContent({
 
         <button
           type="button"
-          onClick={() => setHidden(false)}
-          aria-pressed={false}
+          aria-expanded={false}
+          aria-controls={regionId}
           aria-label="Show content"
-          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[var(--ink)] bg-[var(--bg)] border border-[var(--line)] rounded-lg hover:bg-[var(--surface-strong)] active:bg-[var(--surface-strong)] transition-colors shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
+          onClick={() => setHidden(false)}
+          className="min-h-[44px] min-w-[44px] px-3.5 py-2 inline-flex items-center justify-center text-xs font-semibold text-[var(--ink)] bg-[var(--bg)] border border-[var(--line)] rounded-lg hover:bg-[var(--surface-strong)] active:bg-[var(--surface-strong)] transition-colors shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
         >
-          <Eye size={14} strokeWidth={2} aria-hidden="true" />
-          <span>Show</span>
+          Show
         </button>
       </div>
     );
   }
 
-  // 2. Shown State (Badge, "Hide" button, and content)
+  // Shown state: render ONLY a slim header row (Lucide Flag, "Flagged for language", and a "Hide" button) followed by children
   return (
-    <div className={`space-y-2 min-h-[52px] transition-opacity duration-200 opacity-100 ${className}`}>
-      <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-[var(--line)]/60">
-        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[var(--surface-strong)] text-[var(--ink-muted)] text-[11px] font-medium border border-[var(--line)]">
+    <div className={`space-y-2 transition-opacity duration-150 ${className}`}>
+      <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-[var(--line)]">
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[var(--surface-strong)] text-[var(--ink-muted)] text-[11px] font-medium border border-[var(--line)]">
           <Flag size={12} strokeWidth={2} className="text-[var(--warning)] shrink-0" aria-hidden="true" />
           <span>Flagged for language</span>
-        </div>
+        </span>
 
         <button
           type="button"
-          onClick={() => setHidden(true)}
-          aria-pressed={true}
+          aria-expanded={true}
+          aria-controls={regionId}
           aria-label="Hide content"
-          className="min-h-[44px] inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-[var(--ink-muted)] hover:text-[var(--ink)] transition-colors shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
+          onClick={() => setHidden(true)}
+          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2.5 py-1 text-xs font-semibold text-[var(--ink-muted)] hover:text-[var(--ink)] transition-colors shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
         >
-          <EyeOff size={14} strokeWidth={2} aria-hidden="true" />
-          <span>Hide</span>
+          Hide
         </button>
       </div>
 
-      <div>{children}</div>
+      <div id={regionId}>{children}</div>
     </div>
   );
 }
 
-// Re-export under alias for seamless drop-in backwards compatibility
+// Export under alias for seamless drop-in backwards compatibility
 export { FlaggedContent as ProfanityNotice };
