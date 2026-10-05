@@ -10,7 +10,14 @@ export async function createUserClient() {
       getAll: () => cookieStore.getAll(),
       setAll: (list) => {
         try {
-          list.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+          list.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, {
+              ...options,
+              httpOnly: true,
+              secure: process.env.NODE_ENV === "production",
+              sameSite: "lax",
+            });
+          });
         } catch {
           // Called from a Server Component; middleware refreshes the session.
         }

@@ -36,9 +36,6 @@ export async function signInAction(prevState, formData) {
     return {
       ok: false,
       error: "Incorrect email or password. Please check your credentials.",
-      fieldErrors: {
-        password: "Incorrect password",
-      },
     };
   }
 

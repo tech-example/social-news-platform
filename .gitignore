@@ -35,6 +35,18 @@ yarn-error.log*
 !.env.example
 *.local.env
 
+# throwaway debug / investigation scripts (root-scoped only;
+# permanent scripts/ and tests/ are intentionally NOT ignored)
+/scratch/
+/tmp/
+/temp/
+/check_*.js
+/check_*.mjs
+/debug_*.js
+/debug_*.mjs
+/test_*.js
+/test_*.mjs
+
 # supabase
 supabase/.temp/
 
