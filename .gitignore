@@ -46,6 +46,8 @@ yarn-error.log*
 /debug_*.mjs
 /test_*.js
 /test_*.mjs
+/scratch_*.js
+/scratch_*.mjs
 
 # supabase
 supabase/.temp/
