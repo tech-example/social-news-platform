@@ -71,6 +71,38 @@ export function NotificationsClient({ initialNotifications = [] }) {
     }
   };
 
+  const markAsRead = async (notificationId) => {
+    try {
+      await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: notificationId }),
+      });
+      mutate(
+        (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            notifications: (prev.notifications || []).map((n) =>
+              n.id === notificationId ? { ...n, isRead: true } : n
+            ),
+            unreadCount: Math.max(0, (prev.unreadCount || 1) - 1),
+          };
+        },
+        false
+      );
+    } catch {
+      // Ignore background error
+    }
+  };
+
+  const getNotificationLink = (n) => {
+    if (n.post?.id) return `/p/${n.post.id}`;
+    if (n.type === "follow" && n.actor?.username) return `/u/${n.actor.username}`;
+    if (n.type === "moderation") return "/moderation";
+    return null;
+  };
+
   const renderSentence = (n) => {
     const actorName = n.actor?.display_name || n.actor?.username || "Someone";
     switch (n.type) {
@@ -139,7 +171,17 @@ export function NotificationsClient({ initialNotifications = [] }) {
                 )}
 
                 <div className="text-sm leading-snug break-words">
-                  <div className="text-[var(--ink)]">{renderSentence(n)}</div>
+                  {getNotificationLink(n) ? (
+                    <Link
+                      href={getNotificationLink(n)}
+                      onClick={() => !n.isRead && markAsRead(n.id)}
+                      className="text-[var(--ink)] hover:underline focus-visible:outline-2 focus-visible:outline-[var(--accent)] rounded"
+                    >
+                      {renderSentence(n)}
+                    </Link>
+                  ) : (
+                    <div className="text-[var(--ink)]">{renderSentence(n)}</div>
+                  )}
                   <div className="text-xs text-[var(--ink-muted)] mt-0.5" suppressHydrationWarning>
                     {formatRelativeTime(n.createdAt)}
                   </div>

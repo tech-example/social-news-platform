@@ -21,6 +21,9 @@ import {
 import { Avatar } from "@/components/ui/avatar";
 import { signOutAction } from "@/server/actions/auth";
 import { COPY } from "@/lib/copy";
+import useSWR from "swr";
+
+const fetcher = (url) => fetch(url).then((r) => r.json());
 
 export function AppShell({ children, session = null }) {
   const pathname = usePathname();
@@ -42,12 +45,23 @@ export function AppShell({ children, session = null }) {
   const isModerator = userRole === "moderator" || userRole === "admin";
   const isAdmin = userRole === "admin";
 
+  const { data: notifData } = useSWR(
+    isAuthenticated ? "/api/notifications?limit=1" : null,
+    fetcher,
+    {
+      refreshInterval: 30000,
+      revalidateOnFocus: true,
+      dedupingInterval: 5000,
+    }
+  );
+  const unreadCount = notifData?.unreadCount || 0;
+
   const navItems = [
     { name: COPY.nav.home, href: "/", icon: House },
     { name: COPY.nav.search, href: "/search", icon: Search },
     { name: COPY.nav.compose, href: "/compose", icon: SquarePlus },
     ...(isAuthenticated
-      ? [{ name: COPY.nav.notifications, href: "/notifications", icon: Bell }]
+      ? [{ name: COPY.nav.notifications, href: "/notifications", icon: Bell, badge: unreadCount }]
       : []),
     {
       name: isAuthenticated ? COPY.nav.profile : "Sign In",
@@ -73,10 +87,15 @@ export function AppShell({ children, session = null }) {
             <>
               <Link
                 href="/notifications"
-                className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--ink)] hover:bg-[var(--surface-strong)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-                aria-label={COPY.nav.notifications}
+                className="relative flex h-11 w-11 items-center justify-center rounded-full text-[var(--ink)] hover:bg-[var(--surface-strong)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+                aria-label={`${COPY.nav.notifications}${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
               >
                 <Bell size={22} strokeWidth={1.75} aria-hidden="true" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-white ring-2 ring-[var(--bg)]">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
               </Link>
               <Link
                 href="/compose"
@@ -153,28 +172,39 @@ export function AppShell({ children, session = null }) {
                     : "text-[var(--ink)] hover:bg-[var(--surface)] font-normal"
                 }`}
                 aria-current={isActive ? "page" : undefined}
-                aria-label={item.name}
+                aria-label={`${item.name}${item.badge > 0 ? ` (${item.badge} unread)` : ""}`}
               >
-                {item.avatar ? (
-                  <Avatar
-                    src={item.avatar}
-                    name={item.name}
-                    size={24}
-                    className={`shrink-0 ${
-                      isActive ? "ring-2 ring-[var(--ink)]" : ""
-                    }`}
-                  />
-                ) : (
-                  <Icon
-                    size={24}
-                    strokeWidth={isActive ? 2.25 : 1.75}
-                    fill={isActive ? "currentColor" : "none"}
-                    aria-hidden="true"
-                    className="shrink-0"
-                  />
-                )}
-                <span className="hidden xl:block text-base truncate">
-                  {item.name}
+                <div className="relative shrink-0">
+                  {item.avatar ? (
+                    <Avatar
+                      src={item.avatar}
+                      name={item.name}
+                      size={24}
+                      className={`shrink-0 ${
+                        isActive ? "ring-2 ring-[var(--ink)]" : ""
+                      }`}
+                    />
+                  ) : (
+                    <Icon
+                      size={24}
+                      strokeWidth={isActive ? 2.25 : 1.75}
+                      fill={isActive ? "currentColor" : "none"}
+                      aria-hidden="true"
+                    />
+                  )}
+                  {item.badge > 0 && (
+                    <span className="xl:hidden absolute -top-1.5 -right-1.5 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-white ring-2 ring-[var(--bg)]">
+                      {item.badge > 99 ? "99+" : item.badge}
+                    </span>
+                  )}
+                </div>
+                <span className="hidden xl:flex items-center justify-between flex-1 min-w-0 text-base">
+                  <span className="truncate">{item.name}</span>
+                  {item.badge > 0 && (
+                    <span className="ml-2 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-semibold rounded-full bg-[var(--accent)] text-white">
+                      {item.badge > 99 ? "99+" : item.badge}
+                    </span>
+                  )}
                 </span>
               </Link>
             );
@@ -456,25 +486,32 @@ export function AppShell({ children, session = null }) {
             <Link
               key={item.name}
               href={item.href}
-              className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--ink)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-              aria-label={item.name}
+              className="relative flex h-11 w-11 items-center justify-center rounded-full text-[var(--ink)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+              aria-label={`${item.name}${item.badge > 0 ? ` (${item.badge} unread)` : ""}`}
               aria-current={isActive ? "page" : undefined}
             >
-              {item.avatar ? (
-                <Avatar
-                  src={item.avatar}
-                  name={item.name}
-                  size={24}
-                  className={isActive ? "ring-2 ring-[var(--ink)]" : ""}
-                />
-              ) : (
-                <Icon
-                  size={24}
-                  strokeWidth={isActive ? 2.25 : 1.75}
-                  fill={isActive ? "currentColor" : "none"}
-                  aria-hidden="true"
-                />
-              )}
+              <div className="relative">
+                {item.avatar ? (
+                  <Avatar
+                    src={item.avatar}
+                    name={item.name}
+                    size={24}
+                    className={isActive ? "ring-2 ring-[var(--ink)]" : ""}
+                  />
+                ) : (
+                  <Icon
+                    size={24}
+                    strokeWidth={isActive ? 2.25 : 1.75}
+                    fill={isActive ? "currentColor" : "none"}
+                    aria-hidden="true"
+                  />
+                )}
+                {item.badge > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-white ring-2 ring-[var(--bg)]">
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                )}
+              </div>
             </Link>
           );
         })}

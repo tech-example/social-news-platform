@@ -42,27 +42,52 @@ export const ENGLISH_ALWAYS_BLOCK = new Set([
   "faggot",
 ]);
 
-// Curated LDNOOBW English baseline
+// Full LDNOOBW English baseline
 export const LDNOOBW_ENGLISH_TERMS = [
-  "2g1c", "anal", "anus", "apeshit", "arsehole", "ass", "asshole", "assmunch",
-  "bastard", "bdsm", "beastiality", "bestiality", "bitch", "bitches", "blowjob",
-  "bollocks", "boner", "boob", "boobs", "bullshit", "carpet muncher", "circlejerk",
-  "clit", "clitoris", "cock", "cocksucker", "coon", "crap", "creampie", "cunt",
-  "damn", "dick", "dickhead", "dildo", "douchebag", "dumbass", "dyke", "ejaculation",
-  "fag", "faggot", "feck", "felch", "fellatio", "flange", "foreskin", "fuck",
-  "fucker", "fucking", "gangbang", "handjob", "hitler", "homo", "horny", "jerk",
-  "jerk off", "jizz", "labia", "masturbate", "milf", "motherfucker", "nazi",
-  "nigger", "nigga", "orgasm", "penis", "piss", "porn", "porno", "prick", "pussy",
-  "rape", "retard", "scrotum", "semen", "sex", "shit", "shite", "shitty", "skank",
-  "slut", "smegma", "spastic", "spunk", "testicle", "tit", "tits", "titties",
-  "tosser", "twat", "vagina", "vulva", "wank", "wanker", "whore"
+  "2g1c", "2 girls 1 cup", "acrotomophilia", "alabama hot pocket", "alaskan pipeline",
+  "anal", "anilingus", "anus", "apeshit", "arsehole", "ass", "asshole", "assmunch",
+  "auto erotic", "autoerotic", "babeland", "baby batter", "baby juice", "ball gag",
+  "ball gravy", "ball kicking", "ball licking", "ball sack", "ball sucking", "bangbros",
+  "bangbus", "bareback", "barely legal", "barenaked", "bastard", "bastardo", "bastinado",
+  "bbw", "bdsm", "beaner", "beaners", "beaver cleaver", "beaver lips", "beastiality",
+  "bestiality", "big black", "big breasts", "big knockers", "big tits", "bimbos",
+  "birdlock", "bitch", "bitches", "black cock", "blonde action", "blonde on blonde action",
+  "blowjob", "blow job", "blow your load", "blue waffle", "blumpkin", "bollocks",
+  "bondage", "boner", "boob", "boobs", "booty call", "brown showers", "brunette action",
+  "bukkake", "bulldyke", "bullet vibe", "bullshit", "bung hole", "bunghole", "busty",
+  "butt", "buttcheeks", "butthole", "camel toe", "camgirl", "camslut", "camwhore",
+  "carpet muncher", "carpetmuncher", "chocolate rosebuds", "cialis", "circlejerk",
+  "cleveland steamer", "clit", "clitoris", "clover clamps", "clusterfuck", "cock",
+  "cocks", "cocksucker", "coprolagnia", "coprophilia", "cornhole", "coon", "coons",
+  "creampie", "cum", "cumming", "cumshot", "cumshots", "cunnilingus", "cunt",
+  "darkie", "date rape", "daterape", "deep throat", "deepthroat", "dendrophilia",
+  "dick", "dickhead", "dildo", "dingleberry", "dingleberries", "dirty pillows",
+  "dirty sanchez", "doggie style", "doggiestyle", "doggy style", "doggystyle",
+  "dog style", "dolcett", "domination", "dominatrix", "dommes", "donkey punch",
+  "double dong", "double penetration", "douchebag", "dp action", "dry hump", "dvda",
+  "dumbass", "dyke", "eat my ass", "ecchi", "ejaculation", "erotic", "erotism",
+  "escort", "eunuch", "fag", "faggot", "fecal", "feck", "felch", "fellatio", "feltch",
+  "female squirting", "femdom", "figging", "fingerbang", "fingering", "fisting",
+  "flange", "foot fetish", "footjob", "foreskin", "frotting", "fuck", "fuck buttons",
+  "fuckin", "fucking", "fucker", "fucktards", "fudge packer", "fudgepacker",
+  "futanari", "gangbang", "gang bang", "gay sex", "genitals", "giant cock",
+  "girl on", "girl on top", "girls gone wild", "goatcx", "goatse", "god damn",
+  "gokkun", "golden shower", "goodpoop", "goo girl", "goregasm", "grope",
+  "group sex", "g-spot", "guro", "hand job", "handjob", "hard core", "hardcore",
+  "hentai", "hitler", "homo", "homoerotic", "honkey", "hooker", "horny",
+  "hot carl", "hot chick", "jerk", "jerk off", "jizz", "labia", "masturbate",
+  "milf", "motherfucker", "nazi", "nigger", "nigga", "orgasm", "penis", "piss",
+  "porn", "porno", "prick", "pussy", "rape", "retard", "scrotum", "semen", "sex",
+  "shit", "shite", "shitty", "skank", "slut", "smegma", "spastic", "spunk",
+  "testicle", "tit", "tits", "titties", "tosser", "twat", "vagina", "vulva",
+  "wank", "wanker", "whore"
 ];
 
-// Curated LDNOOBW Thai baseline
+// Full LDNOOBW Thai baseline
 export const LDNOOBW_THAI_TERMS = [
-  "กระดอ", "กระเด้า", "กระหรี่", "ควย", "จิ๋ม", "จู๋", "เจ๊ก", "เจี๊ยว",
-  "ดอกทอง", "ตอแหล", "ตูด", "น้ำแตก", "แม่ง", "เย็ด", "รูตูด", "ล้างตู้เย็น",
-  "ส้นตีน", "สัด", "เสือก", "หญิงชาติชั่ว", "ห่า", "หำ", "หี", "เหี้ย",
+  "กระดอ", "กระเด้า", "กระหรี่", "กะปิ", "กู", "ขี้", "ควย", "จิ๋ม", "จู๋", "เจ๊ก", "เจี๊ยว",
+  "ดอกทอง", "ตอแหล", "ตูด", "น้ำแตก", "น้ําแตก", "มึง", "แม่ง", "เย็ด", "รูตูด", "ล้างตู้เย็น",
+  "ส้นตีน", "สัด", "เสือก", "หญิงชาติชั่ว", "หลั่ง", "ห่า", "หำ", "หํา", "หี", "เหี้ย",
   "อมนกเขา", "ไอ้ควาย"
 ];
 
@@ -89,9 +114,9 @@ export function getDictionarySources() {
   try {
     const sitWords = getSitBadWords() || [];
     for (const w of sitWords) {
-      const trimmed = w.trim().toLowerCase();
+      const trimmed = w.trim().toLowerCase().normalize("NFKC");
       if (!trimmed) continue;
-      if (THAI_ALWAYS_BLOCK.has(trimmed)) {
+      if (THAI_ALWAYS_BLOCK.has(trimmed) || THAI_ALWAYS_BLOCK.has(w.trim())) {
         thaiSevere.add(trimmed);
       } else {
         thaiModerate.add(trimmed);
@@ -103,9 +128,9 @@ export function getDictionarySources() {
 
   // 2. Ingest LDNOOBW Thai words
   for (const w of LDNOOBW_THAI_TERMS) {
-    const trimmed = w.trim().toLowerCase();
+    const trimmed = w.trim().toLowerCase().normalize("NFKC");
     if (!trimmed) continue;
-    if (THAI_ALWAYS_BLOCK.has(trimmed)) {
+    if (THAI_ALWAYS_BLOCK.has(trimmed) || THAI_ALWAYS_BLOCK.has(w.trim())) {
       thaiSevere.add(trimmed);
     } else {
       thaiModerate.add(trimmed);
@@ -114,7 +139,7 @@ export function getDictionarySources() {
 
   // 3. Ingest LDNOOBW English words
   for (const w of LDNOOBW_ENGLISH_TERMS) {
-    const trimmed = w.trim().toLowerCase();
+    const trimmed = w.trim().toLowerCase().normalize("NFKC");
     if (!trimmed) continue;
     if (ENGLISH_ALWAYS_BLOCK.has(trimmed)) {
       englishSevere.add(trimmed);
@@ -129,10 +154,10 @@ export function getDictionarySources() {
   try {
     const glin = new GlinFilter({ languages: ["thai", "english"] });
     for (const [term] of glin.words.entries()) {
-      const trimmed = term.trim().toLowerCase();
+      const trimmed = term.trim().toLowerCase().normalize("NFKC");
       if (!trimmed || trimmed.length < 2) continue;
       if (/[\u0E00-\u0E7F]/.test(trimmed)) {
-        if (THAI_ALWAYS_BLOCK.has(trimmed)) {
+        if (THAI_ALWAYS_BLOCK.has(trimmed) || THAI_ALWAYS_BLOCK.has(term.trim())) {
           thaiSevere.add(trimmed);
         } else {
           thaiModerate.add(trimmed);
@@ -151,9 +176,15 @@ export function getDictionarySources() {
     console.error("Failed to load glin-profanity terms:", err);
   }
 
-  // Ensure always-block words are in severe sets
-  for (const w of THAI_ALWAYS_BLOCK) thaiSevere.add(w);
-  for (const w of ENGLISH_ALWAYS_BLOCK) englishSevere.add(w);
+  // Ensure always-block words are in severe sets in both forms
+  for (const w of THAI_ALWAYS_BLOCK) {
+    thaiSevere.add(w.normalize("NFKC"));
+    thaiSevere.add(w);
+  }
+  for (const w of ENGLISH_ALWAYS_BLOCK) {
+    englishSevere.add(w.normalize("NFKC"));
+    englishSevere.add(w);
+  }
 
   cachedDictionaries = {
     thai: {

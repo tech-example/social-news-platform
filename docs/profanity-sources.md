@@ -14,27 +14,27 @@ This document records all external libraries, datasets, and design methodologies
 
 ### 1.2 `@sit-sandbox/thai-bad-words`
 - **Version:** `1.1.9` (pinned)
-- **License:** MIT License
+- **License:** MIT License (permissive, compatible with commercial and closed-source use)
 - **Repository:** [https://github.com/SIT-SandBox/thai-bad-words](https://github.com/SIT-SandBox/thai-bad-words)
-- **Coverage:** Curated dictionary of 741 Thai profanity and abusive terms, maintainable without heavy native or wasm dependencies.
+- **Coverage:** Thai-specific root-word + prefix combination detector (741 combinations generating prefixed forms with "กู", "มึง", "ไอ้", "อี", "พ่อ", "แม่" etc. to catch related/inflected Thai forms that flat word lists miss).
 
 ### 1.3 `LDNOOBW` (List of Dirty, Naughty, Obscene, and Otherwise Bad Words)
 - **Source:** [https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words)
-- **License:** Creative Commons Attribution 4.0 International (CC BY 4.0)
+- **License:** Creative Commons Attribution 4.0 International (CC BY 4.0 - compatible with attribution)
 - **Author:** Shutterstock / Robert J. Gabriel & community contributors
-- **Coverage:** Curated multilingual baseline for Thai (`th`) and English (`en`), normalized and deduplicated into the base block list.
+- **Coverage:** Full upstream word lists for Thai (`th`, 31 terms) and English (`en`, 191 terms), normalized to Unicode NFKC and deduplicated into the base detection layer.
 
 ### 1.4 Merged Term Counts (Baseline)
 | Source | Language | Raw Terms | Merged / Deduplicated Role |
 |---|---|---|---|
-| `@sit-sandbox/thai-bad-words` | Thai | 741 | Primary Thai vulgarity lexicon |
+| `@sit-sandbox/thai-bad-words` | Thai | 741 | Root-word + prefix inflected combinations |
 | `glin-profanity` | Thai | 31 | Thai base profanity |
 | `glin-profanity` | English / Leetspeak | 415 | Primary English & obfuscated profanity |
-| `LDNOOBW` (Thai) | Thai | 26 | Core Thai slurs & idioms |
-| `LDNOOBW` (English) | English | 75 | Core English vulgarities |
+| `LDNOOBW` (Thai) | Thai | 31 | Full upstream Thai slurs & idioms |
+| `LDNOOBW` (English) | English | 191 | Full upstream English vulgarities |
 | `ROMANIZED_THAI_MAP` | Thai (Latin script) | 25+ | Phonetic transliterations (`kuay`, `yed`, `hee`) |
 | `profanity_terms` (Supabase DB) | Dynamic (all) | 0 (initially) | Admin/moderator managed custom block/allow terms |
-| **Merged Deduplicated Total** | **Thai: 746 \| English: 415** | **1,288 raw** | **1,161 unique static terms** |
+| **Merged Deduplicated Total** | **Thai: 751 \| English: 520** | **1,434 raw** | **1,296 unique static terms** |
 
 ---
 

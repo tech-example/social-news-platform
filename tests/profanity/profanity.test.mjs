@@ -207,6 +207,23 @@ test("Profanity Layered Detector Evaluation Suite", async (t) => {
         "phuak hie",
         "yed mae",
       ],
+      related_inflected_thai: [
+        "กูเหี้ย",
+        "มึงสัส",
+        "ไอ้เชี่ย",
+        "อีแรด",
+        "พ่อมึงตาย",
+        "แม่มึง",
+        "กูควย",
+        "มึงควาย",
+        "อีตอแหล",
+        "ไอ้สัตว์นรก",
+        "คุณมึง",
+        "กระผมเหี้ย",
+        "ไอ้ระยำ",
+        "อีชาติชั่ว",
+        "พวกเหี้ย",
+      ],
     };
 
     console.log("\n[Category Breakdown]");
