@@ -29,9 +29,9 @@ export async function updateUserRoleAction(targetUserId, newRole) {
   await adminSupabase.from("audit_logs").insert({
     actor_id: session.user.id,
     action: "update_user_role",
-    target_type: "user",
-    target_id: targetUserId,
-    details: { newRole: parsed.data.role },
+    entity: "user",
+    entity_id: targetUserId,
+    metadata: { newRole: parsed.data.role },
   });
 
   revalidatePath("/admin/users");
@@ -51,12 +51,19 @@ export async function setUserSuspendedAction(targetUserId, isSuspended, reason =
   }
 
   const adminSupabase = getAdminClient();
+  const updatePayload = {
+    is_suspended: parsed.data.isSuspended,
+    updated_at: new Date().toISOString(),
+  };
+  if (parsed.data.isSuspended) {
+    updatePayload.suspended_reason = parsed.data.reason || null;
+  } else {
+    updatePayload.suspended_reason = null;
+  }
+
   const { error } = await adminSupabase
     .from("profiles")
-    .update({
-      is_suspended: parsed.data.isSuspended,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq("id", targetUserId);
 
   if (error) {
@@ -66,9 +73,9 @@ export async function setUserSuspendedAction(targetUserId, isSuspended, reason =
   await adminSupabase.from("audit_logs").insert({
     actor_id: session.user.id,
     action: parsed.data.isSuspended ? "suspend_user" : "unsuspend_user",
-    target_type: "user",
-    target_id: targetUserId,
-    details: { reason: parsed.data.reason },
+    entity: "user",
+    entity_id: targetUserId,
+    metadata: { reason: parsed.data.reason || null },
   });
 
   revalidatePath("/admin/users");
@@ -106,9 +113,9 @@ export async function deleteUserAction(targetUserId) {
   await adminSupabase.from("audit_logs").insert({
     actor_id: session.user.id,
     action: "delete_user",
-    target_type: "user",
-    target_id: targetUserId,
-    details: { deletedUserId: targetUserId },
+    entity: "user",
+    entity_id: targetUserId,
+    metadata: { deletedUserId: targetUserId },
   });
 
   revalidatePath("/admin/users");

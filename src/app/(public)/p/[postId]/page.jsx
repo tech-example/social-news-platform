@@ -85,7 +85,7 @@ export default async function PostDetailPage({ params }) {
 
   const isAuthor = viewerId === post.author?.id;
   const isStaff = session?.profile?.role === "moderator" || session?.profile?.role === "admin";
-  const defaultHidden = (isAuthor || isStaff) ? false : (session?.profile?.hide_flagged_content ?? true);
+  const defaultHidden = (isAuthor || isStaff) ? false : (session?.profile?.hide_flagged_content !== false);
 
   return (
     <div className="max-w-[935px] mx-auto px-4 py-4 sm:py-6">
@@ -104,16 +104,25 @@ export default async function PostDetailPage({ params }) {
         {/* Left: Media or highlighted text */}
         <div className="flex-1 bg-[var(--surface)] border-b md:border-b-0 md:border-r border-[var(--line)] flex items-center justify-center min-h-[300px] md:min-h-[500px]">
           {post.imageUrl ? (
-            <div className="relative w-full aspect-4/5 max-h-[650px]">
-              <Image
-                src={post.imageUrl}
-                alt={post.title || "Post image"}
-                fill
-                sizes="(min-width: 768px) 550px, 100vw"
-                className="object-contain"
-                unoptimized
-                priority
-              />
+            <div className="w-full h-full flex items-center justify-center p-4">
+              <FlaggedContent
+                isFlagged={Boolean(post.is_flagged)}
+                defaultHidden={defaultHidden}
+                contentType="post"
+                className="w-full flex items-center justify-center"
+              >
+                <div className="relative w-full aspect-4/5 max-h-[650px]">
+                  <Image
+                    src={post.imageUrl}
+                    alt={post.title || "Post image"}
+                    fill
+                    sizes="(min-width: 768px) 550px, 100vw"
+                    className="object-contain"
+                    unoptimized
+                    priority
+                  />
+                </div>
+              </FlaggedContent>
             </div>
           ) : (
             <div className="p-8 max-w-lg w-full text-center flex flex-col items-center justify-center">
@@ -220,7 +229,7 @@ export default async function PostDetailPage({ params }) {
                 postId={post.id}
                 viewerId={viewerId}
                 isStaff={isStaff}
-                viewerHideFlagged={session?.profile?.hide_flagged_content ?? true}
+                viewerHideFlagged={session?.profile?.hide_flagged_content !== false}
               />
             </Suspense>
           </div>

@@ -9,11 +9,3 @@ export function useMounted() {
     () => false
   );
 }
-
-export function useCurrentTimestamp() {
-  return useSyncExternalStore(
-    emptySubscribe,
-    () => Date.now(),
-    () => 0
-  );
-}

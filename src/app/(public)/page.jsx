@@ -110,7 +110,7 @@ export default async function HomeFeedPage({ searchParams }) {
   const session = await getSession();
   const viewerId = session?.user?.id || null;
   const isStaff = session?.profile?.role === "moderator" || session?.profile?.role === "admin";
-  const viewerHideFlagged = session?.profile?.hide_flagged_content ?? true;
+  const viewerHideFlagged = session?.profile?.hide_flagged_content !== false;
 
   return (
     <div className="flex justify-center gap-8 px-0 sm:px-4 py-0 sm:py-6">

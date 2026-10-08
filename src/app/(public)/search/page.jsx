@@ -111,7 +111,7 @@ async function SearchResults({ query, type, viewerId, isStaff, viewerHideFlagged
                 <FlaggedContent
                   key={`search-post-${p.id}`}
                   isFlagged={Boolean(p.is_flagged)}
-                  defaultHidden={(Boolean(viewerId && (viewerId === p.author?.id || viewerId === p.author_id)) || isStaff) ? false : viewerHideFlagged}
+                  defaultHidden={(Boolean(viewerId && (viewerId === p.author?.id || viewerId === p.author_id)) || isStaff) ? false : (viewerHideFlagged !== false)}
                 >
                   {p.title && (
                     <Link href={`/p/${p.id}`} className="hover:underline block">
@@ -219,7 +219,7 @@ export default async function SearchPage({ searchParams }) {
   const session = await getSession();
   const viewerId = session?.user?.id || null;
   const isStaff = session?.profile?.role === "moderator" || session?.profile?.role === "admin";
-  const viewerHideFlagged = session?.profile?.hide_flagged_content ?? true;
+  const viewerHideFlagged = session?.profile?.hide_flagged_content !== false;
 
   const query = rawQuery;
 

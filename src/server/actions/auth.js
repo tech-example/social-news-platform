@@ -187,6 +187,7 @@ export async function signUpAction(prevState, formData) {
           username: result.data.username.toLowerCase(),
           display_name: result.data.displayName,
           role: "user",
+          hide_flagged_content: true,
         });
       }
 

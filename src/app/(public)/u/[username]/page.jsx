@@ -50,37 +50,44 @@ async function UserPostsStream({ userId, tab, isViewer, viewerId, isStaff = fals
     <div className="grid grid-cols-3 gap-1.5 sm:gap-4">
       {posts.map((post) => {
         const isAuthor = Boolean(viewerId && (viewerId === post.author?.id || viewerId === post.author_id || viewerId === userId));
-        const defaultHidden = (isAuthor || isStaff) ? false : viewerHideFlagged;
+        const defaultHidden = (isAuthor || isStaff) ? false : (viewerHideFlagged !== false);
 
         return (
           <div key={post.shareId || post.id} className="grid-card-contain relative aspect-square">
             <div className="group relative block w-full h-full bg-[var(--surface)] border border-[var(--line)] overflow-hidden rounded-lg">
               {post.imageUrl ? (
-                <Link
-                  href={`/p/${post.id}`}
-                  className="relative block w-full h-full focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
+                <FlaggedContent
+                  key={`profile-img-${post.id}`}
+                  isFlagged={Boolean(post.is_flagged)}
+                  defaultHidden={defaultHidden}
+                  className="w-full h-full"
                 >
-                  <Image
-                    src={post.imageUrl}
-                    alt={post.title || "Post thumbnail"}
-                    fill
-                    sizes="(min-width: 768px) 300px, 33vw"
-                    className="object-cover transition-transform duration-200 group-hover:scale-105"
-                    unoptimized
-                  />
+                  <Link
+                    href={`/p/${post.id}`}
+                    className="relative block w-full h-full focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
+                  >
+                    <Image
+                      src={post.imageUrl}
+                      alt={post.title || "Post thumbnail"}
+                      fill
+                      sizes="(min-width: 768px) 300px, 33vw"
+                      className="object-cover transition-transform duration-200 group-hover:scale-105"
+                      unoptimized
+                    />
 
-                  {/* Hover overlay with Like/Comment counters */}
-                  <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 sm:gap-6 text-white font-semibold text-xs sm:text-sm pointer-events-none">
-                    <span className="flex items-center gap-1.5">
-                      <Heart size={18} fill="currentColor" strokeWidth={1.5} aria-hidden="true" />
-                      <span className="tabular-nums">{formatCompactNumber(post.likesCount || 0)}</span>
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <MessageCircle size={18} fill="currentColor" strokeWidth={1.5} aria-hidden="true" />
-                      <span className="tabular-nums">{formatCompactNumber(post.commentsCount || 0)}</span>
-                    </span>
-                  </div>
-                </Link>
+                    {/* Hover overlay with Like/Comment counters */}
+                    <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 sm:gap-6 text-white font-semibold text-xs sm:text-sm pointer-events-none">
+                      <span className="flex items-center gap-1.5">
+                        <Heart size={18} fill="currentColor" strokeWidth={1.5} aria-hidden="true" />
+                        <span className="tabular-nums">{formatCompactNumber(post.likesCount || 0)}</span>
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <MessageCircle size={18} fill="currentColor" strokeWidth={1.5} aria-hidden="true" />
+                        <span className="tabular-nums">{formatCompactNumber(post.commentsCount || 0)}</span>
+                      </span>
+                    </div>
+                  </Link>
+                </FlaggedContent>
               ) : (
                 <div className="p-2 sm:p-3 h-full flex flex-col justify-center bg-[var(--surface)] text-[var(--ink)]">
                   <FlaggedContent
@@ -122,7 +129,7 @@ export default async function UserProfilePage({ params, searchParams }) {
   const session = await getSession();
   const viewerId = session?.user?.id || null;
   const isStaff = session?.profile?.role === "moderator" || session?.profile?.role === "admin";
-  const viewerHideFlagged = session?.profile?.hide_flagged_content ?? true;
+  const viewerHideFlagged = session?.profile?.hide_flagged_content !== false;
 
   const profile = await getProfileByUsername(username, viewerId);
   if (!profile) {

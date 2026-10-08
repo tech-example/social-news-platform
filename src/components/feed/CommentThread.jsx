@@ -22,7 +22,7 @@ function CommentMenu({ comment, currentUserId, isStaff, onDelete, onReport }) {
         comment.userId === currentUserId ||
         comment.isOwner)
   );
-  const canDelete = isAuthor || isStaff;
+  const canDelete = isStaff;
 
   useEffect(() => {
     if (!open) return;
@@ -35,7 +35,8 @@ function CommentMenu({ comment, currentUserId, isStaff, onDelete, onReport }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  if (!currentUserId && !canDelete) return null;
+  const canReport = Boolean(!isAuthor && currentUserId);
+  if (!canDelete && !canReport) return null;
 
   return (
     <div className="relative shrink-0" ref={menuRef}>
@@ -222,7 +223,7 @@ export function CommentThread({
                         defaultHidden={
                           (Boolean(currentUserId && (comment.authorId === currentUserId || comment.author?.id === currentUserId || comment.userId === currentUserId)) || isStaff)
                             ? false
-                            : (viewerHideFlagged ?? true)
+                            : (viewerHideFlagged !== false)
                         }
                         contentType="comment"
                       >
@@ -283,7 +284,7 @@ export function CommentThread({
                               defaultHidden={
                                 (Boolean(currentUserId && (reply.authorId === currentUserId || reply.author?.id === currentUserId || reply.userId === currentUserId)) || isStaff)
                                   ? false
-                                  : (viewerHideFlagged ?? true)
+                                  : (viewerHideFlagged !== false)
                               }
                               contentType="comment"
                             >

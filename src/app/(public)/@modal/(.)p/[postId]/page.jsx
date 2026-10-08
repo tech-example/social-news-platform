@@ -21,7 +21,7 @@ export default async function InterceptedPostModalPage({ params }) {
 
   const isAuthor = viewerId === post.author?.id;
   const isStaff = session?.profile?.role === "moderator" || session?.profile?.role === "admin";
-  const defaultHidden = (isAuthor || isStaff) ? false : (session?.profile?.hide_flagged_content ?? true);
+  const defaultHidden = (isAuthor || isStaff) ? false : (session?.profile?.hide_flagged_content !== false);
 
   return (
     <InterceptedPostTopSheet
@@ -30,7 +30,7 @@ export default async function InterceptedPostModalPage({ params }) {
       viewerId={viewerId}
       defaultHidden={defaultHidden}
       isStaff={isStaff}
-      viewerHideFlagged={session?.profile?.hide_flagged_content ?? true}
+      viewerHideFlagged={session?.profile?.hide_flagged_content !== false}
     />
   );
 }

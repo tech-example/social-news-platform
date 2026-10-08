@@ -192,7 +192,7 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
       <FlaggedContent
         key={`post-${currentPost.id}`}
         isFlagged={Boolean(currentPost.is_flagged)}
-        defaultHidden={(isAuthor || isStaff) ? false : (viewerHideFlagged ?? true)}
+        defaultHidden={(isAuthor || isStaff) ? false : (viewerHideFlagged !== false)}
         contentType="post"
         noticeClassName="mx-4 my-2"
       >
@@ -333,7 +333,7 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
                     <FlaggedContent
                       key={`comment-${c.id}`}
                       isFlagged={isFlaggedComment}
-                      defaultHidden={(isCommentAuthor || isStaff) ? false : (viewerHideFlagged ?? true)}
+                      defaultHidden={(isCommentAuthor || isStaff) ? false : (viewerHideFlagged !== false)}
                       contentType="comment"
                     >
                       <span className="text-[var(--ink)]">{c.body}</span>

@@ -174,7 +174,7 @@ export function InterceptedPostTopSheet({
           <FlaggedContent
             key={`modal-post-${post.id}`}
             isFlagged={Boolean(post.is_flagged)}
-            defaultHidden={typeof defaultHidden === "boolean" ? defaultHidden : ((isAuthor || isStaff) ? false : (viewerHideFlagged ?? true))}
+            defaultHidden={typeof defaultHidden === "boolean" ? defaultHidden : ((isAuthor || isStaff) ? false : (viewerHideFlagged !== false))}
             contentType="post"
             noticeClassName="m-4"
           >

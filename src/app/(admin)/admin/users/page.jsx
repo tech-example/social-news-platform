@@ -37,6 +37,11 @@ export default async function UserManagementPage({ searchParams }) {
         users={users}
         total={total}
         currentAdminId={session.user.id}
+        initialQuery={query}
+        initialRole={role}
+        initialStatus={status}
+        offset={offset}
+        limit={25}
       />
     </div>
   );

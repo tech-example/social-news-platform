@@ -53,6 +53,7 @@ export const getSession = cache(async () => {
             username: cleanUsername,
             display_name: displayName.slice(0, 60),
             role: "user",
+            hide_flagged_content: true,
           })
           .select("id, username, display_name, avatar_url, role, is_suspended, hide_flagged_content")
           .maybeSingle();
@@ -77,6 +78,10 @@ export const getSession = cache(async () => {
       } else {
         return null;
       }
+    }
+
+    if (profile) {
+      profile.hide_flagged_content = profile.hide_flagged_content !== false;
     }
 
     if (profile.is_suspended) return null;

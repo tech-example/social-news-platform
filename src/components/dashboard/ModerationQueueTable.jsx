@@ -5,13 +5,11 @@ import { ArrowUpDown, Clock, TriangleAlert, ArrowRight, ShieldAlert } from "luci
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/format";
-import { useCurrentTimestamp } from "@/lib/use-mounted";
 
 export function ModerationQueueTable({ reports = [], now: propNow }) {
   const [sortOrder, setSortOrder] = useState("newest"); // "newest" | "oldest"
   const [filterFlagged, setFilterFlagged] = useState(false);
-  const clientNow = useCurrentTimestamp();
-  const now = propNow || clientNow;
+  const now = propNow;
 
   const sortedReports = [...reports].sort((a, b) => {
     const timeA = new Date(a.created_at).getTime();
