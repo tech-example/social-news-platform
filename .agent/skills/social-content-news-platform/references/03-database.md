@@ -253,6 +253,9 @@ create policy "unlike as self"            on likes for delete using (user_id = a
 
 ### 6.5 Triggers and Functions
 
+> [!IMPORTANT]
+> **Trigger Safeguard:** Before adding or modifying any notification-related trigger, you MUST first run `select tgname from pg_trigger where tgrelid = '<table>'::regclass and not tgisinternal;` against the live database to check for pre-existing triggers on the same table and event. This prevents accidentally creating duplicate triggers if a previous manual fix was applied to the live DB but not committed to the repo.
+
 Required (write as migrations):
 1. `handle_new_user()` - on `auth.users` insert, create `profiles` row (username derived and de-duplicated, display name from metadata).
 2. `protect_profile_columns()` - BEFORE UPDATE on `profiles`: if `role` or `is_suspended` change and the caller is not an admin (checked with `current_role_is('admin')` or service role), raise an exception.

@@ -6,10 +6,12 @@ import useSWR from "swr";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTime } from "@/lib/format";
-import { Inbox, CheckCheck, Trash2 } from "lucide-react";
+import { Inbox, CheckCheck, Trash2, FileText } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
-import { deleteNotificationAction } from "@/server/actions/notifications";
+import { deleteNotificationAction, markAllReadAction, clearAllNotificationsAction } from "@/server/actions/notifications";
 import { createClient } from "@/utils/supabase/client";
+import { IconButton } from "@/components/ui/icon-button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
 const supabase = createClient();
@@ -17,6 +19,8 @@ const supabase = createClient();
 export function NotificationsClient({ initialNotifications = [], userId }) {
   const { addToast } = useToast();
   const [markingRead, setMarkingRead] = useState(false);
+  const [clearingAll, setClearingAll] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const { data, mutate } = useSWR("/api/notifications?limit=40", fetcher, {
     fallbackData: { notifications: initialNotifications, unreadCount: 0 },
@@ -57,16 +61,63 @@ export function NotificationsClient({ initialNotifications = [], userId }) {
 
   const handleMarkAllRead = async () => {
     setMarkingRead(true);
+    
+    // Optimistic UI update
+    mutate(
+      (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          notifications: (prev.notifications || []).map((n) => ({ ...n, isRead: true })),
+          unreadCount: 0,
+        };
+      },
+      false
+    );
+
     try {
-      const res = await fetch("/api/notifications", { method: "POST" });
+      const res = await markAllReadAction();
       if (res.ok) {
         addToast("All notifications marked as read.");
-        mutate();
+      } else {
+        mutate(); // Rollback on failure
+        addToast(res.error || "Failed to mark all as read.");
       }
     } catch (err) {
       console.error(err);
+      mutate();
+      addToast("Failed to mark all as read.");
     } finally {
       setMarkingRead(false);
+    }
+  };
+
+  const handleClearAll = async () => {
+    setClearingAll(true);
+    setShowClearConfirm(false);
+    
+    const previousData = data;
+    
+    // Optimistic UI update
+    mutate(
+      { ...data, notifications: [], unreadCount: 0 },
+      false
+    );
+
+    try {
+      const res = await clearAllNotificationsAction();
+      if (res.ok) {
+        addToast("All notifications cleared.");
+      } else {
+        mutate(previousData, false); // Rollback on failure
+        addToast(res.error || "Failed to clear notifications.");
+      }
+    } catch (err) {
+      console.error(err);
+      mutate(previousData, false);
+      addToast("Failed to clear notifications.");
+    } finally {
+      setClearingAll(false);
     }
   };
 
@@ -147,6 +198,8 @@ export function NotificationsClient({ initialNotifications = [], userId }) {
         return <span><strong>{actorName}</strong> shared your post.</span>;
       case "report_update":
         return <span>Your submitted report status was updated.</span>;
+      case "new_post":
+        return <span><strong>{actorName}</strong> shared a new post.</span>;
       case "moderation":
         return <span>A moderation update requires attention.</span>;
       default:
@@ -156,19 +209,28 @@ export function NotificationsClient({ initialNotifications = [], userId }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]">
+      <div className="flex items-center justify-between pb-3 border-b border-[var(--line)] min-h-[44px]">
         <h1 className="text-xl font-bold text-[var(--ink)]">Notifications</h1>
-        {unreadCount > 0 && (
-          <Button
-            variant="ghost"
-            onClick={handleMarkAllRead}
-            disabled={markingRead}
-            className="text-xs h-8 px-3"
-          >
-            <CheckCheck size={14} strokeWidth={1.75} aria-hidden="true" className="mr-1.5" />
-            Mark all read
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <IconButton
+              label="Mark all as read"
+              onClick={handleMarkAllRead}
+              disabled={markingRead}
+            >
+              <CheckCheck size={24} strokeWidth={1.75} aria-hidden="true" className="text-[var(--ink-muted)] hover:text-[var(--ink)]" />
+            </IconButton>
+          )}
+          {notifications.length > 0 && (
+            <IconButton
+              label="Clear all notifications"
+              onClick={() => setShowClearConfirm(true)}
+              disabled={clearingAll}
+            >
+              <Trash2 size={24} strokeWidth={1.75} aria-hidden="true" className="text-[var(--danger)]/80 hover:text-[var(--danger)]" />
+            </IconButton>
+          )}
+        </div>
       </div>
 
       {notifications.length === 0 ? (
@@ -252,6 +314,22 @@ export function NotificationsClient({ initialNotifications = [], userId }) {
           ))}
         </div>
       )}
+
+      <Dialog open={showClearConfirm} onOpenChange={setShowClearConfirm} title="Clear all notifications?">
+        <DialogContent>
+          <p className="text-sm text-[var(--ink)]">
+            This action cannot be undone. This will permanently delete all your notifications.
+          </p>
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setShowClearConfirm(false)} disabled={clearingAll}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={handleClearAll} disabled={clearingAll}>
+            Clear all
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 }
