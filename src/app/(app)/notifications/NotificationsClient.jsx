@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import useSWR from "swr";
@@ -9,20 +9,51 @@ import { formatRelativeTime } from "@/lib/format";
 import { Inbox, CheckCheck, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { deleteNotificationAction } from "@/server/actions/notifications";
+import { createClient } from "@/utils/supabase/client";
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
+const supabase = createClient();
 
-export function NotificationsClient({ initialNotifications = [] }) {
+export function NotificationsClient({ initialNotifications = [], userId }) {
   const { addToast } = useToast();
   const [markingRead, setMarkingRead] = useState(false);
 
   const { data, mutate } = useSWR("/api/notifications?limit=40", fetcher, {
     fallbackData: { notifications: initialNotifications, unreadCount: 0 },
-    refreshInterval: 30000,
+    refreshInterval: 0, // Disable SWR polling since we are using Realtime
   });
 
   const notifications = data?.notifications || initialNotifications;
   const unreadCount = data?.unreadCount || 0;
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`notifications:${userId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${userId}` }, (payload) => {
+        mutate((prev) => {
+          if (!prev) return prev;
+          if ((prev.notifications || []).some((n) => n.id === payload.new.id)) {
+            return prev;
+          }
+          
+          // Trigger a background refetch to get the missing related data (actor, post)
+          setTimeout(() => mutate(), 50);
+
+          return {
+            ...prev,
+            notifications: [payload.new, ...(prev.notifications || [])],
+            unreadCount: (prev.unreadCount || 0) + 1
+          };
+        }, false);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, mutate]);
 
   const handleMarkAllRead = async () => {
     setMarkingRead(true);

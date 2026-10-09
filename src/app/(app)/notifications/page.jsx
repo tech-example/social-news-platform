@@ -10,7 +10,7 @@ export const metadata = {
 
 async function NotificationsStream({ userId }) {
   const { notifications } = await getNotifications(userId, 40);
-  return <NotificationsClient initialNotifications={notifications} />;
+  return <NotificationsClient initialNotifications={notifications} userId={userId} />;
 }
 
 export default async function NotificationsPage() {
