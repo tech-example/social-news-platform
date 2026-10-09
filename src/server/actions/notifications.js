@@ -1,6 +1,7 @@
 "use server";
 import { getSession } from "@/server/auth";
 import { createUserClient } from "@/server/supabase";
+import { revalidatePath } from "next/cache";
 
 export async function deleteNotificationAction(notificationId) {
   const session = await getSession();
@@ -24,6 +25,7 @@ export async function deleteNotificationAction(notificationId) {
     return { ok: false, error: error.message || "Failed to delete notification." };
   }
 
+  revalidatePath("/notifications");
   return { ok: true };
 }
 
@@ -44,6 +46,7 @@ export async function clearAllNotificationsAction() {
     return { ok: false, error: error.message || "Failed to clear notifications." };
   }
 
+  revalidatePath("/notifications");
   return { ok: true };
 }
 
@@ -65,5 +68,6 @@ export async function markAllReadAction() {
     return { ok: false, error: error.message || "Failed to mark as read." };
   }
 
+  revalidatePath("/notifications");
   return { ok: true };
 }
