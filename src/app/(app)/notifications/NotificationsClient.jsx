@@ -94,27 +94,21 @@ export function NotificationsClient({ initialNotifications = [], userId }) {
 
   const handleClearAll = async () => {
     setClearingAll(true);
-    setShowClearConfirm(false);
-    
-    const previousData = data;
-    
-    // Optimistic UI update
-    mutate(
-      { ...data, notifications: [], unreadCount: 0 },
-      false
-    );
 
     try {
       const res = await clearAllNotificationsAction();
       if (res.ok) {
+        setShowClearConfirm(false);
+        mutate(
+          { ...data, notifications: [], unreadCount: 0 },
+          false
+        );
         addToast("All notifications cleared.");
       } else {
-        mutate(previousData, false); // Rollback on failure
         addToast(res.error || "Failed to clear notifications.");
       }
     } catch (err) {
       console.error(err);
-      mutate(previousData, false);
       addToast("Failed to clear notifications.");
     } finally {
       setClearingAll(false);
