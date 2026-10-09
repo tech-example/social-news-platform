@@ -211,17 +211,20 @@ export function NotificationsClient({ initialNotifications = [], userId }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between pb-3 border-b border-[var(--line)] min-h-[44px]">
         <h1 className="text-xl font-bold text-[var(--ink)]">Notifications</h1>
-        <div className="flex items-center gap-2">
-          {unreadCount > 0 && (
+        {notifications.length > 0 && (
+          <div className="flex items-center gap-2">
             <IconButton
               label="Mark all as read"
               onClick={handleMarkAllRead}
-              disabled={markingRead}
+              disabled={markingRead || unreadCount === 0}
             >
-              <CheckCheck size={24} strokeWidth={1.75} aria-hidden="true" className="text-[var(--ink-muted)] hover:text-[var(--ink)]" />
+              <CheckCheck 
+                size={24} 
+                strokeWidth={1.75} 
+                aria-hidden="true" 
+                className={unreadCount > 0 ? "text-[var(--ink-muted)] hover:text-[var(--ink)]" : "text-[var(--ink-muted)] opacity-50"} 
+              />
             </IconButton>
-          )}
-          {notifications.length > 0 && (
             <IconButton
               label="Clear all notifications"
               onClick={() => setShowClearConfirm(true)}
@@ -229,8 +232,8 @@ export function NotificationsClient({ initialNotifications = [], userId }) {
             >
               <Trash2 size={24} strokeWidth={1.75} aria-hidden="true" className="text-[var(--danger)]/80 hover:text-[var(--danger)]" />
             </IconButton>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {notifications.length === 0 ? (
