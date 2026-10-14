@@ -224,6 +224,22 @@ test("Profanity Layered Detector Evaluation Suite", async (t) => {
         "อีชาติชั่ว",
         "พวกเหี้ย",
       ],
+      concatenated_compounds: [
+        "fuckyou",
+        "fuckoff",
+        "fuckup",
+        "fuckall",
+        "dumbass",
+        "bullshit",
+        "dipshit",
+        "jackass",
+        "smartass",
+        "motherfucker",
+        "dickhead",
+        "asshat",
+        "shithead",
+        "cockhead",
+      ],
     };
 
     console.log("\n[Category Breakdown]");
@@ -239,6 +255,41 @@ test("Profanity Layered Detector Evaluation Suite", async (t) => {
     }
   });
 
+  await t.test("Allowlist / Whitelist terms are not flagged (0 false positives)", async () => {
+    const whitelistCases = [
+      "assembly",
+      "classic",
+      "document",
+      "password",
+      "passport",
+      "assistant",
+      "grass",
+      "glass",
+      "analysis",
+      "analyst",
+      "classroom",
+      "compass",
+      "associate",
+      "assume",
+      "hello",
+    ];
+
+    for (const term of whitelistCases) {
+      const res = analyzeTextSync(term);
+      assert.equal(res.isProfane, false, `Expected "${term}" to NOT be flagged`);
+    }
+  });
+
+  await t.test("Specific reported cases and missing insults are correctly flagged", async () => {
+    assert.equal(analyzeTextSync("fuckyou").isProfane, true, 'Expected "fuckyou" (no space) to be flagged');
+    assert.equal(analyzeTextSync("fuck you").isProfane, true, 'Expected "fuck you" (with space) to be flagged');
+    assert.equal(analyzeTextSync("stupid").isProfane, true, 'Expected "stupid" to be flagged');
+    assert.equal(analyzeTextSync("idiot").isProfane, true, 'Expected "idiot" to be flagged');
+    assert.equal(analyzeTextSync("dumb").isProfane, true, 'Expected "dumb" to be flagged');
+    assert.equal(analyzeTextSync("loser").isProfane, true, 'Expected "loser" to be flagged');
+    assert.equal(analyzeTextSync("trash").isProfane, true, 'Expected "trash" to be flagged');
+  });
+
   await t.test("Async API matches Sync API contract", async () => {
     const sample = "This is a clean document.";
     const syncRes = analyzeTextSync(sample);
@@ -246,4 +297,5 @@ test("Profanity Layered Detector Evaluation Suite", async (t) => {
     assert.equal(syncRes.isProfane, asyncRes.isProfane);
   });
 });
+
 

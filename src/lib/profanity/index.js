@@ -19,6 +19,7 @@ import {
   ENGLISH_ALLOW_LIST,
 } from "./thai-guard.js";
 import { getDictionarySources } from "./sources.js";
+import { scanEnglishProfanity } from "./english-matcher.js";
 import { getDatabaseTerms } from "./db-layer.js";
 import { PROFANITY_EXTRA_WORDS, PROFANITY_ALLOW_LIST } from "../constants.js";
 
@@ -152,24 +153,11 @@ export function analyzeTextInternal(text, dbData = {}) {
       }
     }
 
-    // 2. Check English static sources (requires word boundaries)
-    const englishWords = staticSources.english.all;
-    for (const badWord of englishWords) {
-      if (!badWord || badWord.length < 2) continue;
-
-      const escaped = badWord.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const regex = new RegExp(`\\b${escaped}\\b`, "gu");
-
-      let match;
-      while ((match = regex.exec(variantText)) !== null) {
-        matchedTokens.add(`en:${badWord}`);
-        const sev = staticSources.english.severe.has(badWord)
-          ? "severe"
-          : staticSources.english.mild.has(badWord)
-          ? "mild"
-          : "moderate";
-        highestSeverity = getHigherSeverity(highestSeverity, sev);
-      }
+    // 2. Check English layer via Obscenity matcher (RegExpMatcher + englishDataset + custom dataset + LDNOOBW)
+    const enMatches = scanEnglishProfanity(variantText);
+    for (const match of enMatches) {
+      matchedTokens.add(`en:${match.word}`);
+      highestSeverity = getHigherSeverity(highestSeverity, match.severity);
     }
 
     // 3. Check Romanized Thai layer
@@ -200,7 +188,8 @@ export function analyzeTextInternal(text, dbData = {}) {
       } else {
         const escaped = dbTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const regex = new RegExp(`\\b${escaped}\\b`, "gu");
-        if (regex.test(variantText)) {
+        const isCompoundMatch = !dbTerm.includes(" ") && dbTerm.length >= 4 && variantText.includes(dbTerm);
+        if (regex.test(variantText) || isCompoundMatch) {
           matchedTokens.add(`db:${dbTerm}`);
           highestSeverity = getHigherSeverity(highestSeverity, meta.severity);
         }
