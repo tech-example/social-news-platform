@@ -181,6 +181,7 @@ export function NotificationsClient({ initialNotifications = [], userId }) {
               label="Mark all as read"
               onClick={handleMarkAllRead}
               disabled={markingRead || unreadCount === 0}
+              className="cursor-pointer hover:bg-[var(--surface-strong)] transition-colors disabled:cursor-not-allowed"
             >
               <CheckCheck 
                 size={24} 
@@ -193,6 +194,7 @@ export function NotificationsClient({ initialNotifications = [], userId }) {
               label="Clear all notifications"
               onClick={() => setShowClearConfirm(true)}
               disabled={clearingAll}
+              className="cursor-pointer hover:bg-[var(--danger)]/10 transition-colors disabled:cursor-not-allowed"
             >
               <Trash2 size={24} strokeWidth={1.75} aria-hidden="true" className="text-[var(--danger)]/80 hover:text-[var(--danger)]" />
             </IconButton>

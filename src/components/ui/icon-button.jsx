@@ -7,7 +7,7 @@ export function IconButton({ label, pressed, className = "", children, ...props 
       aria-label={label}
       title={label}
       aria-pressed={pressed}
-      className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)] ${className}`}
+      className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)] cursor-pointer disabled:cursor-not-allowed ${className}`}
       {...props}
     >
       {children}

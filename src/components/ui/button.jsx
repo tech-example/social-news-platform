@@ -34,10 +34,12 @@ export function Button({
       "bg-transparent text-[var(--ink)] hover:bg-[var(--surface-strong)]",
     danger:
       "bg-[var(--danger)] hover:opacity-90 active:opacity-100",
+    destructive:
+      "bg-[var(--danger)] hover:opacity-90 active:opacity-100",
   };
 
   // Force white text via inline style for primary/danger — immune to CSS class conflicts
-  const forceWhiteText = variant === "primary" || variant === "danger";
+  const forceWhiteText = variant === "primary" || variant === "danger" || variant === "destructive";
   const mergedStyle = forceWhiteText
     ? { color: "#ffffff", ...style }
     : style;
