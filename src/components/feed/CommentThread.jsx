@@ -7,25 +7,29 @@ import { IconButton } from "@/components/ui/icon-button";
 import { createCommentAction, deleteCommentAction, editCommentAction } from "@/server/actions/interactions";
 import { formatRelativeTime } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
-import { Trash2, CornerDownRight, Ellipsis, Flag } from "lucide-react";
+import { Trash2, CornerDownRight, Ellipsis, Flag, Pencil } from "lucide-react";
 import { LIMITS } from "@/lib/constants";
 import { FlaggedContent } from "@/components/feed/FlaggedContent";
 import { ReportDialog } from "@/components/moderation/ReportDialog";
 
-function CommentActions({ comment, currentUserId, isStaff, onDelete, onReport }) {
+function CommentActions({ comment, currentUserId, isStaff, onDelete, onReport, onEdit }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
   const isAuthor = Boolean(
     currentUserId &&
       (comment.authorId === currentUserId ||
+        comment.author_id === currentUserId ||
         comment.author?.id === currentUserId ||
         comment.userId === currentUserId ||
+        comment.user_id === currentUserId ||
         comment.isOwner)
   );
 
-  // Author can delete if they have role 'moderator' or 'admin' (isStaff).
-  // Moderators and admins can also delete ANY comment.
-  // Regular users ('user' role) CANNOT delete their own comments (only edit).
+  // Independent conditions for each action:
+  // - Edit: visible to the comment's own author (any role).
+  // - Delete: visible per the rule from the previous fix (author with role moderator/admin, or any moderator/admin regardless of authorship).
+  // - Report: visible to any signed-in user who is NOT the comment's author, regardless of role.
+  const canEdit = Boolean(isAuthor);
   const canDelete = Boolean(isStaff);
   const canReport = Boolean(!isAuthor && currentUserId);
 
@@ -40,7 +44,8 @@ function CommentActions({ comment, currentUserId, isStaff, onDelete, onReport })
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  if (!canDelete && !canReport) return null;
+  const hasMenuActions = Boolean(canEdit || canDelete || canReport);
+  if (!hasMenuActions) return null;
 
   return (
     <div className="flex items-center gap-1 shrink-0" ref={menuRef}>
@@ -54,55 +59,67 @@ function CommentActions({ comment, currentUserId, isStaff, onDelete, onReport })
         </IconButton>
       )}
 
-      {canReport && (
-        <div className="relative">
-          <IconButton
-            label="Comment options"
-            pressed={open}
-            onClick={() => setOpen((prev) => !prev)}
-            className="text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] focus-visible:outline-[var(--accent-bright)]"
-          >
-            <Ellipsis size={16} strokeWidth={1.75} aria-hidden="true" />
-          </IconButton>
+      <div className="relative">
+        <IconButton
+          label="Comment options"
+          pressed={open}
+          onClick={() => setOpen((prev) => !prev)}
+          className="text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] focus-visible:outline-[var(--accent-bright)]"
+        >
+          <Ellipsis size={16} strokeWidth={1.75} aria-hidden="true" />
+        </IconButton>
 
-          {open && (
-            <div
-              role="menu"
-              aria-label="Comment options"
-              className="absolute right-0 top-full mt-1 w-40 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-lg py-1 z-20"
-            >
-              {canDelete && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setOpen(false);
-                    onDelete(comment.id);
-                  }}
-                  className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-                >
-                  <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" />
-                  <span>Delete</span>
-                </button>
-              )}
-              {canReport && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setOpen(false);
-                    onReport(comment);
-                  }}
-                  className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-                >
-                  <Flag size={16} strokeWidth={1.75} aria-hidden="true" className="text-[var(--danger)]" />
-                  <span>Report</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+        {open && (
+          <div
+            role="menu"
+            aria-label="Comment options"
+            className="absolute right-0 top-full mt-1 w-40 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-lg py-1 z-20"
+          >
+            {canEdit && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  if (onEdit) onEdit(comment);
+                }}
+                className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+              >
+                <Pencil size={16} strokeWidth={1.75} aria-hidden="true" />
+                <span>Edit</span>
+              </button>
+            )}
+            {canReport && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  onReport(comment);
+                }}
+                className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+              >
+                <Flag size={16} strokeWidth={1.75} aria-hidden="true" className="text-[var(--danger)]" />
+                <span>Report</span>
+              </button>
+            )}
+            {canDelete && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  onDelete(comment.id);
+                }}
+                className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+              >
+                <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" />
+                <span>Delete</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -343,6 +360,10 @@ export function CommentThread({
                     isStaff={isStaff}
                     onDelete={handleDeleteComment}
                     onReport={setReportingComment}
+                    onEdit={(c) => {
+                      setEditingCommentId(c.id);
+                      setEditBody(c.body);
+                    }}
                   />
                 </div>
 
@@ -443,6 +464,10 @@ export function CommentThread({
                           isStaff={isStaff}
                           onDelete={handleDeleteComment}
                           onReport={setReportingComment}
+                          onEdit={(r) => {
+                            setEditingCommentId(r.id);
+                            setEditBody(r.body);
+                          }}
                         />
                       </div>
                     ))}
