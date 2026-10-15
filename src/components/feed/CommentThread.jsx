@@ -12,7 +12,7 @@ import { LIMITS } from "@/lib/constants";
 import { FlaggedContent } from "@/components/feed/FlaggedContent";
 import { ReportDialog } from "@/components/moderation/ReportDialog";
 
-function CommentMenu({ comment, currentUserId, isStaff, onDelete, onReport }) {
+function CommentActions({ comment, currentUserId, isStaff, onDelete, onReport }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
   const isAuthor = Boolean(
@@ -23,6 +23,7 @@ function CommentMenu({ comment, currentUserId, isStaff, onDelete, onReport }) {
         comment.isOwner)
   );
   const canDelete = isStaff;
+  const canReport = Boolean(!isAuthor && currentUserId);
 
   useEffect(() => {
     if (!open) return;
@@ -35,53 +36,50 @@ function CommentMenu({ comment, currentUserId, isStaff, onDelete, onReport }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  const canReport = Boolean(!isAuthor && currentUserId);
   if (!canDelete && !canReport) return null;
 
   return (
-    <div className="relative shrink-0" ref={menuRef}>
-      <IconButton
-        label="Comment options"
-        onClick={() => setOpen((prev) => !prev)}
-        className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-      >
-        <Ellipsis size={14} strokeWidth={1.75} aria-hidden="true" className="text-[var(--ink-muted)] hover:text-[var(--ink)]" />
-      </IconButton>
-
-      {open && (
-        <div
-          role="menu"
-          aria-label="Comment options"
-          className="absolute right-0 top-full mt-1 w-36 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-lg py-1 z-20"
+    <div className="flex items-center gap-1 shrink-0" ref={menuRef}>
+      {canDelete && (
+        <IconButton
+          label={comment.parentId ? "Delete reply" : "Delete comment"}
+          onClick={() => onDelete(comment.id)}
+          className="text-[var(--danger)]/80 hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 focus-visible:outline-[var(--accent-bright)]"
         >
-          {canDelete && (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                onDelete(comment.id);
-              }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer"
-            >
-              <Trash2 size={13} strokeWidth={1.75} aria-hidden="true" />
-              <span>Delete</span>
-            </button>
-          )}
+          <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" />
+        </IconButton>
+      )}
 
-          {!isAuthor && currentUserId && (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                onReport(comment);
-              }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer"
+      {canReport && (
+        <div className="relative">
+          <IconButton
+            label="Comment options"
+            pressed={open}
+            onClick={() => setOpen((prev) => !prev)}
+            className="text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] focus-visible:outline-[var(--accent-bright)]"
+          >
+            <Ellipsis size={16} strokeWidth={1.75} aria-hidden="true" />
+          </IconButton>
+
+          {open && (
+            <div
+              role="menu"
+              aria-label="Comment options"
+              className="absolute right-0 top-full mt-1 w-40 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-lg py-1 z-20"
             >
-              <Flag size={13} strokeWidth={1.75} aria-hidden="true" className="text-[var(--danger)]" />
-              <span>Report</span>
-            </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  onReport(comment);
+                }}
+                className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+              >
+                <Flag size={16} strokeWidth={1.75} aria-hidden="true" className="text-[var(--danger)]" />
+                <span>Report</span>
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -239,7 +237,7 @@ export function CommentThread({
                               const el = document.getElementById(`comment-input-${postId}`);
                               if (el) el.focus();
                             }}
-                            className="hover:text-[var(--ink)] font-medium cursor-pointer"
+                            className="min-h-11 inline-flex items-center px-2 -mx-2 hover:text-[var(--ink)] font-medium cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
                           >
                             Reply
                           </button>
@@ -248,7 +246,7 @@ export function CommentThread({
                     </div>
                   </div>
 
-                  <CommentMenu
+                  <CommentActions
                     comment={comment}
                     currentUserId={currentUserId}
                     isStaff={isStaff}
@@ -290,13 +288,26 @@ export function CommentThread({
                             >
                               <span className="text-[var(--ink)]">{reply.body}</span>
                             </FlaggedContent>
-                            <div className="flex items-center gap-2 mt-0.5 text-xs text-[var(--ink-muted)]">
+                            <div className="flex items-center gap-3 mt-0.5 text-xs text-[var(--ink-muted)]">
                               <span suppressHydrationWarning>{formatRelativeTime(reply.createdAt)}</span>
+                              {currentUserId && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setReplyingTo(reply);
+                                    const el = document.getElementById(`comment-input-${postId}`);
+                                    if (el) el.focus();
+                                  }}
+                                  className="min-h-11 inline-flex items-center px-2 -mx-2 hover:text-[var(--ink)] font-medium cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+                                >
+                                  Reply
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
 
-                        <CommentMenu
+                        <CommentActions
                           comment={reply}
                           currentUserId={currentUserId}
                           isStaff={isStaff}
@@ -325,7 +336,7 @@ export function CommentThread({
               <button
                 type="button"
                 onClick={() => setReplyingTo(null)}
-                className="font-medium hover:text-[var(--ink)]"
+                className="min-h-11 inline-flex items-center px-2 -mx-2 font-medium hover:text-[var(--ink)] cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
               >
                 Cancel
               </button>

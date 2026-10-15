@@ -19,6 +19,7 @@ import {
   Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -525,24 +526,20 @@ export function ProfanityAdminClient({ initialTermsRes, initialSuggestions = [],
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="inline-flex items-center gap-1">
-                              <Button
-                                variant="secondary"
-                                size="sm"
+                              <IconButton
+                                label={`Edit term ${t.term}`}
                                 onClick={() => openEdit(t)}
-                                className="h-7 px-2 text-xs"
-                                title="Edit term"
+                                className="text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-strong)]"
                               >
-                                <Edit2 size={12} />
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="sm"
+                                <Edit2 size={16} strokeWidth={1.75} aria-hidden="true" />
+                              </IconButton>
+                              <IconButton
+                                label={`Delete term ${t.term}`}
                                 onClick={() => setDeletingId(t.id)}
-                                className="h-7 px-2 text-xs text-[var(--danger)] hover:bg-[var(--danger)]/10"
-                                title="Delete term"
+                                className="text-[var(--danger)]/80 hover:text-[var(--danger)] hover:bg-[var(--danger)]/10"
                               >
-                                <Trash2 size={12} />
-                              </Button>
+                                <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" />
+                              </IconButton>
                             </div>
                           </TableCell>
                         </TableRow>

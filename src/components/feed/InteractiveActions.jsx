@@ -325,18 +325,18 @@ export function InteractiveActions({
                     <button
                       type="button"
                       onClick={handleUnshare}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer"
+                      className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
                     >
-                      <Trash2 size={15} strokeWidth={1.75} className="text-[var(--danger)]" />
+                      <Trash2 size={16} strokeWidth={1.75} className="text-[var(--danger)] shrink-0" />
                       <span>Remove Repost</span>
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={handleQuickShare}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer"
+                      className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
                     >
-                      <Repeat size={15} strokeWidth={2} className="text-[var(--accent)]" />
+                      <Repeat size={16} strokeWidth={2} className="text-[var(--accent)] shrink-0" />
                       <span>Repost to Profile</span>
                     </button>
                   )}
@@ -352,9 +352,9 @@ export function InteractiveActions({
                         }
                         setShareOpen(true);
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer"
+                      className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
                     >
-                      <Send size={14} strokeWidth={1.75} className="text-[var(--ink-muted)]" />
+                      <Send size={16} strokeWidth={1.75} className="text-[var(--ink-muted)] shrink-0" />
                       <span>Share with note...</span>
                     </button>
                   )}
@@ -362,9 +362,9 @@ export function InteractiveActions({
                   <button
                     type="button"
                     onClick={handleCopyLink}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer"
+                    className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer rounded-b-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
                   >
-                    <LinkIcon size={14} strokeWidth={1.75} className="text-[var(--ink-muted)]" />
+                    <LinkIcon size={16} strokeWidth={1.75} className="text-[var(--ink-muted)] shrink-0" />
                     <span>Copy link</span>
                   </button>
                 </div>
@@ -395,9 +395,9 @@ export function InteractiveActions({
                 <button
                   type="button"
                   onClick={handleCopyLink}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer"
+                  className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer rounded-t-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
                 >
-                  <LinkIcon size={14} strokeWidth={1.75} aria-hidden="true" />
+                  <LinkIcon size={16} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
                   <span>Copy Link</span>
                 </button>
                 <button
@@ -410,9 +410,9 @@ export function InteractiveActions({
                     }
                     setReportOpen(true);
                   }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer"
+                  className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
                 >
-                  <Flag size={14} strokeWidth={1.75} aria-hidden="true" />
+                  <Flag size={16} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
                   <span>Report Post</span>
                 </button>
                 {isAuthor && (
@@ -423,17 +423,17 @@ export function InteractiveActions({
                         setMenuOpen(false);
                         setEditOpen(true);
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer"
+                      className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
                     >
-                      <Pencil size={14} strokeWidth={1.75} aria-hidden="true" />
+                      <Pencil size={16} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
                       <span>Edit Post</span>
                     </button>
                     <button
                       type="button"
                       onClick={handleDelete}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer"
+                      className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer rounded-b-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
                     >
-                      <Trash2 size={14} strokeWidth={1.75} aria-hidden="true" />
+                      <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
                       <span>Delete Post</span>
                     </button>
                   </>

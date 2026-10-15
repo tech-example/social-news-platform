@@ -6,6 +6,7 @@ import { updateUserRoleAction, setUserSuspendedAction, deleteUserAction } from "
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -199,14 +200,15 @@ export function UserAdminClient({
             className="pl-9 pr-9 text-xs sm:text-sm bg-[var(--bg)] w-full"
           />
           {searchQuery && (
-            <button
-              type="button"
-              onClick={handleClearSearch}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--ink-muted)] hover:text-[var(--ink)] cursor-pointer p-0.5 rounded"
-              aria-label="Clear search"
-            >
-              <X size={15} />
-            </button>
+            <div className="absolute right-1 top-1/2 -translate-y-1/2">
+              <IconButton
+                label="Clear search"
+                onClick={handleClearSearch}
+                className="text-[var(--ink-muted)] hover:text-[var(--ink)]"
+              >
+                <X size={16} strokeWidth={2} aria-hidden="true" />
+              </IconButton>
+            </div>
           )}
         </form>
 
@@ -387,15 +389,14 @@ export function UserAdminClient({
                                 </>
                               )}
                             </Button>
-                            <Button
-                              variant="ghost"
+                             <IconButton
+                              label={`Delete user @${u.username}`}
                               onClick={() => setDeleteDialog({ open: true, user: u })}
                               disabled={isPending}
-                              aria-label={`Delete user @${u.username}`}
-                              className="text-xs h-7 px-2 text-[var(--danger)] hover:bg-[var(--danger)]/10"
+                              className="text-[var(--danger)]/80 hover:text-[var(--danger)] hover:bg-[var(--danger)]/10"
                             >
-                              <Trash2 size={14} strokeWidth={1.75} aria-hidden="true" />
-                            </Button>
+                              <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" />
+                            </IconButton>
                           </div>
                         )}
                       </TableCell>

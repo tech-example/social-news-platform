@@ -270,14 +270,13 @@ export function NotificationsClient({ initialNotifications = [], userId }) {
                   />
                 )}
 
-                <button
-                  type="button"
+                <IconButton
+                  label="Delete notification"
                   onClick={() => handleDelete(n.id)}
-                  aria-label="Delete notification"
-                  className="p-1.5 rounded-md text-[var(--ink-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors focus-visible:outline-2 focus-visible:outline-[var(--accent)] cursor-pointer"
+                  className="text-[var(--ink-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors"
                 >
                   <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" />
-                </button>
+                </IconButton>
               </div>
             </div>
           ))}
