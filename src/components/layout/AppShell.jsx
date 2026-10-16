@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -27,17 +27,118 @@ const fetcher = (url) => fetch(url).then((r) => r.json());
 
 export function AppShell({ children, session = null }) {
   const pathname = usePathname();
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [desktopMoreOpen, setDesktopMoreOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const desktopMoreButtonRef = useRef(null);
+  const desktopMenuRef = useRef(null);
+  const mobileMenuButtonRef = useRef(null);
+  const mobileMenuRef = useRef(null);
+
+  // Close menus on route change during render
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    setDesktopMoreOpen(false);
+    setMobileMenuOpen(false);
+  }
+
+  // Handle click outside and Escape key for desktop more menu
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") setMoreOpen(false);
+    if (!desktopMoreOpen) return;
+
+    const handlePointerDown = (e) => {
+      if (
+        desktopMenuRef.current &&
+        !desktopMenuRef.current.contains(e.target) &&
+        desktopMoreButtonRef.current &&
+        !desktopMoreButtonRef.current.contains(e.target)
+      ) {
+        setDesktopMoreOpen(false);
+      }
     };
-    if (moreOpen) {
-      window.addEventListener("keydown", handleKeyDown);
-      return () => window.removeEventListener("keydown", handleKeyDown);
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setDesktopMoreOpen(false);
+        desktopMoreButtonRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [desktopMoreOpen]);
+
+  // Move focus to first menu item when desktop menu opens
+  useEffect(() => {
+    if (desktopMoreOpen && desktopMenuRef.current) {
+      const firstItem = desktopMenuRef.current.querySelector(
+        '[role="menuitem"]:not([disabled])'
+      );
+      if (firstItem) {
+        firstItem.focus();
+      }
     }
-  }, [moreOpen]);
+  }, [desktopMoreOpen]);
+
+  // Handle Escape key for mobile menu
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMobileMenuOpen(false);
+        mobileMenuButtonRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mobileMenuOpen]);
+
+  // Keyboard navigation within the desktop dropup menu (WAI-ARIA Menu pattern)
+  const handleMenuKeyDown = (e) => {
+    if (!desktopMenuRef.current) return;
+    const items = Array.from(
+      desktopMenuRef.current.querySelectorAll(
+        'a[role="menuitem"], button[role="menuitem"], input[role="menuitem"]'
+      )
+    );
+    if (!items.length) return;
+
+    const currentIndex = items.indexOf(document.activeElement);
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const nextIndex =
+        currentIndex === -1 || currentIndex === items.length - 1
+          ? 0
+          : currentIndex + 1;
+      items[nextIndex]?.focus();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const prevIndex =
+        currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+      items[prevIndex]?.focus();
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      items[0]?.focus();
+    } else if (e.key === "End") {
+      e.preventDefault();
+      items[items.length - 1]?.focus();
+    } else if (e.key === "Tab") {
+      setDesktopMoreOpen(false);
+    }
+  };
 
   const profile = session?.profile || null;
   const userRole = profile?.role || "guest";
@@ -125,13 +226,17 @@ export function AppShell({ children, session = null }) {
             </Link>
           )}
           <button
+            ref={mobileMenuButtonRef}
+            id="mobile-nav-toggle"
             type="button"
-            onClick={() => setMoreOpen(!moreOpen)}
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--ink)] hover:bg-[var(--surface-strong)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)] cursor-pointer"
             aria-label="Toggle navigation menu"
-            aria-expanded={moreOpen}
+            aria-expanded={mobileMenuOpen}
+            aria-haspopup="menu"
+            aria-controls="mobile-nav-menu"
           >
-            {moreOpen ? (
+            {mobileMenuOpen ? (
               <X size={22} strokeWidth={1.75} aria-hidden="true" />
             ) : (
               <Menu size={22} strokeWidth={1.75} aria-hidden="true" />
@@ -213,22 +318,24 @@ export function AppShell({ children, session = null }) {
 
         {/* More Menu Dropup */}
         <div className="relative mt-auto pt-2 border-t border-[var(--line)]">
-          {moreOpen && (
-            <>
-              {/* Backdrop to close more menu when clicking outside */}
-              <div
-                className="fixed inset-0 z-30 bg-transparent cursor-default"
-                onClick={() => setMoreOpen(false)}
-                aria-hidden="true"
-              />
-              <div className="absolute bottom-full left-0 mb-2 w-64 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-xl py-1.5 z-40 animate-fadeIn space-y-0.5 overflow-hidden">
+          {desktopMoreOpen && (
+            <div
+              ref={desktopMenuRef}
+              id="desktop-more-menu"
+              role="menu"
+              aria-label="More options"
+              aria-labelledby="desktop-more-button"
+              onKeyDown={handleMenuKeyDown}
+              className="absolute bottom-full left-0 mb-2 w-64 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-xl py-1.5 z-50 animate-fadeIn space-y-0.5 overflow-hidden"
+            >
               {isAuthenticated ? (
                 <>
                   {/* Logged in User Profile Card */}
                   <Link
                     href={`/u/${profile.username}`}
-                    onClick={() => setMoreOpen(false)}
-                    className="flex items-center gap-3 px-3.5 py-3 hover:bg-[var(--surface)] transition-colors border-b border-[var(--line)]"
+                    role="menuitem"
+                    onClick={() => setDesktopMoreOpen(false)}
+                    className="flex items-center gap-3 px-3.5 py-3 hover:bg-[var(--surface)] transition-colors border-b border-[var(--line)] focus-visible:outline-none focus-visible:bg-[var(--surface)]"
                   >
                     <Avatar
                       src={profile.avatar_url}
@@ -248,8 +355,9 @@ export function AppShell({ children, session = null }) {
 
                   <Link
                     href="/settings"
-                    onClick={() => setMoreOpen(false)}
-                    className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
+                    role="menuitem"
+                    onClick={() => setDesktopMoreOpen(false)}
+                    className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors focus-visible:outline-none focus-visible:bg-[var(--surface)]"
                   >
                     <Settings size={18} strokeWidth={1.75} aria-hidden="true" />
                     <span>Settings</span>
@@ -259,8 +367,9 @@ export function AppShell({ children, session = null }) {
                   {isModerator && (
                     <Link
                       href="/moderation"
-                      onClick={() => setMoreOpen(false)}
-                      className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
+                      role="menuitem"
+                      onClick={() => setDesktopMoreOpen(false)}
+                      className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors focus-visible:outline-none focus-visible:bg-[var(--surface)]"
                     >
                       <ShieldCheck
                         size={18}
@@ -277,8 +386,9 @@ export function AppShell({ children, session = null }) {
                     <>
                       <Link
                         href="/admin"
-                        onClick={() => setMoreOpen(false)}
-                        className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
+                        role="menuitem"
+                        onClick={() => setDesktopMoreOpen(false)}
+                        className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors focus-visible:outline-none focus-visible:bg-[var(--surface)]"
                       >
                         <LayoutDashboard
                           size={18}
@@ -290,8 +400,9 @@ export function AppShell({ children, session = null }) {
                       </Link>
                       <Link
                         href="/admin/profanity"
-                        onClick={() => setMoreOpen(false)}
-                        className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
+                        role="menuitem"
+                        onClick={() => setDesktopMoreOpen(false)}
+                        className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors focus-visible:outline-none focus-visible:bg-[var(--surface)]"
                       >
                         <ShieldAlert
                           size={18}
@@ -304,13 +415,14 @@ export function AppShell({ children, session = null }) {
                     </>
                   )}
 
-                  <div className="my-1 border-t border-[var(--line)]" />
+                  <div className="my-1 border-t border-[var(--line)]" role="separator" />
 
                   {/* Sign Out Action */}
                   <form action={signOutAction} className="w-full">
                     <button
                       type="submit"
-                      className="flex items-center gap-3 w-full px-3.5 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer"
+                      role="menuitem"
+                      className="flex items-center gap-3 w-full px-3.5 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer focus-visible:outline-none focus-visible:bg-red-50"
                     >
                       <LogOut size={18} strokeWidth={1.75} aria-hidden="true" />
                       <span>Sign Out</span>
@@ -322,16 +434,18 @@ export function AppShell({ children, session = null }) {
                   {/* Guest menu */}
                   <Link
                     href="/sign-in"
-                    onClick={() => setMoreOpen(false)}
-                    className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors font-medium"
+                    role="menuitem"
+                    onClick={() => setDesktopMoreOpen(false)}
+                    className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors font-medium focus-visible:outline-none focus-visible:bg-[var(--surface)]"
                   >
                     <LogIn size={18} strokeWidth={1.75} aria-hidden="true" />
                     <span>Sign In</span>
                   </Link>
                   <Link
                     href="/register"
-                    onClick={() => setMoreOpen(false)}
-                    className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors font-medium"
+                    role="menuitem"
+                    onClick={() => setDesktopMoreOpen(false)}
+                    className="flex items-center gap-3 px-3.5 py-2.5 text-sm text-[var(--ink)] hover:bg-[var(--surface)] transition-colors font-medium focus-visible:outline-none focus-visible:bg-[var(--surface)]"
                   >
                     <UserPlus size={18} strokeWidth={1.75} aria-hidden="true" />
                     <span>Register</span>
@@ -339,15 +453,26 @@ export function AppShell({ children, session = null }) {
                 </>
               )}
             </div>
-          </>
-        )}
+          )}
 
           <button
+            ref={desktopMoreButtonRef}
+            id="desktop-more-button"
             type="button"
-            onClick={() => setMoreOpen(!moreOpen)}
+            onClick={() => {
+              setDesktopMoreOpen((prev) => {
+                const next = !prev;
+                if (!next) {
+                  desktopMoreButtonRef.current?.focus();
+                }
+                return next;
+              });
+            }}
             className="flex items-center gap-4 p-3 rounded-lg min-h-[44px] w-full text-[var(--ink)] hover:bg-[var(--surface)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)] cursor-pointer"
             aria-label={COPY.nav.more}
-            aria-expanded={moreOpen}
+            aria-expanded={desktopMoreOpen}
+            aria-haspopup="menu"
+            aria-controls="desktop-more-menu"
           >
             <Menu size={24} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
             <span className="hidden xl:block text-base truncate">{COPY.nav.more}</span>
@@ -355,21 +480,31 @@ export function AppShell({ children, session = null }) {
         </div>
       </aside>
 
-      {/* Mobile Popover Menu when more is open */}
-      {moreOpen && (
+      {/* Mobile Popover Menu when mobile menu is open */}
+      {mobileMenuOpen && (
         <>
           <div
             className="md:hidden fixed inset-0 z-30 bg-black/20 backdrop-blur-[1px] cursor-default"
-            onClick={() => setMoreOpen(false)}
+            onClick={() => {
+              setMobileMenuOpen(false);
+              mobileMenuButtonRef.current?.focus();
+            }}
             aria-hidden="true"
           />
-          <div className="md:hidden fixed inset-x-0 top-14 bg-[var(--bg)] border-b border-[var(--line)] shadow-lg p-3 z-40 animate-fadeIn space-y-1">
+          <div
+            ref={mobileMenuRef}
+            id="mobile-nav-menu"
+            role="menu"
+            aria-label="Navigation menu"
+            className="md:hidden fixed inset-x-0 top-14 bg-[var(--bg)] border-b border-[var(--line)] shadow-lg p-3 z-40 animate-fadeIn space-y-1"
+          >
           {isAuthenticated ? (
             <>
               <Link
                 href={`/u/${profile.username}`}
-                onClick={() => setMoreOpen(false)}
-                className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)] border-b border-[var(--line)] pb-3"
+                role="menuitem"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)] border-b border-[var(--line)] pb-3 focus-visible:outline-none focus-visible:bg-[var(--surface)]"
               >
                 <Avatar
                   src={profile.avatar_url}
@@ -387,8 +522,9 @@ export function AppShell({ children, session = null }) {
               </Link>
               <Link
                 href="/settings"
-                onClick={() => setMoreOpen(false)}
-                className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)]"
+                role="menuitem"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:bg-[var(--surface)]"
               >
                 <Settings size={18} strokeWidth={1.75} aria-hidden="true" />
                 <span>Settings</span>
@@ -396,8 +532,9 @@ export function AppShell({ children, session = null }) {
               {isModerator && (
                 <Link
                   href="/moderation"
-                  onClick={() => setMoreOpen(false)}
-                  className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)]"
+                  role="menuitem"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:bg-[var(--surface)]"
                 >
                   <ShieldCheck
                     size={18}
@@ -412,27 +549,30 @@ export function AppShell({ children, session = null }) {
                 <>
                   <Link
                     href="/admin"
-                    onClick={() => setMoreOpen(false)}
-                    className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)]"
+                    role="menuitem"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:bg-[var(--surface)]"
                   >
                     <LayoutDashboard size={18} strokeWidth={1.75} aria-hidden="true" />
                     <span>Admin Dashboard</span>
                   </Link>
                   <Link
                     href="/admin/profanity"
-                    onClick={() => setMoreOpen(false)}
-                    className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)]"
+                    role="menuitem"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:bg-[var(--surface)]"
                   >
                     <ShieldAlert size={18} strokeWidth={1.75} aria-hidden="true" />
                     <span>Profanity Filter</span>
                   </Link>
                 </>
               )}
-              <div className="border-t border-[var(--line)] my-1" />
+              <div className="border-t border-[var(--line)] my-1" role="separator" />
               <form action={signOutAction} className="w-full">
                 <button
                   type="submit"
-                  className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 w-full text-left cursor-pointer"
+                  role="menuitem"
+                  className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 w-full text-left cursor-pointer focus-visible:outline-none focus-visible:bg-red-50"
                 >
                   <LogOut size={18} strokeWidth={1.75} aria-hidden="true" />
                   <span>Sign Out</span>
@@ -443,16 +583,18 @@ export function AppShell({ children, session = null }) {
             <>
               <Link
                 href="/sign-in"
-                onClick={() => setMoreOpen(false)}
-                className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)] font-medium"
+                role="menuitem"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)] font-medium focus-visible:outline-none focus-visible:bg-[var(--surface)]"
               >
                 <LogIn size={18} strokeWidth={1.75} aria-hidden="true" />
                 <span>Sign In</span>
               </Link>
               <Link
                 href="/register"
-                onClick={() => setMoreOpen(false)}
-                className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)] font-medium"
+                role="menuitem"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 p-2.5 rounded-lg text-sm text-[var(--ink)] hover:bg-[var(--surface)] font-medium focus-visible:outline-none focus-visible:bg-[var(--surface)]"
               >
                 <UserPlus size={18} strokeWidth={1.75} aria-hidden="true" />
                 <span>Register</span>
