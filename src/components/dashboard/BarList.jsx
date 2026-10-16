@@ -1,13 +1,17 @@
+"use client";
 import Link from "next/link";
 import { Hash } from "lucide-react";
-import { formatCompactNumber } from "@/lib/format";
+import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 
-export function BarList({ data = [], title = "Top Hashtags", limit = 5 }) {
+export function BarList({ data = [], title, limit = 5 }) {
+  const { t, formatCompact } = useAdminLocale();
+  const displayTitle = title || t("admin.top_tags_title", "Top Hashtags");
+
   if (!data || data.length === 0) {
     return (
       <div className="p-5 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs text-center py-8">
-        <h3 className="text-sm font-bold text-[var(--ink)] mb-1">{title}</h3>
-        <p className="text-xs text-[var(--ink-muted)]">No tag metrics recorded in this window.</p>
+        <h3 className="text-sm font-bold text-[var(--ink)] mb-1">{displayTitle}</h3>
+        <p className="text-xs text-[var(--ink-muted)]">{t("admin.barlist_empty", "No tag metrics recorded in this window.")}</p>
       </div>
     );
   }
@@ -18,8 +22,8 @@ export function BarList({ data = [], title = "Top Hashtags", limit = 5 }) {
   return (
     <div className="p-5 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs space-y-3.5">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-[var(--ink)]">{title}</h3>
-        <span className="text-[11px] text-[var(--ink-muted)]">Posts / Engagement</span>
+        <h3 className="text-sm font-bold text-[var(--ink)]">{displayTitle}</h3>
+        <span className="text-[11px] text-[var(--ink-muted)]">{t("admin.barlist_posts_eng", "Posts / Engagement")}</span>
       </div>
 
       <div className="space-y-2.5">
@@ -39,10 +43,10 @@ export function BarList({ data = [], title = "Top Hashtags", limit = 5 }) {
                   <span>{item.name}</span>
                 </Link>
                 <div className="flex items-center gap-2 text-xs tabular-nums text-[var(--ink)]">
-                  <span className="font-semibold">{formatCompactNumber(count)}</span>
+                  <span className="font-semibold">{formatCompact(count)}</span>
                   {engagement > 0 && (
                     <span className="text-[11px] text-[var(--ink-muted)]">
-                      ({formatCompactNumber(engagement)} eng)
+                      ({formatCompact(engagement)})
                     </span>
                   )}
                 </div>

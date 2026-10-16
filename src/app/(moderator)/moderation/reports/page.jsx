@@ -4,8 +4,9 @@ import { getReports } from "@/server/dal/reports";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatRelativeTime } from "@/lib/format";
 import { ShieldCheck, ChevronLeft, ShieldAlert } from "lucide-react";
+import { getServerAdminT } from "@/lib/i18n/server";
+import { AdminLanguageSwitcher } from "@/components/dashboard/AdminLanguageSwitcher";
 
 export const metadata = {
   title: "Reports Queue - Moderation",
@@ -13,6 +14,7 @@ export const metadata = {
 
 export default async function ReportsQueuePage({ searchParams }) {
   await requireRole("moderator");
+  const { t, formatNumber, formatRelative } = await getServerAdminT();
   const resolvedParams = await searchParams;
   const status = resolvedParams?.status || "all";
   const offset = parseInt(resolvedParams?.offset || "0", 10);
@@ -24,12 +26,12 @@ export default async function ReportsQueuePage({ searchParams }) {
   });
 
   const statuses = [
-    { id: "all", label: "All" },
-    { id: "pending", label: "Pending" },
-    { id: "in_review", label: "In Review" },
-    { id: "escalated", label: "Escalated" },
-    { id: "resolved_actioned", label: "Actioned" },
-    { id: "resolved_dismissed", label: "Dismissed" },
+    { id: "all", label: t("moderation.tab_all", "All") },
+    { id: "pending", label: t("moderation.tab_pending", "Pending") },
+    { id: "in_review", label: t("moderation.tab_in_review", "In Review") },
+    { id: "escalated", label: t("moderation.tab_escalated", "Escalated") },
+    { id: "resolved_actioned", label: t("moderation.tab_resolved_actioned", "Actioned") },
+    { id: "resolved_dismissed", label: t("moderation.tab_resolved_dismissed", "Dismissed") },
   ];
 
   const getStatusVariant = (st) => {
@@ -59,18 +61,21 @@ export default async function ReportsQueuePage({ searchParams }) {
             className="inline-flex items-center gap-1 text-xs font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] mb-2"
           >
             <ChevronLeft size={14} strokeWidth={2} aria-hidden="true" />
-            <span>Back to overview</span>
+            <span>{t("moderation.reports_back_overview", "Back to overview")}</span>
           </Link>
           <h1 className="text-xl sm:text-2xl font-bold text-[var(--ink)]">
-            Reports Queue
+            {t("moderation.reports_queue_title", "Reports Queue")}
           </h1>
           <p className="text-xs text-[var(--ink-muted)]">
-            Review community safety reports and take corrective action
+            {t("moderation.reports_queue_subtitle", "Review community safety reports and take corrective action")}
           </p>
         </div>
 
-        <div className="text-xs text-[var(--ink-muted)] tabular-nums">
-          Total: <strong className="text-[var(--ink)]">{total}</strong> reports
+        <div className="flex items-center gap-3">
+          <AdminLanguageSwitcher />
+          <div className="text-xs text-[var(--ink-muted)] tabular-nums">
+            {t("moderation.reports_total", { total: formatNumber(total) }, `Total: ${formatNumber(total)} reports`)}
+          </div>
         </div>
       </div>
 
@@ -83,9 +88,9 @@ export default async function ReportsQueuePage({ searchParams }) {
               key={s.id}
               href={`/moderation/reports?status=${s.id}`}
               prefetch
-              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
                 isActive
-                  ? "bg-[var(--bg)] text-[var(--ink)] font-semibold shadow-2xs border border-[var(--line)]"
+                  ? "bg-[var(--bg)] text-[var(--ink)] shadow-2xs border border-[var(--line)]"
                   : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
               }`}
             >
@@ -99,19 +104,19 @@ export default async function ReportsQueuePage({ searchParams }) {
       <div className="bg-[var(--bg)] border border-[var(--line)] rounded-xl overflow-hidden shadow-xs">
         {reports.length === 0 ? (
           <p className="py-16 text-center text-sm text-[var(--ink-muted)]">
-            No reports found for this status.
+            {t("moderation.reports_empty", "No reports found for this status.")}
           </p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Target</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead>Reporter</TableHead>
-                <TableHead>Details</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead>{t("moderation.reports_col_target", "Target")}</TableHead>
+                <TableHead>{t("moderation.reports_col_reason", "Reason")}</TableHead>
+                <TableHead>{t("moderation.reports_col_reporter", "Reporter")}</TableHead>
+                <TableHead>{t("moderation.reports_col_details", "Details")}</TableHead>
+                <TableHead>{t("moderation.reports_col_status", "Status")}</TableHead>
+                <TableHead>{t("moderation.reports_col_reported", "Reported")}</TableHead>
+                <TableHead className="text-right">{t("moderation.reports_col_action", "Action")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -143,12 +148,12 @@ export default async function ReportsQueuePage({ searchParams }) {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-xs text-[var(--ink-muted)]" suppressHydrationWarning>
-                    {formatRelativeTime(r.created_at)}
+                    {formatRelative(r.created_at)}
                   </TableCell>
                   <TableCell className="text-right">
                     <Link href={`/moderation/reports/${r.id}`}>
                       <Button variant="secondary" className="text-xs h-7 px-3">
-                        Review
+                        {t("moderation.queue_btn_review", "Review")}
                       </Button>
                     </Link>
                   </TableCell>

@@ -4,11 +4,12 @@ import Link from "next/link";
 import { ArrowUpDown, Clock, TriangleAlert, ArrowRight, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatRelativeTime } from "@/lib/format";
+import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 
 export function ModerationQueueTable({ reports = [], now: propNow }) {
   const [sortOrder, setSortOrder] = useState("newest"); // "newest" | "oldest"
   const [filterFlagged, setFilterFlagged] = useState(false);
+  const { t, formatRelative } = useAdminLocale();
   const now = propNow;
 
   const sortedReports = [...reports].sort((a, b) => {
@@ -54,10 +55,12 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
         <div>
           <div className="flex items-center gap-2">
             <ShieldAlert size={18} strokeWidth={1.75} aria-hidden="true" className="text-[var(--danger)]" />
-            <h2 className="text-base font-bold text-[var(--ink)]">Moderation Queue</h2>
+            <h2 className="text-base font-bold text-[var(--ink)]">
+              {t("moderation.queue_title", "Moderation Queue")}
+            </h2>
           </div>
           <p className="text-xs text-[var(--ink-muted)]">
-            Reports awaiting moderator assessment. Overdue items (&gt;24h) highlighted.
+            {t("moderation.queue_subtitle", "Reports awaiting moderator assessment. Overdue items (>24h) highlighted.")}
           </p>
         </div>
 
@@ -70,7 +73,11 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
               className="text-xs h-8 px-2.5 flex items-center gap-1.5"
             >
               <ShieldAlert size={13} strokeWidth={2} aria-hidden="true" />
-              <span>{filterFlagged ? `Flagged Only (${flaggedCount})` : `Filter Flagged (${flaggedCount})`}</span>
+              <span>
+                {filterFlagged
+                  ? t("moderation.queue_filter_flagged", { count: flaggedCount }, `Flagged Only (${flaggedCount})`)
+                  : `Filter Flagged (${flaggedCount})`}
+              </span>
             </Button>
           )}
 
@@ -81,14 +88,18 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
             className="text-xs h-8 px-2.5 flex items-center gap-1.5"
           >
             <ArrowUpDown size={13} strokeWidth={2} aria-hidden="true" />
-            <span>Sort: {sortOrder === "newest" ? "Newest First" : "Oldest First"}</span>
+            <span>
+              {sortOrder === "newest"
+                ? t("moderation.queue_sort_newest", "Newest First")
+                : t("moderation.queue_sort_oldest", "Oldest First")}
+            </span>
           </Button>
 
           <Link
             href="/moderation/reports"
             className="text-xs font-semibold text-[var(--accent)] hover:underline flex items-center gap-1 ml-1"
           >
-            <span>All reports</span>
+            <span>{t("moderation.btn_full_queue", "Full Report Queue")}</span>
             <ArrowRight size={14} strokeWidth={2} aria-hidden="true" />
           </Link>
         </div>
@@ -97,12 +108,7 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
       {displayedReports.length === 0 ? (
         <div className="py-12 text-center text-sm text-[var(--ink-muted)] space-y-1">
           <p className="font-semibold text-[var(--ink)]">
-            {filterFlagged ? "No flagged reports in the queue" : "No pending reports in the queue"}
-          </p>
-          <p className="text-xs">
-            {filterFlagged
-              ? "None of the pending reports target content flagged for inappropriate language."
-              : "All content reports have been reviewed. Queue is clear."}
+            {t("moderation.queue_empty", "No pending reports in the queue. All content is clear!")}
           </p>
         </div>
       ) : (
@@ -112,12 +118,12 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
             <table className="w-full text-xs text-left">
               <thead className="bg-[var(--surface)] border-b border-[var(--line)] text-[var(--ink-muted)] uppercase tracking-wider">
                 <tr>
-                  <th className="py-2.5 px-3 font-semibold">Target Type</th>
-                  <th className="py-2.5 px-3 font-semibold">Reason</th>
-                  <th className="py-2.5 px-3 font-semibold">Reporter</th>
-                  <th className="py-2.5 px-3 font-semibold">Status</th>
-                  <th className="py-2.5 px-3 font-semibold">Age / SLA</th>
-                  <th className="py-2.5 px-3 font-semibold text-right">Action</th>
+                  <th className="py-2.5 px-3 font-semibold">{t("moderation.queue_col_target", "Target Type")}</th>
+                  <th className="py-2.5 px-3 font-semibold">{t("moderation.queue_col_reason", "Reason")}</th>
+                  <th className="py-2.5 px-3 font-semibold">{t("moderation.queue_col_reporter", "Reporter")}</th>
+                  <th className="py-2.5 px-3 font-semibold">{t("moderation.queue_col_status", "Status")}</th>
+                  <th className="py-2.5 px-3 font-semibold">{t("moderation.queue_col_created", "Age / SLA")}</th>
+                  <th className="py-2.5 px-3 font-semibold text-right">{t("moderation.queue_col_action", "Action")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--line)]">
@@ -159,12 +165,12 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
                           {overdue ? (
                             <span className="inline-flex items-center gap-1 text-[var(--danger)] font-bold text-xs">
                               <TriangleAlert size={13} strokeWidth={2.25} aria-hidden="true" />
-                              <span>Overdue ({formatRelativeTime(r.created_at)})</span>
+                              <span>{t("moderation.queue_overdue", "Overdue")} ({formatRelative(r.created_at)})</span>
                             </span>
                           ) : (
                             <span className="text-[var(--ink-muted)] flex items-center gap-1 text-xs">
                               <Clock size={12} strokeWidth={1.75} aria-hidden="true" />
-                              <span>{formatRelativeTime(r.created_at)}</span>
+                              <span>{formatRelative(r.created_at)}</span>
                             </span>
                           )}
                         </div>
@@ -172,7 +178,7 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
                       <td className="py-3 px-3 text-right">
                         <Link href={`/moderation/reports/${r.id}`}>
                           <Button variant="secondary" size="sm" className="h-7 px-3 text-xs">
-                            Review
+                            {t("moderation.queue_btn_review", "Review")}
                           </Button>
                         </Link>
                       </td>
@@ -197,7 +203,7 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
                   <div className="flex items-center justify-between">
                     <div className="inline-flex items-center gap-1.5">
                       <span className="font-bold text-[var(--ink)] capitalize">
-                        {r.target_type} Report
+                        {r.target_type}
                       </span>
                       {r.is_flagged && (
                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[var(--surface-strong)] text-[var(--warning)] border border-[var(--line)]">
@@ -213,10 +219,10 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
 
                   <div className="flex items-center justify-between text-[var(--ink-muted)]">
                     <span>
-                      Reason:{" "}
+                      {t("moderation.reports_col_reason", "Reason")}:{" "}
                       <strong className="text-[var(--danger)] capitalize">{r.reason}</strong>
                     </span>
-                    <span>By @{r.reporter?.username || "anonymous"}</span>
+                    <span>@{r.reporter?.username || "anonymous"}</span>
                   </div>
 
                   <div className="flex items-center justify-between pt-1 border-t border-[var(--line)]">
@@ -224,18 +230,18 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
                       {overdue ? (
                         <span className="inline-flex items-center gap-1 text-[var(--danger)] font-bold text-xs">
                           <TriangleAlert size={13} strokeWidth={2.25} aria-hidden="true" />
-                          <span>Overdue ({formatRelativeTime(r.created_at)})</span>
+                          <span>{t("moderation.queue_overdue", "Overdue")} ({formatRelative(r.created_at)})</span>
                         </span>
                       ) : (
                         <span className="text-[var(--ink-muted)] text-xs">
-                          {formatRelativeTime(r.created_at)}
+                          {formatRelative(r.created_at)}
                         </span>
                       )}
                     </div>
 
                     <Link href={`/moderation/reports/${r.id}`}>
                       <Button variant="secondary" size="sm" className="h-7 px-3 text-xs">
-                        Review
+                        {t("moderation.queue_btn_review", "Review")}
                       </Button>
                     </Link>
                   </div>

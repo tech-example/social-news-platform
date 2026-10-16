@@ -32,6 +32,8 @@ import {
   CircleCheck,
   ShieldAlert,
 } from "lucide-react";
+import { getServerAdminT } from "@/lib/i18n/server";
+import { AdminLanguageSwitcher } from "@/components/dashboard/AdminLanguageSwitcher";
 
 export const metadata = {
   title: "Moderator Dashboard - SocialNews",
@@ -40,32 +42,33 @@ export const metadata = {
 // 1. KPI Cards Widget
 async function ModeratorKPIsWidget({ range, from, to }) {
   const kpis = await getModeratorKPIs(range, from, to);
+  const { t } = await getServerAdminT();
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <StatCard
-        title="Awaiting Action"
+        title={t("moderation.kpi_awaiting_action", "Awaiting Action")}
         value={kpis.awaiting_action || 0}
         previousValue={kpis.prev_awaiting_action}
-        subtitle="Pending or in initial review"
+        subtitle={t("moderation.kpi_awaiting_action_sub", "Pending or in initial review")}
         icon={Clock}
-        tooltip="Content reports requiring moderator review and initial disposition"
+        tooltip={t("moderation.kpi_awaiting_action_tip", "Content reports requiring moderator review and initial disposition")}
       />
       <StatCard
-        title="Awaiting Final Decision"
+        title={t("moderation.kpi_awaiting_final", "Awaiting Final Decision")}
         value={kpis.awaiting_final || 0}
         previousValue={kpis.prev_awaiting_final}
-        subtitle="Escalated to administrator"
+        subtitle={t("moderation.kpi_awaiting_final_sub", "Escalated to administrator")}
         icon={TriangleAlert}
-        tooltip="High-severity or appeal reports awaiting administrator ruling"
+        tooltip={t("moderation.kpi_awaiting_final_tip", "High-severity or appeal reports awaiting administrator ruling")}
       />
       <StatCard
-        title="Resolved in Range"
+        title={t("moderation.kpi_resolved", "Resolved in Range")}
         value={kpis.resolved_in_range || 0}
         previousValue={kpis.prev_resolved_in_range}
-        subtitle="Actioned or dismissed"
+        subtitle={t("moderation.kpi_resolved_sub", "Actioned or dismissed")}
         icon={CircleCheck}
-        tooltip="Reports where final moderation ruling was completed within the selected period"
+        tooltip={t("moderation.kpi_resolved_tip", "Reports where final moderation ruling was completed within the selected period")}
       />
     </div>
   );
@@ -74,13 +77,14 @@ async function ModeratorKPIsWidget({ range, from, to }) {
 // 2. Reports Over Time Widget
 async function ReportsTimeseriesWidget({ range, bucket, from, to }) {
   const data = await getTimeseries("reports", bucket, range, from, to);
+  const { t } = await getServerAdminT();
   return (
     <TimeseriesChart
       data={data}
-      title="Reports Received Over Time"
-      metricLabel="Reports"
+      title={t("moderation.chart_reports_timeseries", "Reports Received Over Time")}
+      metricLabel={t("admin.chart_col_count", "Reports")}
       color="#B7791F"
-      tooltip="Volume of content and account reports filed over time"
+      tooltip={t("moderation.chart_reports_timeseries", "Volume of content and account reports filed over time")}
     />
   );
 }
@@ -88,11 +92,12 @@ async function ReportsTimeseriesWidget({ range, bucket, from, to }) {
 // 3. Reports By Status Donut Widget
 async function ReportsStatusWidget({ range, from, to }) {
   const data = await getReportsByStatus(range, from, to);
+  const { t } = await getServerAdminT();
   return (
     <DonutChart
       data={data}
-      title="Reports by Status"
-      tooltip="Distribution of reports across pending, review, escalation, and resolution states"
+      title={t("moderation.chart_reports_status", "Reports by Status")}
+      tooltip={t("moderation.chart_reports_status", "Distribution of reports across pending, review, escalation, and resolution states")}
     />
   );
 }
@@ -100,12 +105,13 @@ async function ReportsStatusWidget({ range, from, to }) {
 // 4. Reports By Reason Horizontal Bar Widget
 async function ReportsReasonWidget({ range, from, to }) {
   const data = await getReportsByReason(range, from, to);
+  const { t } = await getServerAdminT();
   return (
     <HorizontalBarChart
       data={data}
-      title="Reports by Alleged Reason"
-      metricLabel="Reports"
-      tooltip="Breakdown of alleged violations reported by users"
+      title={t("admin.chart_reports_reason", "Reports by Alleged Reason")}
+      metricLabel={t("admin.chart_col_count", "Reports")}
+      tooltip={t("admin.chart_reports_reason", "Breakdown of alleged violations reported by users")}
     />
   );
 }
@@ -124,6 +130,7 @@ async function HiddenContentWidget() {
 
 export default async function ModerationDashboardPage({ searchParams }) {
   await requireRole("moderator");
+  const { t } = await getServerAdminT();
   const resolvedParams = await searchParams;
   const range = resolvedParams?.range || "30d";
   const from = resolvedParams?.from || null;
@@ -142,19 +149,20 @@ export default async function ModerationDashboardPage({ searchParams }) {
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-[var(--ink)]">
-              Moderation Dashboard
+              {t("moderation.header_title", "Moderation Dashboard")}
             </h1>
             <p className="text-xs text-[var(--ink-muted)]">
-              Two-tier safety enforcement, report queues, and content oversight
+              {t("moderation.header_subtitle", "Two-tier safety enforcement, report queues, and content oversight")}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          <AdminLanguageSwitcher />
           <Link href="/moderation/reports">
             <Button variant="secondary" size="sm" className="text-xs">
               <ShieldAlert size={14} strokeWidth={1.75} aria-hidden="true" className="mr-1.5" />
-              <span>Full Report Queue</span>
+              <span>{t("moderation.btn_full_queue", "Full Report Queue")}</span>
             </Button>
           </Link>
         </div>

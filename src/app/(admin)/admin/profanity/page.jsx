@@ -1,6 +1,8 @@
 import { requireRole } from "@/server/auth";
 import { getProfanityTermsAction, getProfanitySuggestionsAction } from "@/server/actions/profanity";
 import { ProfanityAdminClient } from "./ProfanityAdminClient";
+import { getServerAdminT } from "@/lib/i18n/server";
+import { AdminLanguageSwitcher } from "@/components/dashboard/AdminLanguageSwitcher";
 
 export const metadata = {
   title: "Profanity Filter Management - Admin",
@@ -9,6 +11,7 @@ export const metadata = {
 
 export default async function ProfanityAdminPage({ searchParams }) {
   await requireRole("admin");
+  const { t } = await getServerAdminT();
   const resolvedParams = await searchParams;
 
   const page = parseInt(resolvedParams?.page || "1", 10);
@@ -33,13 +36,18 @@ export default async function ProfanityAdminPage({ searchParams }) {
 
   return (
     <div className="max-w-[1280px] mx-auto px-4 py-6 space-y-6">
-      <div className="pb-4 border-b border-[var(--line)]">
-        <h1 className="text-xl sm:text-2xl font-bold text-[var(--ink)]">
-          Profanity & Offensive Language Filter
-        </h1>
-        <p className="text-xs text-[var(--ink-muted)]">
-          Manage dynamic blocked and allowed terms, review moderator suggestions, and re-scan existing content
-        </p>
+      <div className="pb-4 border-b border-[var(--line)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-[var(--ink)]">
+            {t("profanity.title")}
+          </h1>
+          <p className="text-xs text-[var(--ink-muted)]">
+            {t("profanity.subtitle")}
+          </p>
+        </div>
+        <div className="flex items-center self-end sm:self-auto">
+          <AdminLanguageSwitcher />
+        </div>
       </div>
 
       <ProfanityAdminClient

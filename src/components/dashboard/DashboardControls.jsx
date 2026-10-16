@@ -8,6 +8,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 
 export function DashboardControls({
   isAdmin = false,
@@ -19,6 +20,7 @@ export function DashboardControls({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const { t, formatDate } = useAdminLocale();
 
   const currentRange = searchParams.get("range") || "30d";
   const currentBucket = searchParams.get("bucket") || (currentRange === "today" ? "day" : currentRange === "90d" ? "week" : "day");
@@ -30,28 +32,27 @@ export function DashboardControls({
   useEffect(() => {
     const timer = setTimeout(() => {
       setLastUpdated(
-        new Intl.DateTimeFormat("en-US", {
+        formatDate(new Date(), {
           hour: "numeric",
           minute: "numeric",
           second: "numeric",
-          hour12: true,
-        }).format(new Date())
+        })
       );
     }, 0);
     return () => clearTimeout(timer);
-  }, []);
+  }, [formatDate]);
 
   const ranges = [
-    { id: "today", label: "Today" },
-    { id: "7d", label: "7 Days" },
-    { id: "30d", label: "30 Days" },
-    { id: "90d", label: "90 Days" },
+    { id: "today", label: t("controls.today", "Today") },
+    { id: "7d", label: t("controls.7d", "7 Days") },
+    { id: "30d", label: t("controls.30d", "30 Days") },
+    { id: "90d", label: t("controls.90d", "90 Days") },
   ];
 
   const buckets = [
-    { id: "day", label: "Day" },
-    { id: "week", label: "Week" },
-    { id: "month", label: "Month" },
+    { id: "day", label: t("controls.day", "Day") },
+    { id: "week", label: t("controls.week", "Week") },
+    { id: "month", label: t("controls.month", "Month") },
   ];
 
   // Calculate from & to ISO timestamps based on selected range preset
@@ -141,12 +142,11 @@ export function DashboardControls({
     startTransition(() => {
       router.refresh();
       setLastUpdated(
-        new Intl.DateTimeFormat("en-US", {
+        formatDate(new Date(), {
           hour: "numeric",
           minute: "numeric",
           second: "numeric",
-          hour12: true,
-        }).format(new Date())
+        })
       );
       setTimeout(() => setIsSpinning(false), 600);
     });
@@ -160,7 +160,7 @@ export function DashboardControls({
         <div className="flex items-center gap-1 bg-[var(--bg)] border border-[var(--line)] rounded-lg p-1 text-xs">
           <div className="px-2 text-[var(--ink-muted)] flex items-center gap-1">
             <CalendarDays size={13} strokeWidth={1.75} aria-hidden="true" />
-            <span className="font-medium hidden sm:inline">Range:</span>
+            <span className="font-medium hidden sm:inline">{t("controls.range", "Range")}:</span>
           </div>
           {ranges.map((r) => {
             const isActive = currentRange === r.id;
@@ -186,7 +186,7 @@ export function DashboardControls({
           <div className="flex items-center gap-1 bg-[var(--bg)] border border-[var(--line)] rounded-lg p-1 text-xs">
             <div className="px-2 text-[var(--ink-muted)] flex items-center gap-1">
               <SlidersHorizontal size={13} strokeWidth={1.75} aria-hidden="true" />
-              <span className="font-medium hidden sm:inline">Bucket:</span>
+              <span className="font-medium hidden sm:inline">{t("controls.bucket", "Bucket")}:</span>
             </div>
             {buckets.map((b) => {
               const isActive = currentBucket === b.id;
@@ -217,7 +217,7 @@ export function DashboardControls({
               onChange={(e) => handleCompareChange(e.target.checked)}
               className="rounded border-[var(--line)] text-[var(--accent)] focus:ring-[var(--accent-bright)]"
             />
-            <span className="font-medium">Compare period</span>
+            <span className="font-medium">{t("controls.compare", "Compare period")}</span>
           </label>
         )}
       </div>
@@ -226,7 +226,7 @@ export function DashboardControls({
       <div className="flex items-center gap-2 text-xs">
         {lastUpdated && (
           <span className="text-[var(--ink-muted)] tabular-nums hidden sm:inline">
-            Updated {lastUpdated}
+            {t("controls.updated", "Updated")} {lastUpdated}
           </span>
         )}
 
@@ -236,7 +236,7 @@ export function DashboardControls({
           onClick={handleRefresh}
           disabled={isPending || isSpinning}
           className="h-8 px-2.5 text-xs flex items-center gap-1.5"
-          aria-label="Refresh dashboard data"
+          aria-label={t("controls.refresh", "Refresh dashboard data")}
         >
           <RefreshCw
             size={13}
@@ -244,14 +244,14 @@ export function DashboardControls({
             aria-hidden="true"
             className={isSpinning || isPending ? "animate-spin" : ""}
           />
-          <span>Refresh</span>
+          <span>{t("controls.refresh", "Refresh")}</span>
         </Button>
 
         {isAdmin && (
           <a href="/api/reports/export" download>
             <Button variant="secondary" size="sm" className="h-8 px-2.5 text-xs flex items-center gap-1.5">
               <Download size={13} strokeWidth={2} aria-hidden="true" />
-              <span>Export CSV</span>
+              <span>{t("controls.export_csv", "Export CSV")}</span>
             </Button>
           </a>
         )}

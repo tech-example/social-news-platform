@@ -15,7 +15,7 @@ Detailed rules live in `references/`. This file holds the non-negotiable rules a
 
 ## 0. Non-Negotiable Rules (Read First)
 
-1. **English everywhere.** UI copy, code, variable names, comments, commit messages, DB tables/columns, error messages, and this document are English. No Thai strings in the product.
+1. **English everywhere (with scoped admin/moderation exception).** UI copy, code, variable names, comments, commit messages, DB tables/columns, error messages, and this document are English. UI copy is English-only everywhere EXCEPT the Moderator Dashboard, Admin Dashboard, and Profanity Filter admin pages (and their direct sub-routes), which support an English/Thai language switch. All other pages, including the public feed, posts, comments, profiles, search, and auth screens, remain English-only with no switcher.
 2. **No hard-coded data.** Every list, number, chart, label-with-a-count, category, tag, user, post and statistic shown in the UI comes from the database at request time. No mock arrays, no `const posts = [...]`, no fake stats, no lorem ipsum in shipped code. Empty database = a designed empty state, never fake content. See section 3.
 3. **No secrets in the browser. Ever.** The browser must never receive a Supabase URL-with-key, anon key, service-role key, JWT secret, or any third-party key. There are **zero** `NEXT_PUBLIC_` variables holding secrets. All database access goes through the Next.js server layer (Server Components, Server Actions, Route Handlers). See section 4.
 4. **Every mutation authenticates and authorizes inside the mutation.** Server Actions are public endpoints. Never rely on middleware or layout guards alone. See section 4.5.

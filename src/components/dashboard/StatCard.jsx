@@ -1,5 +1,6 @@
+"use client";
 import { TrendingUp, TrendingDown, Info } from "lucide-react";
-import { formatCompactNumber } from "@/lib/format";
+import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 import { SKELETON_SIZES } from "@/lib/constants";
 
 export function StatCard({
@@ -12,6 +13,7 @@ export function StatCard({
   tooltip = null,
   sparkline = null, // array of numbers [v1, v2, ...]
 }) {
+  const { formatCompact, formatNumber } = useAdminLocale();
   let deltaPercent = null;
   let isPositive = false;
 
@@ -27,10 +29,10 @@ export function StatCard({
   const formattedValue =
     format === "number"
       ? typeof value === "number"
-        ? formatCompactNumber(value)
+        ? formatCompact(value)
         : value
       : typeof value === "number"
-      ? new Intl.NumberFormat("en-US").format(value)
+      ? formatNumber(value)
       : value;
 
   // Generate mini SVG sparkline if points provided

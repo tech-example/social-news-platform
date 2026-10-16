@@ -79,6 +79,12 @@ Every interactive component defines: default, hover, active, `:focus-visible`, d
 - **Numbers/dates:** `Intl.NumberFormat` (compact for counts: 1.2K) and `Intl.DateTimeFormat`/`Intl.RelativeTimeFormat`. No hard-coded formats.
 - **URL as state:** filters, tabs, date range, search query, pagination live in the URL query (use `nuqs` or `useSearchParams` + `router.replace`). Links support Cmd/Ctrl-click.
 
+#### 8.4.1 Scoped Language Switcher (Admin, Moderation, Profanity Filter)
+- **Scope:** Bilingual (English/Thai) UI is strictly scoped to the Moderator Dashboard (`/moderation`), Admin Dashboard (`/admin`), and Profanity Filter (`/admin/profanity`) and their direct sub-routes. All public and user-facing routes remain English-only.
+- **Location:** A compact EN/TH toggle control with a `Languages` Lucide icon located in the top-right header of each scoped page.
+- **Persistence:** Persists via a server-readable cookie named `admin_locale` (`"en"` default, or `"th"`), set via a dedicated Server Action (`setAdminLocaleAction`) and synced with client state to prevent initial render flash.
+- **Content Policy:** Translates UI chrome only (labels, buttons, tooltips, dialogs, empty/error states); user-generated database content (usernames, report reasons, posts) is never translated. Numbers and dates format using `Intl` with `en-US` or `th-TH` (Gregorian calendar with Thai month/day names).
+
 ### 8.5 Accessibility (WCAG 2.2 AA target)
 
 - Skip link to `#main`; single `<h1>` per page; hierarchical headings.

@@ -6,9 +6,11 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { useToast } from "@/components/ui/toast";
 import { Eye, FileText, MessageSquare } from "lucide-react";
 import { FlaggedContent } from "@/components/feed/FlaggedContent";
+import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 
 export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComments: initialComments = [] }) {
   const { addToast } = useToast();
+  const { t, formatRelative } = useAdminLocale();
   const [tab, setTab] = useState("posts");
   const [isPending, startTransition] = useTransition();
   const [posts, setPosts] = useState(initialPosts);
@@ -19,9 +21,9 @@ export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComm
       const res = await restorePostAction(postId);
       if (res.ok) {
         setPosts((prev) => prev.filter((p) => p.id !== postId));
-        addToast("Post restored to public view.");
+        addToast(t("moderation.toast_post_restored", "Post restored to public view."));
       } else {
-        addToast(res.error || "Failed to restore post.", "error");
+        addToast(res.error || t("moderation.toast_error_restore_post", "Failed to restore post."), "error");
       }
     });
   };
@@ -31,9 +33,9 @@ export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComm
       const res = await restoreCommentAction(commentId);
       if (res.ok) {
         setComments((prev) => prev.filter((c) => c.id !== commentId));
-        addToast("Comment restored to public view.");
+        addToast(t("moderation.toast_comment_restored", "Comment restored to public view."));
       } else {
-        addToast(res.error || "Failed to restore comment.", "error");
+        addToast(res.error || t("moderation.toast_error_restore_comment", "Failed to restore comment."), "error");
       }
     });
   };
@@ -51,7 +53,7 @@ export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComm
           }`}
         >
           <FileText size={15} strokeWidth={2} aria-hidden="true" />
-          <span>Hidden Posts ({posts.length})</span>
+          <span>{t("moderation.content_tab_posts", { count: posts.length }, `Hidden Posts (${posts.length})`)}</span>
         </button>
         <button
           type="button"
@@ -63,7 +65,7 @@ export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComm
           }`}
         >
           <MessageSquare size={15} strokeWidth={2} aria-hidden="true" />
-          <span>Hidden Comments ({comments.length})</span>
+          <span>{t("moderation.content_tab_comments", { count: comments.length }, `Hidden Comments (${comments.length})`)}</span>
         </button>
       </div>
 
@@ -71,16 +73,16 @@ export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComm
         <div className="bg-[var(--bg)] border border-[var(--line)] rounded-xl overflow-hidden shadow-xs">
           {posts.length === 0 ? (
             <p className="py-12 text-center text-sm text-[var(--ink-muted)]">
-              No hidden posts. Content is healthy.
+              {t("moderation.content_empty_posts", "No hidden posts. Content is healthy.")}
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Author</TableHead>
-                  <TableHead>Title & Body</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead>{t("moderation.content_col_author", "Author")}</TableHead>
+                  <TableHead>{t("moderation.content_col_title_body", "Title & Body")}</TableHead>
+                  <TableHead>{t("moderation.content_col_created", "Created")}</TableHead>
+                  <TableHead className="text-right">{t("moderation.content_col_actions", "Action")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -100,7 +102,7 @@ export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComm
                       </FlaggedContent>
                     </TableCell>
                     <TableCell className="text-xs text-[var(--ink-muted)]" suppressHydrationWarning>
-                      {formatRelativeTime(p.created_at)}
+                      {formatRelative(p.created_at)}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -110,7 +112,7 @@ export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComm
                         className="text-xs h-7 px-3"
                       >
                         <Eye size={13} strokeWidth={1.75} aria-hidden="true" className="mr-1.5 text-[var(--success)]" />
-                        Restore
+                        {t("moderation.content_btn_restore", "Restore")}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -125,16 +127,16 @@ export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComm
         <div className="bg-[var(--bg)] border border-[var(--line)] rounded-xl overflow-hidden shadow-xs">
           {comments.length === 0 ? (
             <p className="py-12 text-center text-sm text-[var(--ink-muted)]">
-              No hidden comments.
+              {t("moderation.content_empty_comments", "No hidden comments.")}
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Author</TableHead>
-                  <TableHead>Comment Body</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead>{t("moderation.content_col_author", "Author")}</TableHead>
+                  <TableHead>{t("moderation.content_col_comment_body", "Comment Body")}</TableHead>
+                  <TableHead>{t("moderation.content_col_created", "Created")}</TableHead>
+                  <TableHead className="text-right">{t("moderation.content_col_actions", "Action")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -153,7 +155,7 @@ export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComm
                       </FlaggedContent>
                     </TableCell>
                     <TableCell className="text-xs text-[var(--ink-muted)]" suppressHydrationWarning>
-                      {formatRelativeTime(c.created_at)}
+                      {formatRelative(c.created_at)}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -163,7 +165,7 @@ export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComm
                         className="text-xs h-7 px-3"
                       >
                         <Eye size={13} strokeWidth={1.75} aria-hidden="true" className="mr-1.5 text-[var(--success)]" />
-                        Restore
+                        {t("moderation.content_btn_restore", "Restore")}
                       </Button>
                     </TableCell>
                   </TableRow>

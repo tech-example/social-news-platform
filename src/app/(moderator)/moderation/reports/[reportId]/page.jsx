@@ -8,7 +8,8 @@ import { FlaggedContent } from "@/components/feed/FlaggedContent";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatRelativeTime } from "@/lib/format";
+import { getServerAdminT } from "@/lib/i18n/server";
+import { AdminLanguageSwitcher } from "@/components/dashboard/AdminLanguageSwitcher";
 import {
   ChevronLeft,
   Flag,
@@ -34,6 +35,7 @@ export async function generateMetadata({ params }) {
 
 export default async function ReportDetailPage({ params }) {
   const session = await requireRole("moderator");
+  const { t, formatRelative } = await getServerAdminT();
   const { reportId } = await params;
 
   // Basic UUID format validation
@@ -57,35 +59,35 @@ export default async function ReportDetailPage({ params }) {
         return (
           <Badge variant="warning" size="sm" className="inline-flex items-center gap-1">
             <Clock size={12} strokeWidth={2} aria-hidden="true" />
-            <span>Pending</span>
+            <span>{t("moderation.badge_pending", "Pending")}</span>
           </Badge>
         );
       case "in_review":
         return (
           <Badge variant="neutral" size="sm" className="inline-flex items-center gap-1">
             <ShieldCheck size={12} strokeWidth={2} aria-hidden="true" />
-            <span>In Review</span>
+            <span>{t("moderation.badge_in_review", "In Review")}</span>
           </Badge>
         );
       case "escalated":
         return (
           <Badge variant="danger" size="sm" className="inline-flex items-center gap-1">
             <TriangleAlert size={12} strokeWidth={2} aria-hidden="true" />
-            <span>Escalated to Admin</span>
+            <span>{t("moderation.badge_escalated", "Escalated to Admin")}</span>
           </Badge>
         );
       case "resolved_actioned":
         return (
           <Badge variant="success" size="sm" className="inline-flex items-center gap-1">
             <CircleCheck size={12} strokeWidth={2} aria-hidden="true" />
-            <span>Actioned</span>
+            <span>{t("moderation.badge_actioned", "Actioned")}</span>
           </Badge>
         );
       case "resolved_dismissed":
         return (
           <Badge variant="neutral" size="sm" className="inline-flex items-center gap-1">
             <CircleX size={12} strokeWidth={2} aria-hidden="true" />
-            <span>Dismissed</span>
+            <span>{t("moderation.badge_dismissed", "Dismissed")}</span>
           </Badge>
         );
       default:
@@ -104,7 +106,7 @@ export default async function ReportDetailPage({ params }) {
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--ink-muted)] hover:text-[var(--ink)] mb-3 transition-colors focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)] rounded"
         >
           <ChevronLeft size={16} strokeWidth={2} aria-hidden="true" />
-          <span>Back to report queue</span>
+          <span>{t("moderation.detail_back_queue", "Back to report queue")}</span>
         </Link>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[var(--line)]">
           <div className="flex items-center gap-3">
@@ -114,20 +116,23 @@ export default async function ReportDetailPage({ params }) {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold text-[var(--ink)]">
-                  Report #{report.id.slice(0, 8)}
+                  {t("moderation.detail_title", "Report Detail")} #{report.id.slice(0, 8)}
                 </h1>
                 {getStatusBadge(report.status)}
                 {report.is_flagged && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-[var(--surface-strong)] text-[var(--warning)] border border-[var(--line)]">
                     <ShieldAlert size={12} strokeWidth={2} aria-hidden="true" />
-                    <span>Language Flagged</span>
+                    <span>{t("moderation.badge_flagged", "Language Flagged")}</span>
                   </span>
                 )}
               </div>
               <p className="text-xs text-[var(--ink-muted)] mt-0.5" suppressHydrationWarning>
-                Submitted {formatRelativeTime(report.created_at)}
+                {t("moderation.detail_submitted_time", { time: formatRelative(report.created_at) }, `Submitted ${formatRelative(report.created_at)}`)}
               </p>
             </div>
+          </div>
+          <div className="flex items-center">
+            <AdminLanguageSwitcher />
           </div>
         </div>
       </div>
@@ -138,17 +143,17 @@ export default async function ReportDetailPage({ params }) {
           {/* Report Information Card */}
           <div className="p-5 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs space-y-4">
             <h2 className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider">
-              Report Summary
+              {t("moderation.detail_summary", "Report Summary")}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
-                <span className="text-[var(--ink-muted)] block mb-1">Target Type</span>
+                <span className="text-[var(--ink-muted)] block mb-1">{t("moderation.detail_target_type", "Target Type")}</span>
                 <span className="font-semibold text-sm capitalize text-[var(--ink)]">
                   {report.target_type}
                 </span>
               </div>
               <div>
-                <span className="text-[var(--ink-muted)] block mb-1">Alleged Violation</span>
+                <span className="text-[var(--ink-muted)] block mb-1">{t("moderation.detail_alleged_violation", "Alleged Violation")}</span>
                 <span className="font-semibold text-sm capitalize text-[var(--danger)]">
                   {report.reason}
                 </span>
@@ -158,7 +163,7 @@ export default async function ReportDetailPage({ params }) {
             {report.details && (
               <div className="pt-2 border-t border-[var(--line)]">
                 <span className="text-xs font-semibold text-[var(--ink-muted)] block mb-1">
-                  Reporter Note:
+                  {t("moderation.detail_details", "Reporter Note:")}
                 </span>
                 <p className="text-sm text-[var(--ink)] bg-[var(--surface)] p-3 rounded-lg border border-[var(--line)] leading-relaxed">
                   {report.details}
@@ -168,7 +173,7 @@ export default async function ReportDetailPage({ params }) {
 
             {/* Reporter Profile */}
             <div className="pt-2 border-t border-[var(--line)] flex items-center justify-between">
-              <span className="text-xs font-semibold text-[var(--ink-muted)]">Filed by:</span>
+              <span className="text-xs font-semibold text-[var(--ink-muted)]">{t("moderation.detail_filed_by", "Filed by:")}</span>
               {report.reporter ? (
                 <Link
                   href={`/u/${report.reporter.username}`}
@@ -184,7 +189,7 @@ export default async function ReportDetailPage({ params }) {
                   </span>
                 </Link>
               ) : (
-                <span className="text-xs text-[var(--ink-muted)]">Anonymous User</span>
+                <span className="text-xs text-[var(--ink-muted)]">{t("moderation.detail_anonymous", "Anonymous User")}</span>
               )}
             </div>
           </div>
@@ -196,7 +201,7 @@ export default async function ReportDetailPage({ params }) {
                 {report.target_type === "post" && <FileText size={16} strokeWidth={2} aria-hidden="true" />}
                 {report.target_type === "comment" && <MessageCircle size={16} strokeWidth={2} aria-hidden="true" />}
                 {report.target_type === "user" && <User size={16} strokeWidth={2} aria-hidden="true" />}
-                <span>Reported {report.target_type} Content</span>
+                <span>{t("moderation.detail_reported_content", "Reported Content")}</span>
               </h2>
               {target?.id && (
                 <span className="text-[11px] text-[var(--ink-muted)] font-mono">
@@ -207,7 +212,7 @@ export default async function ReportDetailPage({ params }) {
 
             {!target ? (
               <div className="py-8 text-center text-sm text-[var(--ink-muted)]">
-                The reported target could not be found or may have been deleted.
+                {t("moderation.detail_post_removed", "The reported target could not be found or may have been deleted.")}
               </div>
             ) : report.target_type === "post" ? (
               <div className="space-y-4">
@@ -223,12 +228,12 @@ export default async function ReportDetailPage({ params }) {
                         @{target.author?.username}
                       </Link>
                       <span className="text-[11px] text-[var(--ink-muted)]">
-                        Status: <strong className="capitalize">{target.status}</strong>
+                        {t("users_admin.filter_status", "Status")}: <strong className="capitalize">{target.status}</strong>
                       </span>
                     </div>
                   </div>
                   <Link href={`/p/${target.id}`} target="_blank" className="inline-flex items-center gap-1 text-xs text-[var(--accent)] hover:underline">
-                    <span>View post</span>
+                    <span>{t("moderation.detail_view_original", "View post")}</span>
                     <ExternalLink size={12} strokeWidth={2} aria-hidden="true" />
                   </Link>
                 </div>
@@ -276,13 +281,13 @@ export default async function ReportDetailPage({ params }) {
                         @{target.author?.username}
                       </Link>
                       <span className="text-[11px] text-[var(--ink-muted)]">
-                        Status: <strong className="capitalize">{target.status}</strong>
+                        {t("users_admin.filter_status", "Status")}: <strong className="capitalize">{target.status}</strong>
                       </span>
                     </div>
                   </div>
                   {target.post_id && (
                     <Link href={`/p/${target.post_id}`} target="_blank" className="inline-flex items-center gap-1 text-xs text-[var(--accent)] hover:underline">
-                      <span>View post thread</span>
+                      <span>{t("moderation.detail_view_thread", "View post thread")}</span>
                       <ExternalLink size={12} strokeWidth={2} aria-hidden="true" />
                     </Link>
                   )}
@@ -320,15 +325,15 @@ export default async function ReportDetailPage({ params }) {
                     <p className="text-xs text-[var(--ink-muted)] mt-1 line-clamp-2">{target.bio}</p>
                   )}
                   <div className="flex items-center gap-3 mt-2 text-xs">
-                    <span>Role: <strong className="capitalize">{target.role}</strong></span>
+                    <span>{t("users_admin.col_role", "Role")}: <strong className="capitalize">{target.role}</strong></span>
                     {target.is_suspended && (
-                      <span className="text-[var(--danger)] font-semibold">Account Suspended</span>
+                      <span className="text-[var(--danger)] font-semibold">{t("users_admin.status_suspended", "Suspended")}</span>
                     )}
                   </div>
                 </div>
                 <Link href={`/u/${target.username}`} target="_blank">
                   <Button variant="secondary" size="sm" className="text-xs">
-                    <span>Profile</span>
+                    <span>{t("moderation.detail_profile", "Profile")}</span>
                     <ExternalLink size={12} strokeWidth={2} aria-hidden="true" className="ml-1" />
                   </Button>
                 </Link>
@@ -340,12 +345,12 @@ export default async function ReportDetailPage({ params }) {
           <div className="p-5 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs space-y-4">
             <h2 className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider flex items-center gap-2">
               <History size={16} strokeWidth={2} aria-hidden="true" />
-              <span>Report Timeline & Action Log</span>
+              <span>{t("moderation.action_timeline_title", "Report Audit History")}</span>
             </h2>
 
             {events.length === 0 ? (
               <p className="text-xs text-[var(--ink-muted)] py-3">
-                No state transition events recorded yet for this report.
+                {t("moderation.action_timeline_empty", "No historical events recorded for this report.")}
               </p>
             ) : (
               <div className="space-y-3 relative pl-6 border-l-2 border-[var(--line)] ml-2">
@@ -354,15 +359,15 @@ export default async function ReportDetailPage({ params }) {
                     <div className="absolute -left-[31px] top-0.5 h-3 w-3 rounded-full bg-[var(--accent)] border-2 border-[var(--bg)]" />
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-[var(--ink)]">
-                        Status changed to {ev.to_status.replace("_", " ")}
+                        {t("moderation.detail_status_changed_to", { status: ev.to_status.replace("_", " ") }, `Status changed to ${ev.to_status.replace("_", " ")}`)}
                       </span>
                       {ev.actor && (
                         <span className="text-[var(--ink-muted)]">
-                          by @{ev.actor.username} ({ev.actor.role})
+                          {t("moderation.detail_by_actor", { username: ev.actor.username, role: ev.actor.role }, `by @${ev.actor.username} (${ev.actor.role})`)}
                         </span>
                       )}
                       <span className="text-[10px] text-[var(--ink-muted)] ml-auto" suppressHydrationWarning>
-                        {formatRelativeTime(ev.created_at)}
+                        {formatRelative(ev.created_at)}
                       </span>
                     </div>
                     {ev.note && (

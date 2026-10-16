@@ -42,7 +42,9 @@ import {
   BarListSkeleton,
 } from "@/components/ui/skeletons";
 import { SKELETON_SIZES } from "@/lib/constants";
-import { formatCompactNumber, formatRelativeTime } from "@/lib/format";
+import { formatCompactNumber } from "@/lib/format";
+import { getServerAdminT } from "@/lib/i18n/server";
+import { AdminLanguageSwitcher } from "@/components/dashboard/AdminLanguageSwitcher";
 import {
   LayoutDashboard,
   Users,
@@ -68,6 +70,7 @@ export const metadata = {
 // ROW 1: KPI STAT CARDS (9 cards with deltas)
 // ==========================================
 async function AdminKPISection({ range, from, to }) {
+  const { t } = await getServerAdminT();
   const [kpis, postsSeries, usersSeries, engagementSeries] = await Promise.all([
     getAdminKPIs(range, from, to),
     getTimeseries("posts", "day", range, from, to),
@@ -83,95 +86,95 @@ async function AdminKPISection({ range, from, to }) {
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-3">
       {/* 1. Total Users */}
       <StatCard
-        title="Total Users"
+        title={t("admin.kpi_total_users", "Total Users")}
         value={kpis.total_users || 0}
         previousValue={kpis.total_users - (kpis.new_users || 0)}
-        subtitle="All accounts"
+        subtitle={t("admin.kpi_total_users_sub", "All accounts")}
         icon={Users}
         sparkline={usersSparkline}
-        tooltip="Total registered user accounts across the entire platform"
+        tooltip={t("admin.kpi_total_users_tip", "Total registered user accounts across the entire platform")}
       />
 
       {/* 2. New Users in Range */}
       <StatCard
-        title="New Users"
+        title={t("admin.kpi_new_users", "New Users")}
         value={kpis.new_users || 0}
         previousValue={kpis.prev_new_users}
-        subtitle="In selected period"
+        subtitle={t("admin.kpi_new_users_sub", "In selected period")}
         icon={UserPlus}
         sparkline={usersSparkline}
-        tooltip="New accounts created within this date range"
+        tooltip={t("admin.kpi_new_users_tip", "New accounts created within this date range")}
       />
 
       {/* 3. Total Posts */}
       <StatCard
-        title="Total Posts"
+        title={t("admin.kpi_total_posts", "Total Posts")}
         value={kpis.total_posts || 0}
         previousValue={kpis.total_posts - (kpis.new_posts || 0)}
-        subtitle="Published posts"
+        subtitle={t("admin.kpi_total_posts_sub", "Published posts")}
         icon={FileText}
         sparkline={postsSparkline}
-        tooltip="All active, published posts on the platform"
+        tooltip={t("admin.kpi_total_posts_tip", "All active, published posts on the platform")}
       />
 
       {/* 4. New Posts in Range */}
       <StatCard
-        title="New Posts"
+        title={t("admin.kpi_new_posts", "New Posts")}
         value={kpis.new_posts || 0}
         previousValue={kpis.prev_new_posts}
-        subtitle="Published in range"
+        subtitle={t("admin.kpi_new_posts_sub", "Published in range")}
         icon={TrendingUp}
         sparkline={postsSparkline}
-        tooltip="Posts published within the current date range"
+        tooltip={t("admin.kpi_new_posts_tip", "Posts published within the current date range")}
       />
 
       {/* 5. Total Engagement */}
       <StatCard
-        title="Engagement"
+        title={t("admin.kpi_engagement", "Engagement")}
         value={kpis.total_engagement || 0}
         previousValue={kpis.prev_total_engagement}
-        subtitle="Likes, comments, shares"
+        subtitle={t("admin.kpi_engagement_sub", "Likes, comments, shares")}
         icon={Activity}
         sparkline={engSparkline}
-        tooltip="Sum of all likes, comments, and shares within the period"
+        tooltip={t("admin.kpi_engagement_tip", "Sum of all likes, comments, and shares within the period")}
       />
 
       {/* 6. Active Users (DAU) */}
       <StatCard
-        title="Active (DAU)"
+        title={t("admin.kpi_dau", "Active (DAU)")}
         value={kpis.active_users_dau || 0}
         subtitle={`WAU ${kpis.active_users_wau || 0} · MAU ${kpis.active_users_mau || 0}`}
         icon={CheckCircle2}
-        tooltip="Daily Active Users (last 24h), plus WAU (7d) and MAU (30d) based on activity log"
+        tooltip={t("admin.kpi_dau_tip", "Daily Active Users (last 24h), plus WAU (7d) and MAU (30d) based on activity log")}
       />
 
       {/* 7. Open Reports */}
       <StatCard
-        title="Open Reports"
+        title={t("admin.kpi_open_reports", "Open Reports")}
         value={kpis.open_reports || 0}
         previousValue={kpis.prev_open_reports}
-        subtitle="Pending & review"
+        subtitle={t("admin.kpi_open_reports_sub", "Pending + in review")}
         icon={TriangleAlert}
-        tooltip="Reports awaiting initial moderator review"
+        tooltip={t("admin.kpi_open_reports_tip", "Total unresolved community safety reports")}
       />
 
       {/* 8. Escalated Reports */}
       <StatCard
-        title="Escalated"
+        title={t("admin.kpi_escalated_reports", "Escalated")}
         value={kpis.escalated_reports || 0}
         previousValue={kpis.prev_escalated_reports}
-        subtitle="Awaiting admin action"
+        subtitle={t("admin.kpi_escalated_reports_sub", "Awaiting admin")}
         icon={ShieldAlert}
-        tooltip="High-severity reports escalated to administrator for final disposition"
+        tooltip={t("admin.kpi_escalated_reports_tip", "High-severity reports elevated by moderators for administrator decision")}
       />
 
       {/* 9. Suspended Users */}
       <StatCard
-        title="Suspended"
+        title={t("admin.kpi_suspended_users", "Suspended")}
         value={kpis.suspended_users || 0}
-        subtitle="Enforced restrictions"
+        subtitle={t("admin.kpi_suspended_users_sub", "Accounts restricted")}
         icon={Ban}
-        tooltip="Total accounts currently under administrative suspension"
+        tooltip={t("admin.kpi_suspended_users_tip", "User accounts currently suspended by administrators")}
       />
     </div>
   );
@@ -181,6 +184,7 @@ async function AdminKPISection({ range, from, to }) {
 // ROW 2: GROWTH & ACTIVITY CHARTS
 // ==========================================
 async function AdminGrowthChartsSection({ range, bucket, from, to }) {
+  const { t } = await getServerAdminT();
   const [usersSeries, postsSeries, engagementSeries, dauSeries] = await Promise.all([
     getTimeseries("users", bucket, range, from, to),
     getTimeseries("posts", bucket, range, from, to),
@@ -192,29 +196,29 @@ async function AdminGrowthChartsSection({ range, bucket, from, to }) {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <TimeseriesChart
         data={usersSeries}
-        title="New Users Over Time"
-        metricLabel="Users"
+        title={t("admin.chart_new_users", "New User Registrations")}
+        metricLabel={t("admin.top_users_col_user", "Users")}
         color="#0095F6"
-        tooltip="Daily or weekly user sign-up trajectory"
+        tooltip={t("admin.chart_new_users", "Daily or weekly user sign-up trajectory")}
       />
       <TimeseriesChart
         data={postsSeries}
-        title="Posts Published Over Time"
-        metricLabel="Posts"
+        title={t("admin.chart_posts_published", "Posts Published Over Time")}
+        metricLabel={t("admin.top_posts_col_post", "Posts")}
         color="#0E8F8F"
-        tooltip="Volume of news posts published by users and organizations"
+        tooltip={t("admin.chart_posts_published", "Volume of news posts published by users and organizations")}
       />
       <EngagementBarChart
         data={engagementSeries}
-        title="Engagement Composition (Stacked)"
-        tooltip="Daily breakdown of likes, comments, and shares"
+        title={t("admin.chart_engagement_comp", "Engagement Composition")}
+        tooltip={t("admin.chart_engagement_comp", "Daily breakdown of likes, comments, and shares")}
       />
       <TimeseriesChart
         data={dauSeries}
-        title="Daily Active Users (DAU)"
-        metricLabel="Active Users"
+        title={t("admin.chart_dau", "Daily Active Users (DAU)")}
+        metricLabel={t("admin.kpi_dau", "Active Users")}
         color="#6D4FD1"
-        tooltip="Unique users with sign-in or view actions per day"
+        tooltip={t("admin.chart_dau", "Unique users with sign-in or view actions per day")}
       />
     </div>
   );
@@ -224,6 +228,7 @@ async function AdminGrowthChartsSection({ range, bucket, from, to }) {
 // ROW 3: CONTENT PERFORMANCE & MIX
 // ==========================================
 async function AdminContentPerformanceSection({ range, from, to }) {
+  const { t } = await getServerAdminT();
   const [topPosts, topUsers, topTags, contentMix] = await Promise.all([
     getTopPosts(5, range, from, to),
     getTopUsers(5, range, from, to),
@@ -237,7 +242,7 @@ async function AdminContentPerformanceSection({ range, from, to }) {
       <div className="lg:col-span-5 border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-bold text-[var(--ink)]">Top Posts by Engagement</h2>
+            <h2 className="text-sm font-bold text-[var(--ink)]">{t("admin.top_posts_title", "Top Posts by Engagement")}</h2>
             <p className="text-xs text-[var(--ink-muted)]">Score = Likes + 2x Comments + 3x Shares</p>
           </div>
           <Link href="/explore" className="text-xs font-semibold text-[var(--accent)] hover:underline">
@@ -247,18 +252,18 @@ async function AdminContentPerformanceSection({ range, from, to }) {
 
         {topPosts.length === 0 ? (
           <p className="py-8 text-center text-xs text-[var(--ink-muted)]">
-            No published posts recorded for this range.
+            {t("admin.top_posts_empty", "No published posts recorded for this range.")}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left">
               <thead className="bg-[var(--surface)] border-b border-[var(--line)] text-[var(--ink-muted)]">
                 <tr>
-                  <th className="py-2 px-2.5 font-semibold">Post Title</th>
-                  <th className="py-2 px-2 font-semibold">Author</th>
-                  <th className="py-2 px-2 text-right">Likes</th>
-                  <th className="py-2 px-2 text-right">Comms</th>
-                  <th className="py-2 px-2 text-right">Score</th>
+                  <th className="py-2 px-2.5 font-semibold">{t("admin.top_posts_col_post", "Post Title")}</th>
+                  <th className="py-2 px-2 font-semibold">{t("admin.top_posts_col_author", "Author")}</th>
+                  <th className="py-2 px-2 text-right">{t("admin.top_posts_col_likes", "Likes")}</th>
+                  <th className="py-2 px-2 text-right">{t("admin.top_posts_col_comments", "Comms")}</th>
+                  <th className="py-2 px-2 text-right">{t("admin.top_posts_col_score", "Score")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--line)]">
@@ -291,10 +296,10 @@ async function AdminContentPerformanceSection({ range, from, to }) {
 
       {/* Top Users Table (4 cols) */}
       <div className="lg:col-span-4 border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs space-y-3">
-        <h2 className="text-sm font-bold text-[var(--ink)]">Top Creators by Engagement</h2>
+        <h2 className="text-sm font-bold text-[var(--ink)]">{t("admin.top_users_title", "Top Creators by Engagement")}</h2>
         {topUsers.length === 0 ? (
           <p className="py-8 text-center text-xs text-[var(--ink-muted)]">
-            No active creators in this window.
+            {t("admin.top_users_empty", "No active creators in this window.")}
           </p>
         ) : (
           <div className="space-y-2.5">
@@ -311,10 +316,10 @@ async function AdminContentPerformanceSection({ range, from, to }) {
                 </div>
                 <div className="text-right tabular-nums shrink-0 pl-2">
                   <span className="font-bold text-[var(--ink)] block">
-                    {formatCompactNumber(u.followers_count || 0)} followers
+                    {formatCompactNumber(u.followers_count || 0)} {t("admin.chart_followers_unit", "followers")}
                   </span>
                   <span className="text-[11px] text-[var(--ink-muted)]">
-                    {formatCompactNumber(u.posts_count || 0)} posts
+                    {formatCompactNumber(u.posts_count || 0)} {t("admin.top_posts_col_post", "posts")}
                   </span>
                 </div>
               </div>
@@ -325,17 +330,17 @@ async function AdminContentPerformanceSection({ range, from, to }) {
 
       {/* Top Tags BarList & Content Mix Card (3 cols) */}
       <div className="lg:col-span-3 space-y-4 flex flex-col justify-between">
-        <BarList data={topTags} title="Top Hashtags" limit={5} />
+        <BarList data={topTags} title={t("admin.top_tags_title", "Top Hashtags")} limit={5} />
 
         {/* Content Mix Card */}
         <div className="p-4 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs space-y-2.5">
           <h3 className="text-xs font-bold text-[var(--ink)] uppercase tracking-wider">
-            Content Mix & Adoption
+            {t("admin.content_mix_title", "Content Mix & Adoption")}
           </h3>
           <div className="space-y-2 text-xs">
             <div>
               <div className="flex justify-between font-semibold mb-1">
-                <span>With Images</span>
+                <span>{t("admin.content_mix_with_images", "With Images")}</span>
                 <span className="tabular-nums">{contentMix.pct_with_images || 0}%</span>
               </div>
               <div className="w-full h-1.5 bg-[var(--surface-strong)] rounded-full overflow-hidden">
@@ -348,7 +353,7 @@ async function AdminContentPerformanceSection({ range, from, to }) {
 
             <div>
               <div className="flex justify-between font-semibold mb-1">
-                <span>With Hashtags</span>
+                <span>{t("admin.content_mix_with_tags", "With Hashtags")}</span>
                 <span className="tabular-nums">{contentMix.pct_with_tags || 0}%</span>
               </div>
               <div className="w-full h-1.5 bg-[var(--surface-strong)] rounded-full overflow-hidden">
@@ -360,7 +365,7 @@ async function AdminContentPerformanceSection({ range, from, to }) {
             </div>
 
             <div className="pt-2 border-t border-[var(--line)] flex justify-between items-center text-[11px]">
-              <span className="text-[var(--ink-muted)]">Avg Tags / Post</span>
+              <span className="text-[var(--ink-muted)]">{t("admin.content_mix_avg_tags", "Avg Tags / Post")}</span>
               <span className="font-bold text-[var(--ink)] tabular-nums">
                 {contentMix.avg_tags_per_post || 0}
               </span>
@@ -376,6 +381,7 @@ async function AdminContentPerformanceSection({ range, from, to }) {
 // ROW 4: MODERATION & SAFETY
 // ==========================================
 async function AdminModerationSafetySection({ range, from, to }) {
+  const { t, formatRelative } = await getServerAdminT();
   const [reportsStatus, reportsReason, resolutionTime, moderatorWorkload, recentAudit] =
     await Promise.all([
       getReportsByStatus(range, from, to),
@@ -390,34 +396,34 @@ async function AdminModerationSafetySection({ range, from, to }) {
       {/* Reports by status donut */}
       <DonutChart
         data={reportsStatus}
-        title="Reports by Status"
-        tooltip="Proportion of reports in pending, review, escalated, and resolved states"
+        title={t("admin.chart_reports_status", "Reports by Status")}
+        tooltip={t("admin.chart_reports_status", "Proportion of reports in pending, review, escalated, and resolved states")}
       />
 
       {/* Reports by reason */}
       <HorizontalBarChart
         data={reportsReason}
-        title="Reports by Alleged Reason"
-        metricLabel="Reports"
-        tooltip="Breakdown of user reports by category of violation"
+        title={t("admin.chart_reports_reason", "Reports by Alleged Reason")}
+        metricLabel={t("admin.chart_col_count", "Reports")}
+        tooltip={t("admin.chart_reports_reason", "Breakdown of user reports by category of violation")}
       />
 
       {/* Resolution Turnaround & Workload */}
       <div className="border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs flex flex-col justify-between space-y-3">
         <div>
-          <h3 className="text-sm font-bold text-[var(--ink)]">Resolution Turnaround</h3>
+          <h3 className="text-sm font-bold text-[var(--ink)]">{t("admin.mod_resolution_title", "Resolution Turnaround")}</h3>
           <p className="text-xs text-[var(--ink-muted)]">Median and 90th percentile handling time</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3 py-2">
           <div className="p-3 rounded-lg bg-[var(--surface)] border border-[var(--line)] text-center">
-            <span className="text-[11px] text-[var(--ink-muted)] block">Median SLA</span>
+            <span className="text-[11px] text-[var(--ink-muted)] block">{t("admin.mod_resolution_median", "Median SLA")}</span>
             <span className="text-lg font-bold text-[var(--ink)] tabular-nums">
               {resolutionTime.median_hours || 0}h
             </span>
           </div>
           <div className="p-3 rounded-lg bg-[var(--surface)] border border-[var(--line)] text-center">
-            <span className="text-[11px] text-[var(--ink-muted)] block">P90 SLA</span>
+            <span className="text-[11px] text-[var(--ink-muted)] block">{t("admin.mod_resolution_p90", "P90 SLA")}</span>
             <span className="text-lg font-bold text-[var(--ink)] tabular-nums">
               {resolutionTime.p90_hours || 0}h
             </span>
@@ -425,16 +431,16 @@ async function AdminModerationSafetySection({ range, from, to }) {
         </div>
 
         <div>
-          <h4 className="text-xs font-bold text-[var(--ink)] mb-1.5">Moderator Workload</h4>
+          <h4 className="text-xs font-bold text-[var(--ink)] mb-1.5">{t("admin.mod_workload_title", "Moderator Workload")}</h4>
           {moderatorWorkload.length === 0 ? (
-            <p className="text-[11px] text-[var(--ink-muted)]">No review activity recorded.</p>
+            <p className="text-[11px] text-[var(--ink-muted)]">{t("admin.mod_workload_empty", "No review activity recorded.")}</p>
           ) : (
             <div className="space-y-1.5 text-xs">
               {moderatorWorkload.slice(0, 3).map((m) => (
                 <div key={m.moderator_id} className="flex justify-between py-1 border-b border-[var(--line)]/50">
                   <span className="truncate max-w-[120px]">@{m.username}</span>
                   <span className="font-semibold tabular-nums text-[var(--accent)]">
-                    {m.handled_count} handled
+                    {m.handled_count} {t("admin.mod_workload_col_handled", "handled")}
                   </span>
                 </div>
               ))}
@@ -446,12 +452,12 @@ async function AdminModerationSafetySection({ range, from, to }) {
       {/* Recent Moderation Actions */}
       <div className="border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs space-y-3 flex flex-col justify-between">
         <div>
-          <h3 className="text-sm font-bold text-[var(--ink)]">Recent Safety Actions</h3>
+          <h3 className="text-sm font-bold text-[var(--ink)]">{t("admin.recent_audit_title", "Recent Privileged Audit Events")}</h3>
           <p className="text-xs text-[var(--ink-muted)]">Enforcement timeline from audit log</p>
         </div>
 
         {recentAudit.length === 0 ? (
-          <p className="text-xs text-[var(--ink-muted)] py-6 text-center">No moderation actions in log.</p>
+          <p className="text-xs text-[var(--ink-muted)] py-6 text-center">{t("admin.recent_audit_empty", "No moderation actions in log.")}</p>
         ) : (
           <div className="space-y-2 text-xs">
             {recentAudit.slice(0, 4).map((a) => (
@@ -461,7 +467,7 @@ async function AdminModerationSafetySection({ range, from, to }) {
                     {a.action.replace("_", " ")}
                   </span>
                   <span className="text-[10px] text-[var(--ink-muted)]" suppressHydrationWarning>
-                    {formatRelativeTime(a.created_at)}
+                    {formatRelative(a.created_at)}
                   </span>
                 </div>
                 <span className="text-[11px] text-[var(--ink-muted)] block truncate">
@@ -476,7 +482,7 @@ async function AdminModerationSafetySection({ range, from, to }) {
           href="/moderation/reports"
           className="text-xs font-semibold text-[var(--accent)] hover:underline inline-flex items-center gap-1"
         >
-          <span>Open moderation center</span>
+          <span>{t("moderation.header_title", "Moderation Dashboard")}</span>
         </Link>
       </div>
     </div>
@@ -487,6 +493,7 @@ async function AdminModerationSafetySection({ range, from, to }) {
 // ROW 5: SEARCH & DISCOVERY
 // ==========================================
 async function AdminSearchDiscoverySection({ range, bucket, from, to }) {
+  const { t } = await getServerAdminT();
   const [searchAnalytics, followsSeries, followerDist] = await Promise.all([
     getSearchAnalytics(6, range, from, to),
     getTimeseries("follows", bucket, range, from, to),
@@ -500,22 +507,22 @@ async function AdminSearchDiscoverySection({ range, bucket, from, to }) {
         <div className="flex items-center gap-2">
           <Search size={16} strokeWidth={1.75} aria-hidden="true" className="text-[var(--accent)]" />
           <div>
-            <h3 className="text-sm font-bold text-[var(--ink)]">Search Terms & Zero-Result Rate</h3>
+            <h3 className="text-sm font-bold text-[var(--ink)]">{t("admin.search_queries_title", "Top Search Queries")}</h3>
             <p className="text-xs text-[var(--ink-muted)]">Identifies missing content and failed queries</p>
           </div>
         </div>
 
         {searchAnalytics.length === 0 ? (
           <p className="text-xs text-[var(--ink-muted)] py-8 text-center">
-            No search events recorded for this range.
+            {t("admin.search_queries_empty", "No search queries recorded yet.")}
           </p>
         ) : (
           <table className="w-full text-xs text-left">
             <thead className="bg-[var(--surface)] border-b border-[var(--line)] text-[var(--ink-muted)]">
               <tr>
-                <th className="py-2 px-2.5 font-semibold">Query</th>
-                <th className="py-2 px-2 font-semibold text-right">Searches</th>
-                <th className="py-2 px-2 font-semibold text-right">Zero-Res %</th>
+                <th className="py-2 px-2.5 font-semibold">{t("admin.search_queries_col_query", "Query")}</th>
+                <th className="py-2 px-2 font-semibold text-right">{t("admin.search_queries_col_count", "Searches")}</th>
+                <th className="py-2 px-2 font-semibold text-right">{t("admin.search_queries_col_results", "Zero-Res %")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--line)]">
@@ -545,7 +552,7 @@ async function AdminSearchDiscoverySection({ range, bucket, from, to }) {
       <TimeseriesChart
         data={followsSeries}
         title="Follows Created Over Time"
-        metricLabel="Follows"
+        metricLabel={t("admin.top_users_col_followers", "Followers")}
         color="#ED4956"
         tooltip="Growth in peer connections and community following"
       />
@@ -553,7 +560,7 @@ async function AdminSearchDiscoverySection({ range, bucket, from, to }) {
       {/* Follower Distribution Chart */}
       <FollowerDistributionChart
         data={followerDist}
-        title="Follower Distribution (Tiers)"
+        title={t("admin.chart_follower_dist", "Follower Tier Distribution")}
         tooltip="How many accounts have 0, 1-9, 10-99, or 100+ followers"
       />
     </div>
@@ -564,6 +571,7 @@ async function AdminSearchDiscoverySection({ range, bucket, from, to }) {
 // ROW 6: GOVERNANCE & SECURITY
 // ==========================================
 async function AdminGovernanceSecuritySection() {
+  const { t, formatRelative } = await getServerAdminT();
   const [rolesDist, recentAudit, recentSignups, systemSummary] = await Promise.all([
     getRolesDistribution(),
     getRecentAuditLogs(6),
@@ -572,10 +580,10 @@ async function AdminGovernanceSecuritySection() {
   ]);
 
   const rolesChartData = [
-    { name: "Users", count: rolesDist.users || 0 },
-    { name: "Moderators", count: rolesDist.moderators || 0 },
-    { name: "Admins", count: rolesDist.admins || 0 },
-    { name: "Suspended", count: rolesDist.suspended || 0 },
+    { name: t("users_admin.role_user", "User"), count: rolesDist.users || 0 },
+    { name: t("users_admin.role_moderator", "Moderator"), count: rolesDist.moderators || 0 },
+    { name: t("users_admin.role_admin", "Admin"), count: rolesDist.admins || 0 },
+    { name: t("users_admin.status_suspended", "Suspended"), count: rolesDist.suspended || 0 },
   ];
 
   return (
@@ -583,7 +591,7 @@ async function AdminGovernanceSecuritySection() {
       {/* 1. Role Distribution */}
       <DonutChart
         data={rolesChartData}
-        title="Role Distribution"
+        title={t("admin.roles_dist_title", "User Roles Distribution")}
         tooltip="Breakdown of accounts by access tier and suspension status"
       />
 
@@ -591,11 +599,11 @@ async function AdminGovernanceSecuritySection() {
       <div className="border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs space-y-3">
         <div className="flex items-center gap-2">
           <ScrollText size={16} strokeWidth={1.75} aria-hidden="true" className="text-[var(--ink-muted)]" />
-          <h3 className="text-sm font-bold text-[var(--ink)]">Recent Audit Trail</h3>
+          <h3 className="text-sm font-bold text-[var(--ink)]">{t("admin.recent_audit_title", "Recent Privileged Audit Events")}</h3>
         </div>
 
         {recentAudit.length === 0 ? (
-          <p className="text-xs text-[var(--ink-muted)] py-6 text-center">No audit records available.</p>
+          <p className="text-xs text-[var(--ink-muted)] py-6 text-center">{t("admin.recent_audit_empty", "No audit records found.")}</p>
         ) : (
           <div className="space-y-2 text-xs">
             {recentAudit.slice(0, 5).map((log) => (
@@ -605,7 +613,7 @@ async function AdminGovernanceSecuritySection() {
                     {log.action.replace("_", " ")}
                   </span>
                   <span className="text-[10px] text-[var(--ink-muted)] tabular-nums" suppressHydrationWarning>
-                    {formatRelativeTime(log.created_at)}
+                    {formatRelative(log.created_at)}
                   </span>
                 </div>
                 <span className="text-[11px] text-[var(--ink-muted)] block truncate">
@@ -621,11 +629,11 @@ async function AdminGovernanceSecuritySection() {
       <div className="border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs space-y-3">
         <div className="flex items-center gap-2">
           <UserCheck size={16} strokeWidth={1.75} aria-hidden="true" className="text-[var(--accent)]" />
-          <h3 className="text-sm font-bold text-[var(--ink)]">Recent Sign-ups</h3>
+          <h3 className="text-sm font-bold text-[var(--ink)]">{t("admin.recent_signups_title", "Recent Registrations")}</h3>
         </div>
 
         {recentSignups.length === 0 ? (
-          <p className="text-xs text-[var(--ink-muted)] py-6 text-center">No signups found.</p>
+          <p className="text-xs text-[var(--ink-muted)] py-6 text-center">{t("admin.recent_signups_empty", "No recent registrations found.")}</p>
         ) : (
           <div className="space-y-2 text-xs">
             {recentSignups.slice(0, 5).map((u) => (
@@ -643,7 +651,7 @@ async function AdminGovernanceSecuritySection() {
                   <Badge variant={u.role === "admin" ? "danger" : u.role === "moderator" ? "warning" : "neutral"} size="sm">
                     {u.role}
                   </Badge>
-                  {u.is_suspended && <Badge variant="danger" size="sm">Banned</Badge>}
+                  {u.is_suspended && <Badge variant="danger" size="sm">{t("users_admin.status_suspended", "Suspended")}</Badge>}
                 </div>
               </div>
             ))}
@@ -656,12 +664,12 @@ async function AdminGovernanceSecuritySection() {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Database size={16} strokeWidth={1.75} aria-hidden="true" className="text-[var(--accent)]" />
-            <h3 className="text-sm font-bold text-[var(--ink)]">Database System Summary</h3>
+            <h3 className="text-sm font-bold text-[var(--ink)]">{t("admin.sys_summary_title", "System & Governance Summary")}</h3>
           </div>
 
           <div className="space-y-1.5 text-xs">
             <div className="flex justify-between py-1 border-b border-[var(--line)]">
-              <span className="text-[var(--ink-muted)]">Database Storage</span>
+              <span className="text-[var(--ink-muted)]">{t("admin.sys_summary_db_size", "Database Storage")}</span>
               <span className="font-bold text-[var(--ink)] tabular-nums">
                 {systemSummary.db_size_pretty || "Active"}
               </span>
@@ -678,11 +686,11 @@ async function AdminGovernanceSecuritySection() {
 
         <div className="pt-2 border-t border-[var(--line)] text-[10px] text-[var(--ink-muted)] space-y-0.5">
           <div className="flex justify-between">
-            <span>Commit:</span>
+            <span>{t("admin.sys_summary_commit", "Commit:")}</span>
             <span className="font-mono">{systemSummary.deployment_commit}</span>
           </div>
           <div className="flex justify-between">
-            <span>Environment:</span>
+            <span>{t("admin.sys_summary_env", "Environment:")}</span>
             <span className="capitalize">{systemSummary.deployment_env}</span>
           </div>
         </div>
@@ -704,6 +712,7 @@ async function AdminImpactSection({ range, from, to }) {
 // ==========================================
 export default async function AdminDashboardPage({ searchParams }) {
   await requireRole("admin");
+  const { t } = await getServerAdminT();
   const resolvedParams = await searchParams;
   const range = resolvedParams?.range || "30d";
   const from = resolvedParams?.from || null;
@@ -722,12 +731,15 @@ export default async function AdminDashboardPage({ searchParams }) {
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-[var(--ink)]">
-              Admin Analytics Dashboard
+              {t("admin.header_title", "Admin Analytics Dashboard")}
             </h1>
             <p className="text-xs text-[var(--ink-muted)]">
-              Executive KPI oversight, growth metrics, moderation safety, search discovery, and platform governance
+              {t("admin.header_subtitle", "Executive KPI oversight, growth metrics, moderation safety, search discovery, and platform governance")}
             </p>
           </div>
+        </div>
+        <div className="flex items-center">
+          <AdminLanguageSwitcher />
         </div>
       </div>
 
@@ -742,7 +754,7 @@ export default async function AdminDashboardPage({ searchParams }) {
       {/* ROW 1: KPI Stat Cards */}
       <div className="space-y-2">
         <h2 className="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wider">
-          Row 1 · Executive Key Performance Indicators
+          {t("admin.row1_title", "Row 1 · KPI Executive Overview")}
         </h2>
         <Suspense
           key={`kpi-${range}-${from}-${to}`}
@@ -761,7 +773,7 @@ export default async function AdminDashboardPage({ searchParams }) {
       {/* ROW 2: Growth and Activity Charts */}
       <div className="space-y-2">
         <h2 className="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wider">
-          Row 2 · Growth & Platform Activity
+          {t("admin.row2_title", "Row 2 · Growth & Platform Activity")}
         </h2>
         <Suspense
           key={`growth-${range}-${bucket}-${from}-${to}`}
@@ -780,7 +792,7 @@ export default async function AdminDashboardPage({ searchParams }) {
       {/* ROW 3: Content Performance */}
       <div className="space-y-2">
         <h2 className="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wider">
-          Row 3 · Content Performance & Mix
+          {t("admin.row3_title", "Row 3 · Content Performance & Mix")}
         </h2>
         <Suspense
           key={`content-${range}-${from}-${to}`}
@@ -799,7 +811,7 @@ export default async function AdminDashboardPage({ searchParams }) {
       {/* ROW 4: Moderation and Safety */}
       <div className="space-y-2">
         <h2 className="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wider">
-          Row 4 · Moderation & Platform Safety
+          {t("admin.row4_title", "Row 4 · Moderation & Platform Safety")}
         </h2>
         <Suspense
           key={`moderation-${range}-${from}-${to}`}
@@ -819,7 +831,7 @@ export default async function AdminDashboardPage({ searchParams }) {
       {/* ROW 5: Search and Discovery */}
       <div className="space-y-2">
         <h2 className="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wider">
-          Row 5 · Search & Discovery
+          {t("admin.row5_title", "Row 5 · Search & Discovery")}
         </h2>
         <Suspense
           key={`search-${range}-${bucket}-${from}-${to}`}
@@ -838,7 +850,7 @@ export default async function AdminDashboardPage({ searchParams }) {
       {/* ROW 6: Governance and Security */}
       <div className="space-y-2">
         <h2 className="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wider">
-          Row 6 · Governance & Security
+          {t("admin.row6_title", "Row 6 · Governance & Security")}
         </h2>
         <Suspense
           fallback={

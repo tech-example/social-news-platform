@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
-import { formatCompactNumber, formatRelativeTime } from "@/lib/format";
+import { formatCompactNumber } from "@/lib/format";
+import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 import {
   Ban,
   CheckCircle2,
@@ -39,6 +40,7 @@ export function UserAdminClient({
   const router = useRouter();
   const pathname = usePathname();
   const { addToast } = useToast();
+  const { t, formatRelative, formatNumber } = useAdminLocale();
   const [isPending, startTransition] = useTransition();
 
   const [users, setUsers] = useState(initialUsers);
@@ -106,10 +108,10 @@ export function UserAdminClient({
     startTransition(async () => {
       const res = await updateUserRoleAction(user.id, targetRole);
       if (res?.ok) {
-        addToast(`Role for @${user.username} updated to ${targetRole}.`);
+        addToast(t("users_admin.toast_role_updated", "User role updated successfully."));
       } else {
         setUsers(previousUsers);
-        addToast(res?.error || "Failed to update role.", "error");
+        addToast(res?.error || t("users_admin.toast_error_role", "Failed to update role."), "error");
       }
     });
   };
@@ -129,10 +131,10 @@ export function UserAdminClient({
     startTransition(async () => {
       const res = await setUserSuspendedAction(user.id, true, reason.trim() || null);
       if (res?.ok) {
-        addToast(`User @${user.username} suspended.`);
+        addToast(t("users_admin.toast_suspended", "User account suspended."));
       } else {
         setUsers(previousUsers);
-        addToast(res?.error || "Failed to suspend user.", "error");
+        addToast(res?.error || t("users_admin.toast_error_suspend", "Failed to suspend user."), "error");
       }
     });
   };
@@ -152,10 +154,10 @@ export function UserAdminClient({
     startTransition(async () => {
       const res = await setUserSuspendedAction(user.id, false);
       if (res?.ok) {
-        addToast(`Account access restored for @${user.username}.`);
+        addToast(t("users_admin.toast_restored", "User account restored."));
       } else {
         setUsers(previousUsers);
-        addToast(res?.error || "Failed to restore user account.", "error");
+        addToast(res?.error || t("users_admin.toast_error_restore", "Failed to restore user account."), "error");
       }
     });
   };
@@ -173,10 +175,10 @@ export function UserAdminClient({
     startTransition(async () => {
       const res = await deleteUserAction(user.id);
       if (res?.ok) {
-        addToast(`User @${user.username} permanently deleted.`);
+        addToast(t("users_admin.toast_deleted", "User account deleted permanently."));
       } else {
         setUsers(previousUsers);
-        addToast(res?.error || "Failed to delete user.", "error");
+        addToast(res?.error || t("users_admin.toast_error_delete", "Failed to delete user."), "error");
       }
     });
   };
@@ -196,7 +198,7 @@ export function UserAdminClient({
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by username or display name..."
+            placeholder={t("users_admin.search_placeholder", "Search username or display name...")}
             className="pl-9 pr-9 text-xs sm:text-sm bg-[var(--bg)] w-full"
           />
           {searchQuery && (
@@ -219,10 +221,10 @@ export function UserAdminClient({
             aria-label="Filter by role"
             className="text-xs font-medium px-3 py-2 rounded-lg border border-[var(--line)] bg-[var(--bg)] text-[var(--ink)] cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
           >
-            <option value="all">All Roles</option>
-            <option value="user">Users</option>
-            <option value="moderator">Moderators</option>
-            <option value="admin">Admins</option>
+            <option value="all">{t("users_admin.all_roles", "All Roles")}</option>
+            <option value="user">{t("users_admin.role_user", "User")}</option>
+            <option value="moderator">{t("users_admin.role_moderator", "Moderator")}</option>
+            <option value="admin">{t("users_admin.role_admin", "Admin")}</option>
           </select>
 
           <select
@@ -231,9 +233,9 @@ export function UserAdminClient({
             aria-label="Filter by status"
             className="text-xs font-medium px-3 py-2 rounded-lg border border-[var(--line)] bg-[var(--bg)] text-[var(--ink)] cursor-pointer focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
           >
-            <option value="all">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="suspended">Suspended</option>
+            <option value="all">{t("users_admin.all_statuses", "All Statuses")}</option>
+            <option value="active">{t("users_admin.status_active", "Active")}</option>
+            <option value="suspended">{t("users_admin.status_suspended", "Suspended")}</option>
           </select>
 
           {hasActiveFilters && (
@@ -249,7 +251,7 @@ export function UserAdminClient({
               }}
               className="text-xs text-[var(--ink-muted)] hover:text-[var(--ink)]"
             >
-              Reset
+              {t("users_admin.btn_reset", "Reset")}
             </Button>
           )}
         </div>
@@ -258,12 +260,12 @@ export function UserAdminClient({
       {/* Results Header */}
       <div className="flex items-center justify-between text-xs text-[var(--ink-muted)] tabular-nums px-1">
         <div>
-          Showing {startCount}–{endCount} of {total} registered users
+          {t("users_admin.showing_count", { start: startCount, end: endCount, total: formatNumber(total) }, `Showing ${startCount}–${endCount} of ${formatNumber(total)} registered users`)}
         </div>
         {isPending && (
           <div className="flex items-center gap-1.5 text-[var(--accent)]">
             <Loader2 size={13} className="animate-spin" />
-            <span>Updating...</span>
+            <span>{t("users_admin.updating", "Updating...")}</span>
           </div>
         )}
       </div>
@@ -273,24 +275,19 @@ export function UserAdminClient({
         {users.length === 0 ? (
           <div className="p-12 text-center flex flex-col items-center justify-center gap-2">
             <UserX size={36} className="text-[var(--ink-muted)]" />
-            <p className="text-sm font-semibold text-[var(--ink)]">No users found</p>
-            <p className="text-xs text-[var(--ink-muted)] max-w-sm">
-              {hasActiveFilters
-                ? "No member accounts match the current query and filters. Try adjusting your search criteria."
-                : "No registered accounts exist yet."}
-            </p>
+            <p className="text-sm font-semibold text-[var(--ink)]">{t("users_admin.empty_users", "No users found matching current filters.")}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Followers</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("users_admin.col_user", "User")}</TableHead>
+                  <TableHead>{t("users_admin.col_role", "Role")}</TableHead>
+                  <TableHead>{t("admin.top_users_col_followers", "Followers")}</TableHead>
+                  <TableHead>{t("users_admin.col_status", "Status")}</TableHead>
+                  <TableHead>{t("users_admin.col_joined", "Joined")}</TableHead>
+                  <TableHead className="text-right">{t("users_admin.col_actions", "Actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -334,9 +331,9 @@ export function UserAdminClient({
                             aria-label={`Change role for @${u.username}`}
                             className="text-xs font-medium px-2 py-1 rounded border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] cursor-pointer"
                           >
-                            <option value="user">User</option>
-                            <option value="moderator">Moderator</option>
-                            <option value="admin">Admin</option>
+                            <option value="user">{t("users_admin.role_user", "User")}</option>
+                            <option value="moderator">{t("users_admin.role_moderator", "Moderator")}</option>
+                            <option value="admin">{t("users_admin.role_admin", "Admin")}</option>
                           </select>
                         )}
                       </TableCell>
@@ -348,7 +345,7 @@ export function UserAdminClient({
                       <TableCell>
                         <div className="flex flex-col gap-0.5">
                           <Badge variant={u.is_suspended ? "danger" : "success"} size="sm">
-                            {u.is_suspended ? "Suspended" : "Active"}
+                            {u.is_suspended ? t("users_admin.status_suspended", "Suspended") : t("users_admin.status_active", "Active")}
                           </Badge>
                           {u.is_suspended && u.suspended_reason && (
                             <span className="text-[11px] text-[var(--danger)] line-clamp-1" title={u.suspended_reason}>
@@ -359,7 +356,7 @@ export function UserAdminClient({
                       </TableCell>
 
                       <TableCell className="text-xs text-[var(--ink-muted)]" suppressHydrationWarning>
-                        {formatRelativeTime(u.created_at)}
+                        {formatRelative(u.created_at)}
                       </TableCell>
 
                       <TableCell className="text-right">
@@ -380,12 +377,12 @@ export function UserAdminClient({
                               {u.is_suspended ? (
                                 <>
                                   <CheckCircle2 size={13} strokeWidth={2} aria-hidden="true" className="mr-1 text-[var(--success)]" />
-                                  Restore
+                                  {t("users_admin.action_restore", "Restore")}
                                 </>
                               ) : (
                                 <>
                                   <Ban size={13} strokeWidth={2} aria-hidden="true" className="mr-1" />
-                                  Suspend
+                                  {t("users_admin.action_suspend", "Suspend")}
                                 </>
                               )}
                             </Button>
@@ -413,7 +410,7 @@ export function UserAdminClient({
       {total > limit && (
         <div className="flex items-center justify-between pt-2 px-1">
           <div className="text-xs text-[var(--ink-muted)] tabular-nums">
-            Page {Math.floor(offset / limit) + 1} of {Math.ceil(total / limit)}
+            {t("users_admin.page_of", { current: Math.floor(offset / limit) + 1, total: Math.ceil(total / limit) }, `Page ${Math.floor(offset / limit) + 1} of ${Math.ceil(total / limit)}`)}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -424,7 +421,7 @@ export function UserAdminClient({
               className="text-xs"
             >
               <ChevronLeft size={14} className="mr-1" />
-              Previous
+              {t("users_admin.btn_prev", "Previous")}
             </Button>
             <Button
               variant="secondary"
@@ -433,7 +430,7 @@ export function UserAdminClient({
               onClick={() => applyFilters(searchQuery, roleFilter, statusFilter, offset + limit)}
               className="text-xs"
             >
-              Next
+              {t("users_admin.btn_next", "Next")}
               <ChevronRight size={14} className="ml-1" />
             </Button>
           </div>
@@ -444,7 +441,7 @@ export function UserAdminClient({
       <Dialog
         open={roleDialog.open}
         onClose={() => setRoleDialog({ open: false, user: null, targetRole: "user" })}
-        title="Confirm Role Change"
+        title={t("users_admin.dialog_role_title", "Change User Role")}
       >
         <div className="space-y-4">
           <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--surface)] border border-[var(--line)]">
@@ -464,14 +461,7 @@ export function UserAdminClient({
           </div>
 
           <p className="text-sm text-[var(--ink)]">
-            Are you sure you want to change the role of{" "}
-            <strong>@{roleDialog.user?.username}</strong> from{" "}
-            <span className="capitalize font-semibold">{roleDialog.user?.role}</span> to{" "}
-            <span className="capitalize font-semibold text-[var(--accent)]">{roleDialog.targetRole}</span>?
-          </p>
-
-          <p className="text-xs text-[var(--ink-muted)]">
-            This will immediately update access permissions across moderator and administrative features.
+            {t("users_admin.dialog_role_desc", { username: roleDialog.user?.username })}
           </p>
 
           <DialogFooter>
@@ -481,14 +471,14 @@ export function UserAdminClient({
               onClick={() => setRoleDialog({ open: false, user: null, targetRole: "user" })}
               disabled={isPending}
             >
-              Cancel
+              {t("users_admin.btn_cancel", "Cancel")}
             </Button>
             <Button
               type="button"
               onClick={confirmRoleChange}
               disabled={isPending}
             >
-              {isPending ? "Updating..." : "Confirm Role"}
+              {isPending ? t("users_admin.btn_saving", "Updating...") : t("users_admin.btn_confirm", "Confirm Role")}
             </Button>
           </DialogFooter>
         </div>
@@ -498,7 +488,7 @@ export function UserAdminClient({
       <Dialog
         open={suspendDialog.open}
         onClose={() => setSuspendDialog({ open: false, user: null, reason: "" })}
-        title="Suspend User Account"
+        title={t("users_admin.dialog_suspend_title", "Suspend User Account")}
       >
         <div className="space-y-4">
           <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--surface)] border border-[var(--line)]">
@@ -520,13 +510,13 @@ export function UserAdminClient({
           <div className="p-3 rounded-lg bg-[var(--danger)]/10 border border-[var(--danger)]/20 text-xs text-[var(--danger)] flex items-start gap-2">
             <AlertTriangle size={16} className="shrink-0 mt-0.5" />
             <span>
-              Suspended users are immediately logged out and barred from posting, commenting, or interacting with the platform.
+              {t("users_admin.dialog_suspend_desc", { username: suspendDialog.user?.username })}
             </span>
           </div>
 
           <div className="space-y-1.5">
             <label htmlFor="suspend-reason" className="text-xs font-semibold text-[var(--ink)]">
-              Suspension Reason (optional)
+              {t("users_admin.dialog_suspend_reason_label", "Suspension Reason (optional)")}
             </label>
             <textarea
               id="suspend-reason"
@@ -546,7 +536,7 @@ export function UserAdminClient({
               onClick={() => setSuspendDialog({ open: false, user: null, reason: "" })}
               disabled={isPending}
             >
-              Cancel
+              {t("users_admin.btn_cancel", "Cancel")}
             </Button>
             <Button
               type="button"
@@ -554,7 +544,7 @@ export function UserAdminClient({
               onClick={confirmSuspend}
               disabled={isPending}
             >
-              {isPending ? "Suspending..." : "Confirm Suspension"}
+              {isPending ? t("users_admin.btn_saving", "Suspending...") : t("users_admin.action_suspend", "Confirm Suspension")}
             </Button>
           </DialogFooter>
         </div>
@@ -564,15 +554,11 @@ export function UserAdminClient({
       <Dialog
         open={restoreDialog.open}
         onClose={() => setRestoreDialog({ open: false, user: null })}
-        title="Restore User Account"
+        title={t("users_admin.dialog_restore_title", "Restore User Access")}
       >
         <div className="space-y-4">
           <p className="text-sm text-[var(--ink)]">
-            Are you sure you want to restore account access for{" "}
-            <strong>@{restoreDialog.user?.username}</strong>?
-          </p>
-          <p className="text-xs text-[var(--ink-muted)]">
-            The account will be reactivated, allowing the user to sign in and interact normally.
+            {t("users_admin.dialog_restore_desc", { username: restoreDialog.user?.username })}
           </p>
 
           <DialogFooter>
@@ -582,14 +568,14 @@ export function UserAdminClient({
               onClick={() => setRestoreDialog({ open: false, user: null })}
               disabled={isPending}
             >
-              Cancel
+              {t("users_admin.btn_cancel", "Cancel")}
             </Button>
             <Button
               type="button"
               onClick={confirmRestore}
               disabled={isPending}
             >
-              {isPending ? "Restoring..." : "Restore Account"}
+              {isPending ? t("users_admin.btn_saving", "Restoring...") : t("users_admin.action_restore", "Restore Account")}
             </Button>
           </DialogFooter>
         </div>
@@ -599,22 +585,18 @@ export function UserAdminClient({
       <Dialog
         open={deleteDialog.open}
         onClose={() => setDeleteDialog({ open: false, user: null })}
-        title="Delete User Account"
+        title={t("users_admin.dialog_delete_title", "Delete User Account")}
       >
         <div className="space-y-4">
           <div className="p-3 rounded-lg bg-[var(--danger)]/10 border border-[var(--danger)]/20 text-xs text-[var(--danger)] flex items-start gap-2">
             <AlertTriangle size={16} className="shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold">Irreversible Action</p>
+              <p className="font-semibold">{t("users_admin.action_delete", "Permanently Delete")}</p>
               <p className="mt-0.5">
-                Permanently deletes the Supabase Auth user for <strong>@{deleteDialog.user?.username}</strong>. All associated posts, comments, likes, and follows will cascade delete.
+                {t("users_admin.dialog_delete_desc", { username: deleteDialog.user?.username })}
               </p>
             </div>
           </div>
-
-          <p className="text-sm text-[var(--ink)]">
-            Are you sure you want to permanently delete this account?
-          </p>
 
           <DialogFooter>
             <Button
@@ -623,7 +605,7 @@ export function UserAdminClient({
               onClick={() => setDeleteDialog({ open: false, user: null })}
               disabled={isPending}
             >
-              Cancel
+              {t("users_admin.btn_cancel", "Cancel")}
             </Button>
             <Button
               type="button"
@@ -631,7 +613,7 @@ export function UserAdminClient({
               onClick={confirmDelete}
               disabled={isPending}
             >
-              {isPending ? "Deleting..." : "Permanently Delete"}
+              {isPending ? t("users_admin.btn_deleting", "Deleting...") : t("users_admin.btn_confirm", "Delete")}
             </Button>
           </DialogFooter>
         </div>

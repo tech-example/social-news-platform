@@ -5,9 +5,11 @@ import { transitionReportAction } from "@/server/actions/reports";
 import { hidePostAction, restorePostAction, hideCommentAction, restoreCommentAction } from "@/server/actions/moderation";
 import { useToast } from "@/components/ui/toast";
 import { ShieldCheck, EyeOff, Eye, ArrowUpRight, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 
 export function ModeratorActionPanel({ report: initialReport, currentRole = "moderator", onStatusChange }) {
   const { addToast } = useToast();
+  const { t } = useAdminLocale();
   const [note, setNote] = useState("");
   const [actionTaken, setActionTaken] = useState("content_hidden");
   const [isPending, startTransition] = useTransition();
@@ -25,11 +27,11 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
       });
 
       if (res.ok) {
-        addToast(`Report marked as ${nextStatus.replace("_", " ")}.`);
+        addToast(t("moderation.toast_status_updated", { status: nextStatus.replace("_", " ") }, `Report marked as ${nextStatus.replace("_", " ")}.`));
         setReport((prev) => ({ ...prev, status: nextStatus }));
         if (onStatusChange) onStatusChange(report.id, nextStatus);
       } else {
-        addToast(res.error || "Failed to update report.", "error");
+        addToast(res.error || t("moderation.toast_error_update", "Failed to update report."), "error");
       }
     });
   };
@@ -44,9 +46,9 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
       }
 
       if (res?.ok) {
-        addToast(hide ? "Content hidden from public view." : "Content restored.");
+        addToast(hide ? t("moderation.toast_content_hidden", "Content hidden from public view.") : t("moderation.toast_content_restored", "Content restored."));
       } else {
-        addToast(res?.error || "Failed to update content status.", "error");
+        addToast(res?.error || t("moderation.toast_error_content", "Failed to update content status."), "error");
       }
     });
   };
@@ -57,19 +59,21 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
     <div className="flex flex-col gap-4 p-5 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs">
       <div className="flex items-center gap-2">
         <ShieldCheck size={20} strokeWidth={1.75} aria-hidden="true" className="text-[var(--accent)]" />
-        <h2 className="text-base font-bold text-[var(--ink)]">Moderation Actions</h2>
+        <h2 className="text-base font-bold text-[var(--ink)]">
+          {t("moderation.action_panel_title", "Moderation Actions")}
+        </h2>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="moderator-note" className="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wider">
-          Decision Notes & Justification
+          {t("moderation.action_label_note", "Decision Notes & Justification")}
         </label>
         <textarea
           id="moderator-note"
           rows={3}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Document the moderation findings and reasoning..."
+          placeholder={t("moderation.action_note_placeholder", "Document the moderation findings and reasoning...")}
           className="w-full px-3 py-2 text-sm border border-[var(--line)] rounded-lg bg-[var(--surface)] text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:bg-[var(--bg)] focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
         />
       </div>
@@ -85,7 +89,7 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
             className="text-xs"
           >
             <EyeOff size={14} strokeWidth={1.75} aria-hidden="true" className="mr-1.5 text-[var(--danger)]" />
-            Hide Target Content
+            {t("moderation.btn_hide_content", "Hide Target Content")}
           </Button>
           <Button
             variant="ghost"
@@ -95,7 +99,7 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
             className="text-xs"
           >
             <Eye size={14} strokeWidth={1.75} aria-hidden="true" className="mr-1.5 text-[var(--success)]" />
-            Restore Target Content
+            {t("moderation.btn_restore_content", "Restore Target Content")}
           </Button>
         </div>
       )}
@@ -109,7 +113,7 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
             onClick={() => handleTransition("in_review")}
             disabled={isPending}
           >
-            Mark In Review
+            {t("moderation.btn_start_review", "Mark In Review")}
           </Button>
         )}
 
@@ -121,7 +125,7 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
             disabled={isPending}
           >
             <ArrowUpRight size={16} strokeWidth={1.75} aria-hidden="true" className="mr-1.5 text-[var(--warning)]" />
-            Escalate to Admin
+            {t("moderation.btn_escalate", "Escalate to Admin")}
           </Button>
         )}
 
@@ -134,7 +138,7 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
             disabled={isPending}
           >
             <XCircle size={16} strokeWidth={1.75} aria-hidden="true" className="mr-1.5 text-[var(--ink-muted)]" />
-            Dismiss Report
+            {t("moderation.btn_resolve_dismiss", "Dismiss Report")}
           </Button>
         )}
 
@@ -147,7 +151,7 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
             disabled={isPending}
           >
             <CheckCircle2 size={16} strokeWidth={1.75} aria-hidden="true" className="mr-1.5" />
-            Resolve & Action (Final Decision)
+            {t("moderation.btn_resolve_action", "Resolve & Action (Final Decision)")}
           </Button>
         )}
       </div>
@@ -156,14 +160,14 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
       {!isAdmin && report.status === "escalated" && (
         <div className="flex items-center gap-2 p-3 bg-amber-50/50 border border-[var(--warning)]/30 rounded-lg text-xs text-[var(--ink)]">
           <AlertCircle size={15} strokeWidth={1.75} className="text-[var(--warning)] shrink-0" aria-hidden="true" />
-          <span>This report has been escalated. Awaiting final decision from an administrator.</span>
+          <span>{t("moderation.escalated_notice", "This report has been escalated. Awaiting final decision from an administrator.")}</span>
         </div>
       )}
 
       {isResolved && (
         <div className="p-3 bg-[var(--surface)] border border-[var(--line)] rounded-lg text-xs text-[var(--ink-muted)]">
-          This report is closed as <strong className="text-[var(--ink)]">{report.status.replace("_", " ")}</strong>.
-          {report.action_taken && <span> Action taken: {report.action_taken}.</span>}
+          {t("moderation.report_closed_as", { status: report.status.replace("_", " ") }, `This report is closed as ${report.status.replace("_", " ")}.`)}
+          {report.action_taken && <span> {t("moderation.action_taken_label", { action: report.action_taken }, `Action taken: ${report.action_taken}.`)}</span>}
         </div>
       )}
     </div>

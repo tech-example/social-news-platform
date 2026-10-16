@@ -1,11 +1,17 @@
 "use client";
 import { useMemo } from "react";
 import { Clock } from "lucide-react";
+import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAYS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAYS_TH = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
-export function PostingHeatmap({ data = [], title = "Posting Activity Heatmap (Weekday x Hour)" }) {
+export function PostingHeatmap({ data = [], title }) {
+  const { locale, t } = useAdminLocale();
+  const displayTitle = title || t("benefits.heatmap_title", "Posting Activity Heatmap (Weekday x Hour)");
+  const days = locale === "th" ? DAYS_TH : DAYS_EN;
+
   const { matrix, maxCount } = useMemo(() => {
     const map = {};
     let max = 0;
@@ -23,15 +29,15 @@ export function PostingHeatmap({ data = [], title = "Posting Activity Heatmap (W
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Clock size={16} strokeWidth={1.75} aria-hidden="true" className="text-[var(--accent)]" />
-          <h3 className="text-sm font-bold text-[var(--ink)]">{title}</h3>
+          <h3 className="text-sm font-bold text-[var(--ink)]">{displayTitle}</h3>
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-[var(--ink-muted)]">
-          <span>Fewer</span>
+          <span>{t("benefits.fewer", "Fewer")}</span>
           <span className="w-2.5 h-2.5 rounded-xs bg-[var(--surface-strong)]" />
           <span className="w-2.5 h-2.5 rounded-xs bg-[#0095F6]/30" />
           <span className="w-2.5 h-2.5 rounded-xs bg-[#0095F6]/60" />
           <span className="w-2.5 h-2.5 rounded-xs bg-[#0095F6]" />
-          <span>More</span>
+          <span>{t("benefits.more", "More")}</span>
         </div>
       </div>
 
@@ -49,7 +55,7 @@ export function PostingHeatmap({ data = [], title = "Posting Activity Heatmap (W
 
           {/* Days rows */}
           <div className="space-y-1">
-            {DAYS.map((dayName, dayIdx) => (
+            {days.map((dayName, dayIdx) => (
               <div key={dayName} className="grid grid-cols-[40px_repeat(24,1fr)] gap-1 items-center">
                 <span className="text-[11px] font-medium text-[var(--ink-muted)] pr-1">
                   {dayName}
@@ -69,7 +75,7 @@ export function PostingHeatmap({ data = [], title = "Posting Activity Heatmap (W
                     <div
                       key={hour}
                       className={`h-5 rounded-xs ${bg} border border-[var(--line)]/50 transition-colors flex items-center justify-center text-[9px] tabular-nums font-medium cursor-pointer`}
-                      title={`${dayName} at ${hour}:00 - ${count} posts`}
+                      title={locale === "th" ? `${dayName} เวลา ${hour}:00 - ${count} โพสต์` : `${dayName} at ${hour}:00 - ${count} posts`}
                     >
                       {count > 0 ? count : ""}
                     </div>

@@ -19,6 +19,7 @@ import { Table, ChartLine, Info } from "lucide-react";
 import { ChartSkeleton } from "@/components/ui/skeletons";
 import { SKELETON_SIZES } from "@/lib/constants";
 import { useMounted } from "@/lib/use-mounted";
+import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 
 export { ChartSkeleton };
 
@@ -33,6 +34,7 @@ export function TimeseriesChart({
 }) {
   const [showTable, setShowTable] = useState(false);
   const mounted = useMounted();
+  const { t, formatNumber, formatDate } = useAdminLocale();
 
   if (!mounted) {
     return <ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />;
@@ -45,7 +47,7 @@ export function TimeseriesChart({
         className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] p-5 flex flex-col items-center justify-center text-center shadow-xs"
       >
         <h3 className="text-sm font-semibold text-[var(--ink)] mb-1">{title}</h3>
-        <p className="text-xs text-[var(--ink-muted)]">No data for this range. Try a wider date range.</p>
+        <p className="text-xs text-[var(--ink-muted)]">{t("admin.no_data", "No data for this range. Try a wider date range.")}</p>
       </div>
     );
   }
@@ -56,7 +58,7 @@ export function TimeseriesChart({
     if (raw) {
       const dateObj = new Date(typeof raw === "string" && raw.length === 10 ? raw + "T00:00:00" : raw);
       timeStr = !isNaN(dateObj.getTime())
-        ? dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        ? formatDate(dateObj, { month: "short", day: "numeric" })
         : String(raw);
     }
     return {
@@ -82,8 +84,8 @@ export function TimeseriesChart({
         <button
           type="button"
           onClick={() => setShowTable(!showTable)}
-          aria-label={showTable ? "View as chart" : "View as table"}
-          title={showTable ? "View as chart" : "View as table"}
+          aria-label={showTable ? t("admin.view_chart", "View as chart") : t("admin.view_table", "View as table")}
+          title={showTable ? t("admin.view_chart", "View as chart") : t("admin.view_table", "View as table")}
           className="p-1 rounded-md text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
         >
           {showTable ? (
@@ -99,7 +101,7 @@ export function TimeseriesChart({
           <table className="w-full text-xs text-left">
             <thead className="bg-[var(--surface)] border-b border-[var(--line)] text-[var(--ink-muted)] sticky top-0">
               <tr>
-                <th className="py-2 px-3 font-semibold">Date</th>
+                <th className="py-2 px-3 font-semibold">{t("admin.chart_col_date", "Date")}</th>
                 <th className="py-2 px-3 font-semibold text-right">{metricLabel}</th>
               </tr>
             </thead>
@@ -108,7 +110,7 @@ export function TimeseriesChart({
                 <tr key={idx} className="hover:bg-[var(--surface)]">
                   <td className="py-1.5 px-3">{row.time}</td>
                   <td className="py-1.5 px-3 text-right tabular-nums font-medium">
-                    {new Intl.NumberFormat("en-US").format(row.value)}
+                    {formatNumber(row.value)}
                   </td>
                 </tr>
               ))}
@@ -150,6 +152,7 @@ export function TimeseriesChart({
 export function EngagementBarChart({ data = [], title = "Engagement Composition (Stacked)", tooltip = null }) {
   const [showTable, setShowTable] = useState(false);
   const mounted = useMounted();
+  const { t, formatNumber, formatDate } = useAdminLocale();
 
   if (!mounted) {
     return <ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />;
@@ -162,7 +165,7 @@ export function EngagementBarChart({ data = [], title = "Engagement Composition 
         className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] p-5 flex flex-col items-center justify-center text-center shadow-xs"
       >
         <h3 className="text-sm font-semibold text-[var(--ink)] mb-1">{title}</h3>
-        <p className="text-xs text-[var(--ink-muted)]">No data for this range. Try a wider date range.</p>
+        <p className="text-xs text-[var(--ink-muted)]">{t("admin.no_data", "No data for this range. Try a wider date range.")}</p>
       </div>
     );
   }
@@ -173,7 +176,7 @@ export function EngagementBarChart({ data = [], title = "Engagement Composition 
     if (raw) {
       const dateObj = new Date(typeof raw === "string" && raw.length === 10 ? raw + "T00:00:00" : raw);
       timeStr = !isNaN(dateObj.getTime())
-        ? dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        ? formatDate(dateObj, { month: "short", day: "numeric" })
         : String(raw);
     }
     return {
@@ -201,8 +204,8 @@ export function EngagementBarChart({ data = [], title = "Engagement Composition 
         <button
           type="button"
           onClick={() => setShowTable(!showTable)}
-          aria-label={showTable ? "View as chart" : "View as table"}
-          title={showTable ? "View as chart" : "View as table"}
+          aria-label={showTable ? t("admin.view_chart", "View as chart") : t("admin.view_table", "View as table")}
+          title={showTable ? t("admin.view_chart", "View as chart") : t("admin.view_table", "View as table")}
           className="p-1 rounded-md text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
         >
           {showTable ? (
@@ -218,19 +221,19 @@ export function EngagementBarChart({ data = [], title = "Engagement Composition 
           <table className="w-full text-xs text-left">
             <thead className="bg-[var(--surface)] border-b border-[var(--line)] text-[var(--ink-muted)] sticky top-0">
               <tr>
-                <th className="py-2 px-3 font-semibold">Date</th>
-                <th className="py-2 px-3 font-semibold text-right">Likes</th>
-                <th className="py-2 px-3 font-semibold text-right">Comments</th>
-                <th className="py-2 px-3 font-semibold text-right">Shares</th>
+                <th className="py-2 px-3 font-semibold">{t("admin.chart_col_date", "Date")}</th>
+                <th className="py-2 px-3 font-semibold text-right">{t("admin.top_posts_col_likes", "Likes")}</th>
+                <th className="py-2 px-3 font-semibold text-right">{t("admin.top_posts_col_comments", "Comments")}</th>
+                <th className="py-2 px-3 font-semibold text-right">{t("admin.top_posts_col_shares", "Shares")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--line)]">
               {chartData.map((row, idx) => (
                 <tr key={idx} className="hover:bg-[var(--surface)]">
                   <td className="py-1.5 px-3">{row.time}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-[#ED4956] font-medium">{row.likes}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-[#0095F6] font-medium">{row.comments}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-[#0E8F8F] font-medium">{row.shares}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums text-[#ED4956] font-medium">{formatNumber(row.likes)}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums text-[#0095F6] font-medium">{formatNumber(row.comments)}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums text-[#0E8F8F] font-medium">{formatNumber(row.shares)}</td>
                 </tr>
               ))}
             </tbody>
@@ -252,9 +255,9 @@ export function EngagementBarChart({ data = [], title = "Engagement Composition 
                 }}
               />
               <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "4px" }} />
-              <Bar dataKey="likes" name="Likes" fill="#ED4956" stackId="a" />
-              <Bar dataKey="comments" name="Comments" fill="#0095F6" stackId="a" />
-              <Bar dataKey="shares" name="Shares" fill="#0E8F8F" stackId="a" />
+              <Bar dataKey="likes" name={t("admin.top_posts_col_likes", "Likes")} fill="#ED4956" stackId="a" />
+              <Bar dataKey="comments" name={t("admin.top_posts_col_comments", "Comments")} fill="#0095F6" stackId="a" />
+              <Bar dataKey="shares" name={t("admin.top_posts_col_shares", "Shares")} fill="#0E8F8F" stackId="a" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -266,6 +269,7 @@ export function EngagementBarChart({ data = [], title = "Engagement Composition 
 export function DonutChart({ data = [], title = "Distribution", tooltip = null }) {
   const [showTable, setShowTable] = useState(false);
   const mounted = useMounted();
+  const { t, formatNumber } = useAdminLocale();
 
   if (!mounted) {
     return <ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />;
@@ -278,7 +282,7 @@ export function DonutChart({ data = [], title = "Distribution", tooltip = null }
         className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] p-5 flex flex-col items-center justify-center text-center shadow-xs"
       >
         <h3 className="text-sm font-semibold text-[var(--ink)] mb-1">{title}</h3>
-        <p className="text-xs text-[var(--ink-muted)]">No data available.</p>
+        <p className="text-xs text-[var(--ink-muted)]">{t("admin.no_data", "No data available.")}</p>
       </div>
     );
   }
@@ -307,8 +311,8 @@ export function DonutChart({ data = [], title = "Distribution", tooltip = null }
         <button
           type="button"
           onClick={() => setShowTable(!showTable)}
-          aria-label={showTable ? "View as chart" : "View as table"}
-          title={showTable ? "View as chart" : "View as table"}
+          aria-label={showTable ? t("admin.view_chart", "View as chart") : t("admin.view_table", "View as table")}
+          title={showTable ? t("admin.view_chart", "View as chart") : t("admin.view_table", "View as table")}
           className="p-1 rounded-md text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
         >
           {showTable ? (
@@ -324,16 +328,16 @@ export function DonutChart({ data = [], title = "Distribution", tooltip = null }
           <table className="w-full text-xs text-left">
             <thead className="bg-[var(--surface)] border-b border-[var(--line)] text-[var(--ink-muted)] sticky top-0">
               <tr>
-                <th className="py-2 px-3 font-semibold">Category</th>
-                <th className="py-2 px-3 font-semibold text-right">Count</th>
-                <th className="py-2 px-3 font-semibold text-right">Share</th>
+                <th className="py-2 px-3 font-semibold">{t("admin.chart_col_category", "Category")}</th>
+                <th className="py-2 px-3 font-semibold text-right">{t("admin.chart_col_count", "Count")}</th>
+                <th className="py-2 px-3 font-semibold text-right">{t("admin.chart_col_share", "Share")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--line)]">
               {chartData.map((row, idx) => (
                 <tr key={idx} className="hover:bg-[var(--surface)]">
                   <td className="py-1.5 px-3 capitalize">{row.name}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums font-medium">{row.value}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums font-medium">{formatNumber(row.value)}</td>
                   <td className="py-1.5 px-3 text-right tabular-nums text-[var(--ink-muted)]">
                     {total > 0 ? Math.round((row.value / total) * 100) : 0}%
                   </td>
@@ -377,6 +381,7 @@ export function DonutChart({ data = [], title = "Distribution", tooltip = null }
 export function HorizontalBarChart({ data = [], title = "Distribution", metricLabel = "Count", tooltip = null }) {
   const [showTable, setShowTable] = useState(false);
   const mounted = useMounted();
+  const { t, formatNumber } = useAdminLocale();
 
   if (!mounted) {
     return <ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />;
@@ -389,7 +394,7 @@ export function HorizontalBarChart({ data = [], title = "Distribution", metricLa
         className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] p-5 flex flex-col items-center justify-center text-center shadow-xs"
       >
         <h3 className="text-sm font-semibold text-[var(--ink)] mb-1">{title}</h3>
-        <p className="text-xs text-[var(--ink-muted)]">No data for this range.</p>
+        <p className="text-xs text-[var(--ink-muted)]">{t("admin.no_data", "No data for this range.")}</p>
       </div>
     );
   }
@@ -416,8 +421,8 @@ export function HorizontalBarChart({ data = [], title = "Distribution", metricLa
         <button
           type="button"
           onClick={() => setShowTable(!showTable)}
-          aria-label={showTable ? "View as chart" : "View as table"}
-          title={showTable ? "View as chart" : "View as table"}
+          aria-label={showTable ? t("admin.view_chart", "View as chart") : t("admin.view_table", "View as table")}
+          title={showTable ? t("admin.view_chart", "View as chart") : t("admin.view_table", "View as table")}
           className="p-1 rounded-md text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
         >
           {showTable ? (
@@ -433,7 +438,7 @@ export function HorizontalBarChart({ data = [], title = "Distribution", metricLa
           <table className="w-full text-xs text-left">
             <thead className="bg-[var(--surface)] border-b border-[var(--line)] text-[var(--ink-muted)] sticky top-0">
               <tr>
-                <th className="py-2 px-3 font-semibold">Reason</th>
+                <th className="py-2 px-3 font-semibold">{t("admin.chart_col_reason", "Reason")}</th>
                 <th className="py-2 px-3 font-semibold text-right">{metricLabel}</th>
               </tr>
             </thead>
@@ -441,7 +446,7 @@ export function HorizontalBarChart({ data = [], title = "Distribution", metricLa
               {chartData.map((row, idx) => (
                 <tr key={idx} className="hover:bg-[var(--surface)]">
                   <td className="py-1.5 px-3 capitalize">{row.name}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums font-semibold">{row.count}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums font-semibold">{formatNumber(row.count)}</td>
                 </tr>
               ))}
             </tbody>
@@ -481,6 +486,7 @@ export function HorizontalBarChart({ data = [], title = "Distribution", metricLa
 export function FollowerDistributionChart({ data = [], title = "Follower Distribution", tooltip = null }) {
   const [showTable, setShowTable] = useState(false);
   const mounted = useMounted();
+  const { t, formatNumber } = useAdminLocale();
 
   if (!mounted) {
     return <ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />;
@@ -493,7 +499,7 @@ export function FollowerDistributionChart({ data = [], title = "Follower Distrib
         className="w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] p-5 flex flex-col items-center justify-center text-center shadow-xs"
       >
         <h3 className="text-sm font-semibold text-[var(--ink)] mb-1">{title}</h3>
-        <p className="text-xs text-[var(--ink-muted)]">No follower data recorded.</p>
+        <p className="text-xs text-[var(--ink-muted)]">{t("admin.no_data", "No follower data recorded.")}</p>
       </div>
     );
   }
@@ -515,8 +521,8 @@ export function FollowerDistributionChart({ data = [], title = "Follower Distrib
         <button
           type="button"
           onClick={() => setShowTable(!showTable)}
-          aria-label={showTable ? "View as chart" : "View as table"}
-          title={showTable ? "View as chart" : "View as table"}
+          aria-label={showTable ? t("admin.view_chart", "View as chart") : t("admin.view_table", "View as table")}
+          title={showTable ? t("admin.view_chart", "View as chart") : t("admin.view_table", "View as table")}
           className="p-1 rounded-md text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] transition-colors"
         >
           {showTable ? (
@@ -532,16 +538,16 @@ export function FollowerDistributionChart({ data = [], title = "Follower Distrib
           <table className="w-full text-xs text-left">
             <thead className="bg-[var(--surface)] border-b border-[var(--line)] text-[var(--ink-muted)] sticky top-0">
               <tr>
-                <th className="py-2 px-3 font-semibold">Bucket (Followers)</th>
-                <th className="py-2 px-3 font-semibold text-right">Users</th>
-                <th className="py-2 px-3 font-semibold text-right">Share</th>
+                <th className="py-2 px-3 font-semibold">{t("admin.chart_col_bucket", "Bucket (Followers)")}</th>
+                <th className="py-2 px-3 font-semibold text-right">{t("admin.top_users_col_user", "Users")}</th>
+                <th className="py-2 px-3 font-semibold text-right">{t("admin.chart_col_share", "Share")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--line)]">
               {data.map((row, idx) => (
                 <tr key={idx} className="hover:bg-[var(--surface)]">
-                  <td className="py-1.5 px-3 font-medium">{row.bucket} followers</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">{row.user_count}</td>
+                  <td className="py-1.5 px-3 font-medium">{row.bucket} {t("admin.chart_followers_unit", "followers")}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums">{formatNumber(row.user_count)}</td>
                   <td className="py-1.5 px-3 text-right tabular-nums text-[var(--ink-muted)]">{row.pct}%</td>
                 </tr>
               ))}
@@ -563,7 +569,7 @@ export function FollowerDistributionChart({ data = [], title = "Follower Distrib
                   fontSize: "12px",
                 }}
               />
-              <Bar dataKey="user_count" name="Users" fill="#6D4FD1" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="user_count" name={t("admin.top_users_col_user", "Users")} fill="#6D4FD1" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
