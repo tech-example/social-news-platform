@@ -27,10 +27,10 @@ function CommentActions({ comment, currentUserId, isStaff, onDelete, onReport, o
 
   // Independent conditions for each action:
   // - Edit: visible to the comment's own author (any role).
-  // - Delete: visible per the rule from the previous fix (author with role moderator/admin, or any moderator/admin regardless of authorship).
+  // - Delete: visible when signed-in user is the comment's author (any role) OR is a moderator/admin.
   // - Report: visible to any signed-in user who is NOT the comment's author, regardless of role.
   const canEdit = Boolean(isAuthor);
-  const canDelete = Boolean(isStaff);
+  const canDelete = Boolean(isAuthor || isStaff);
   const canReport = Boolean(!isAuthor && currentUserId);
 
   useEffect(() => {

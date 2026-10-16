@@ -308,26 +308,27 @@ export async function createCommentAction(postId, body, parentId = null) {
 export async function deleteCommentAction(commentId, postId) {
   let session;
   try {
-    session = await requireRoleOrThrow("moderator");
+    session = await requireRoleOrThrow("user");
   } catch (err) {
     if (err instanceof AuthError && err.code === "UNAUTHENTICATED") {
       return { ok: false, error: "UNAUTHENTICATED", code: "UNAUTHENTICATED" };
     }
-    return { ok: false, error: "Users cannot delete comments. Only moderators and administrators may remove comments.", code: "FORBIDDEN" };
+    return { ok: false, error: "You do not have permission to delete this comment.", code: "FORBIDDEN" };
   }
   const adminSupabase = getAdminClient();
 
   const { data: comment } = await adminSupabase
     .from("comments")
-    .select("id, author_id")
+    .select("id, author_id, post_id")
     .eq("id", commentId)
     .single();
 
   if (!comment) return { ok: false, error: "Comment not found." };
 
+  const isOwner = comment.author_id === session.user.id;
   const isStaff = session.profile.role === "moderator" || session.profile.role === "admin";
-  if (!isStaff) {
-    return { ok: false, error: "Users cannot delete comments. Only moderators and administrators may remove comments." };
+  if (!isOwner && !isStaff) {
+    return { ok: false, error: "Not authorized to delete this comment.", code: "FORBIDDEN" };
   }
 
   const { error } = await adminSupabase.from("comments").delete().eq("id", commentId);
@@ -335,8 +336,9 @@ export async function deleteCommentAction(commentId, postId) {
     return { ok: false, error: error.message || "Failed to delete comment." };
   }
 
-  if (postId) {
-    revalidatePath(`/p/${postId}`);
+  const revalidatePostId = postId || comment.post_id;
+  if (revalidatePostId) {
+    revalidatePath(`/p/${revalidatePostId}`);
   }
   revalidatePath("/");
   return { ok: true };
