@@ -413,6 +413,23 @@ export async function rejectProfanitySuggestionAction(suggestionId) {
 }
 
 /**
+ * Target configuration for content re-scanning.
+ * Posts have both title and body; comments have body only (no title column).
+ */
+const RESCAN_TARGET_CONFIG = {
+  posts: {
+    table: "posts",
+    selectColumns: "id, created_at, title, body, is_flagged, flagged_reason",
+    extractText: (row) => [row.title, row.body].filter(Boolean).join(" "),
+  },
+  comments: {
+    table: "comments",
+    selectColumns: "id, created_at, body, is_flagged, flagged_reason",
+    extractText: (row) => row.body || "",
+  },
+};
+
+/**
  * Admin action: Re-scan existing content in batches.
  * Scans posts and comments, updating is_flagged and flagged_reason.
  */
@@ -420,10 +437,11 @@ export async function rescanContentBatchAction({ targetType = "posts", cursor = 
   const session = await requireRole("admin");
   const supabase = getAdminClient();
 
-  const table = targetType === "comments" ? "comments" : "posts";
+  const targetConfig = RESCAN_TARGET_CONFIG[targetType] || RESCAN_TARGET_CONFIG.posts;
+  const table = targetConfig.table;
   let query = supabase
     .from(table)
-    .select("id, created_at, title, body, is_flagged, flagged_reason")
+    .select(targetConfig.selectColumns)
     .order("created_at", { ascending: true })
     .order("id", { ascending: true })
     .limit(batchSize);
@@ -450,7 +468,7 @@ export async function rescanContentBatchAction({ targetType = "posts", cursor = 
 
   let flaggedCount = 0;
   for (const item of rows) {
-    const textToScan = table === "posts" ? `${item.title || ""} ${item.body || ""}` : (item.body || "");
+    const textToScan = targetConfig.extractText(item);
     const scanResult = await analyzeText(textToScan);
 
     const shouldBeFlagged = scanResult.flagged;
