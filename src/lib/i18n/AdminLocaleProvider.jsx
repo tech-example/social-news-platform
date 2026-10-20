@@ -71,11 +71,11 @@ export function AdminLocaleProvider({ initialLocale = "en", children }) {
     const dict = dictionaries[locale] || dictionaries.en;
     let val = getNestedValue(dict, key);
 
-    if (val === undefined && locale !== "en") {
+    if ((val === undefined || (typeof val === "object" && val !== null)) && locale !== "en") {
       val = getNestedValue(dictionaries.en, key);
     }
 
-    if (val === undefined) {
+    if (val === undefined || (typeof val === "object" && val !== null)) {
       val = defaultText !== undefined ? defaultText : key;
     }
 
@@ -85,7 +85,7 @@ export function AdminLocaleProvider({ initialLocale = "en", children }) {
       });
     }
 
-    return val;
+    return typeof val === "string" || typeof val === "number" ? val : (defaultText !== undefined ? defaultText : key);
   }, [locale]);
 
   const formatNumber = useCallback((number) => {

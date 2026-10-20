@@ -70,7 +70,7 @@ export const metadata = {
 // ROW 1: KPI STAT CARDS (9 cards with deltas)
 // ==========================================
 async function AdminKPISection({ range, from, to }) {
-  const { t } = await getServerAdminT();
+  const { t, locale } = await getServerAdminT();
   const [kpis, postsSeries, usersSeries, engagementSeries] = await Promise.all([
     getAdminKPIs(range, from, to),
     getTimeseries("posts", "day", range, from, to),
@@ -93,6 +93,7 @@ async function AdminKPISection({ range, from, to }) {
         icon={Users}
         sparkline={usersSparkline}
         tooltip={t("admin.kpi_total_users_tip", "Total registered user accounts across the entire platform")}
+        locale={locale}
       />
 
       {/* 2. New Users in Range */}
@@ -104,6 +105,7 @@ async function AdminKPISection({ range, from, to }) {
         icon={UserPlus}
         sparkline={usersSparkline}
         tooltip={t("admin.kpi_new_users_tip", "New accounts created within this date range")}
+        locale={locale}
       />
 
       {/* 3. Total Posts */}
@@ -115,6 +117,7 @@ async function AdminKPISection({ range, from, to }) {
         icon={FileText}
         sparkline={postsSparkline}
         tooltip={t("admin.kpi_total_posts_tip", "All active, published posts on the platform")}
+        locale={locale}
       />
 
       {/* 4. New Posts in Range */}
@@ -126,6 +129,7 @@ async function AdminKPISection({ range, from, to }) {
         icon={TrendingUp}
         sparkline={postsSparkline}
         tooltip={t("admin.kpi_new_posts_tip", "Posts published within the current date range")}
+        locale={locale}
       />
 
       {/* 5. Total Engagement */}
@@ -137,6 +141,7 @@ async function AdminKPISection({ range, from, to }) {
         icon={Activity}
         sparkline={engSparkline}
         tooltip={t("admin.kpi_engagement_tip", "Sum of all likes, comments, and shares within the period")}
+        locale={locale}
       />
 
       {/* 6. Active Users (DAU) */}
@@ -146,6 +151,7 @@ async function AdminKPISection({ range, from, to }) {
         subtitle={`WAU ${kpis.active_users_wau || 0} · MAU ${kpis.active_users_mau || 0}`}
         icon={CheckCircle2}
         tooltip={t("admin.kpi_dau_tip", "Daily Active Users (last 24h), plus WAU (7d) and MAU (30d) based on activity log")}
+        locale={locale}
       />
 
       {/* 7. Open Reports */}
@@ -156,6 +162,7 @@ async function AdminKPISection({ range, from, to }) {
         subtitle={t("admin.kpi_open_reports_sub", "Pending + in review")}
         icon={TriangleAlert}
         tooltip={t("admin.kpi_open_reports_tip", "Total unresolved community safety reports")}
+        locale={locale}
       />
 
       {/* 8. Escalated Reports */}
@@ -166,6 +173,7 @@ async function AdminKPISection({ range, from, to }) {
         subtitle={t("admin.kpi_escalated_reports_sub", "Awaiting admin")}
         icon={ShieldAlert}
         tooltip={t("admin.kpi_escalated_reports_tip", "High-severity reports elevated by moderators for administrator decision")}
+        locale={locale}
       />
 
       {/* 9. Suspended Users */}
@@ -175,6 +183,7 @@ async function AdminKPISection({ range, from, to }) {
         subtitle={t("admin.kpi_suspended_users_sub", "Accounts restricted")}
         icon={Ban}
         tooltip={t("admin.kpi_suspended_users_tip", "User accounts currently suspended by administrators")}
+        locale={locale}
       />
     </div>
   );

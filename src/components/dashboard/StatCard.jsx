@@ -1,6 +1,5 @@
-"use client";
+import React from "react";
 import { TrendingUp, TrendingDown, Info } from "lucide-react";
-import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 import { SKELETON_SIZES } from "@/lib/constants";
 
 export function StatCard({
@@ -12,8 +11,9 @@ export function StatCard({
   icon: Icon = null,
   tooltip = null,
   sparkline = null, // array of numbers [v1, v2, ...]
+  locale = "en",
 }) {
-  const { formatCompact, formatNumber } = useAdminLocale();
+  const intlLocale = locale === "th" ? "th-TH" : "en-US";
   let deltaPercent = null;
   let isPositive = false;
 
@@ -29,10 +29,13 @@ export function StatCard({
   const formattedValue =
     format === "number"
       ? typeof value === "number"
-        ? formatCompact(value)
+        ? new Intl.NumberFormat(intlLocale, {
+            notation: "compact",
+            maximumFractionDigits: 1,
+          }).format(value)
         : value
       : typeof value === "number"
-      ? formatNumber(value)
+      ? new Intl.NumberFormat(intlLocale).format(value)
       : value;
 
   // Generate mini SVG sparkline if points provided
@@ -73,7 +76,11 @@ export function StatCard({
         </div>
         {Icon && (
           <div className="p-1.5 rounded-lg bg-[var(--surface)] text-[var(--ink-muted)] shrink-0">
-            <Icon size={16} strokeWidth={1.75} aria-hidden="true" />
+            {React.isValidElement(Icon) ? (
+              Icon
+            ) : typeof Icon === "function" || (typeof Icon === "object" && Icon !== null) ? (
+              <Icon size={16} strokeWidth={1.75} aria-hidden="true" />
+            ) : null}
           </div>
         )}
       </div>

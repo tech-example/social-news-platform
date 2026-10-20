@@ -31,9 +31,13 @@ function getNestedValue(obj, path) {
 }
 
 export async function getServerAdminLocale() {
-  const cookieStore = await cookies();
-  const locale = cookieStore.get("admin_locale")?.value === "th" ? "th" : "en";
-  return locale;
+  try {
+    const cookieStore = await cookies();
+    const val = cookieStore.get("admin_locale")?.value;
+    return val === "th" ? "th" : "en";
+  } catch {
+    return "en";
+  }
 }
 
 export async function getServerAdminT() {
@@ -52,11 +56,11 @@ export async function getServerAdminT() {
 
     let val = getNestedValue(dict, key);
 
-    if (val === undefined && locale !== "en") {
+    if ((val === undefined || (typeof val === "object" && val !== null)) && locale !== "en") {
       val = getNestedValue(dictionaries.en, key);
     }
 
-    if (val === undefined) {
+    if (val === undefined || (typeof val === "object" && val !== null)) {
       val = defaultText !== undefined ? defaultText : key;
     }
 
@@ -66,13 +70,22 @@ export async function getServerAdminT() {
       });
     }
 
-    return val;
+    return typeof val === "string" || typeof val === "number" ? val : (defaultText !== undefined ? defaultText : key);
   };
 
   const formatNumber = (number) => {
     if (number == null || Number.isNaN(number)) return "0";
     const intlLocale = locale === "th" ? "th-TH" : "en-US";
     return new Intl.NumberFormat(intlLocale).format(number);
+  };
+
+  const formatCompact = (number) => {
+    if (number == null || Number.isNaN(number)) return "0";
+    const intlLocale = locale === "th" ? "th-TH" : "en-US";
+    return new Intl.NumberFormat(intlLocale, {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(number);
   };
 
   const formatRelative = (dateInput) => {
@@ -131,6 +144,7 @@ export async function getServerAdminT() {
     locale,
     t,
     formatNumber,
+    formatCompact,
     formatRelative,
     formatDate,
   };

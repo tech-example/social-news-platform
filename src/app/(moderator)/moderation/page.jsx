@@ -42,7 +42,7 @@ export const metadata = {
 // 1. KPI Cards Widget
 async function ModeratorKPIsWidget({ range, from, to }) {
   const kpis = await getModeratorKPIs(range, from, to);
-  const { t } = await getServerAdminT();
+  const { t, locale } = await getServerAdminT();
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -53,6 +53,7 @@ async function ModeratorKPIsWidget({ range, from, to }) {
         subtitle={t("moderation.kpi_awaiting_action_sub", "Pending or in initial review")}
         icon={Clock}
         tooltip={t("moderation.kpi_awaiting_action_tip", "Content reports requiring moderator review and initial disposition")}
+        locale={locale}
       />
       <StatCard
         title={t("moderation.kpi_awaiting_final", "Awaiting Final Decision")}
@@ -61,6 +62,7 @@ async function ModeratorKPIsWidget({ range, from, to }) {
         subtitle={t("moderation.kpi_awaiting_final_sub", "Escalated to administrator")}
         icon={TriangleAlert}
         tooltip={t("moderation.kpi_awaiting_final_tip", "High-severity or appeal reports awaiting administrator ruling")}
+        locale={locale}
       />
       <StatCard
         title={t("moderation.kpi_resolved", "Resolved in Range")}
@@ -69,6 +71,7 @@ async function ModeratorKPIsWidget({ range, from, to }) {
         subtitle={t("moderation.kpi_resolved_sub", "Actioned or dismissed")}
         icon={CircleCheck}
         tooltip={t("moderation.kpi_resolved_tip", "Reports where final moderation ruling was completed within the selected period")}
+        locale={locale}
       />
     </div>
   );
