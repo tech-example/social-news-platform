@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -11,10 +11,11 @@ import { Trash2, CornerDownRight, Ellipsis, Flag, Pencil } from "lucide-react";
 import { LIMITS } from "@/lib/constants";
 import { FlaggedContent } from "@/components/feed/FlaggedContent";
 import { ReportDialog } from "@/components/moderation/ReportDialog";
+import { FloatingMenu } from "@/components/ui/floating-menu";
 
 function CommentActions({ comment, currentUserId, isStaff, onDelete, onReport, onEdit }) {
   const [open, setOpen] = useState(false);
-  const menuRef = useRef(null);
+  const buttonRef = useRef(null);
   const isAuthor = Boolean(
     currentUserId &&
       (comment.authorId === currentUserId ||
@@ -33,93 +34,71 @@ function CommentActions({ comment, currentUserId, isStaff, onDelete, onReport, o
   const canDelete = Boolean(isAuthor || isStaff);
   const canReport = Boolean(!isAuthor && currentUserId);
 
-  useEffect(() => {
-    if (!open) return;
-    const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open]);
-
   const hasMenuActions = Boolean(canEdit || canDelete || canReport);
   if (!hasMenuActions) return null;
 
   return (
-    <div className="flex items-center gap-1 shrink-0" ref={menuRef}>
-      {canDelete && (
-        <IconButton
-          label={comment.parentId ? "Delete reply" : "Delete comment"}
-          onClick={() => onDelete(comment.id)}
-          className="text-[var(--danger)]/80 hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 focus-visible:outline-[var(--accent-bright)]"
-        >
-          <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" />
-        </IconButton>
-      )}
+    <div className="relative shrink-0">
+      <IconButton
+        ref={buttonRef}
+        label="Comment options"
+        pressed={open}
+        onClick={() => setOpen((prev) => !prev)}
+        className="text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] focus-visible:outline-[var(--accent-bright)]"
+      >
+        <Ellipsis size={16} strokeWidth={1.75} aria-hidden="true" />
+      </IconButton>
 
-      <div className="relative">
-        <IconButton
-          label="Comment options"
-          pressed={open}
-          onClick={() => setOpen((prev) => !prev)}
-          className="text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] focus-visible:outline-[var(--accent-bright)]"
-        >
-          <Ellipsis size={16} strokeWidth={1.75} aria-hidden="true" />
-        </IconButton>
-
-        {open && (
-          <div
-            role="menu"
-            aria-label="Comment options"
-            className="absolute right-0 top-full mt-1 w-40 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-lg py-1 z-20"
+      <FloatingMenu
+        open={open}
+        onClose={() => setOpen(false)}
+        anchorRef={buttonRef}
+        className="w-40"
+        ariaLabel="Comment options"
+      >
+        {canEdit && (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              if (onEdit) onEdit(comment);
+            }}
+            className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
           >
-            {canEdit && (
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  if (onEdit) onEdit(comment);
-                }}
-                className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-              >
-                <Pencil size={16} strokeWidth={1.75} aria-hidden="true" />
-                <span>Edit</span>
-              </button>
-            )}
-            {canReport && (
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  onReport(comment);
-                }}
-                className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-              >
-                <Flag size={16} strokeWidth={1.75} aria-hidden="true" className="text-[var(--danger)]" />
-                <span>Report</span>
-              </button>
-            )}
-            {canDelete && (
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  onDelete(comment.id);
-                }}
-                className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-              >
-                <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" />
-                <span>Delete</span>
-              </button>
-            )}
-          </div>
+            <Pencil size={16} strokeWidth={1.75} aria-hidden="true" />
+            <span>Edit</span>
+          </button>
         )}
-      </div>
+        {canReport && (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onReport(comment);
+            }}
+            className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+          >
+            <Flag size={16} strokeWidth={1.75} aria-hidden="true" className="text-[var(--danger)]" />
+            <span>Report</span>
+          </button>
+        )}
+        {canDelete && (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onDelete(comment.id);
+            }}
+            className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+          >
+            <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" />
+            <span>Delete</span>
+          </button>
+        )}
+      </FloatingMenu>
     </div>
   );
 }
@@ -229,9 +208,20 @@ export function CommentThread({
 
   const handleDeleteComment = (commentId) => {
     if (window.confirm("Are you sure you want to delete this comment?")) {
-      // Optimistically remove comment
       const prevComments = comments;
-      setComments((prev) => prev.filter((c) => c.id !== commentId && c.parentId !== commentId));
+      const idsToDelete = new Set([commentId]);
+      let added = true;
+      while (added) {
+        added = false;
+        for (const c of comments) {
+          const pid = c.parentId || c.parent_id;
+          if (!idsToDelete.has(c.id) && pid && idsToDelete.has(pid)) {
+            idsToDelete.add(c.id);
+            added = true;
+          }
+        }
+      }
+      setComments((prev) => prev.filter((c) => !idsToDelete.has(c.id)));
       
       deleteCommentAction(commentId, postId)
         .then((res) => {
@@ -250,232 +240,160 @@ export function CommentThread({
     }
   };
 
-  // Organize top-level comments and their replies
-  const rootComments = comments.filter((c) => !c.parentId);
-  const getReplies = (parentId) => comments.filter((c) => c.parentId === parentId);
+  // Build hierarchical comment tree supporting multi-level replies
+  const commentTree = useMemo(() => {
+    const map = new Map();
+    const roots = [];
+    comments.forEach((c) => {
+      map.set(c.id, { ...c, replies: [] });
+    });
+    comments.forEach((c) => {
+      const node = map.get(c.id);
+      const parentId = c.parentId || c.parent_id;
+      if (parentId && map.has(parentId)) {
+        map.get(parentId).replies.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+    return roots;
+  }, [comments]);
+
+  const renderCommentItem = (comment, depth = 0) => {
+    const isCommentAuthor = Boolean(
+      currentUserId &&
+        (comment.authorId === currentUserId ||
+          comment.author_id === currentUserId ||
+          comment.author?.id === currentUserId ||
+          comment.userId === currentUserId ||
+          comment.user_id === currentUserId ||
+          comment.isOwner)
+    );
+    const replies = comment.replies || [];
+    const avatarSize = depth > 0 ? 20 : 24;
+
+    return (
+      <div key={comment.id} className="space-y-2 animate-fadeIn">
+        <div className="flex items-start justify-between gap-3 group">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <Link href={`/u/${comment.author?.username}`} className="shrink-0 pt-0.5">
+              <Avatar
+                src={comment.author?.avatar_url}
+                alt={comment.author?.display_name || comment.author?.username || "User"}
+                name={comment.author?.display_name || comment.author?.username}
+                size={avatarSize}
+              />
+            </Link>
+            <div className="text-sm leading-snug break-words flex-1">
+              <Link
+                href={`/u/${comment.author?.username}`}
+                className="font-semibold text-[var(--ink)] hover:underline mr-2"
+              >
+                {comment.author?.username}
+              </Link>
+              {editingCommentId === comment.id ? (
+                <form onSubmit={(e) => handleSaveEdit(e, comment.id)} className="mt-1.5 flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={editBody}
+                    maxLength={LIMITS.COMMENT_BODY_MAX}
+                    onChange={(e) => setEditBody(e.target.value)}
+                    disabled={isEditingPending}
+                    autoFocus
+                    className="flex-1 px-2.5 py-1 text-xs border border-[var(--line)] rounded-lg bg-[var(--surface)] text-[var(--ink)] focus:bg-[var(--bg)] focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
+                  />
+                  <Button type="submit" size="sm" disabled={!editBody.trim() || isEditingPending} className="h-7 text-xs px-2.5">
+                    Save
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingCommentId(null);
+                      setEditBody("");
+                    }}
+                    className="min-h-11 inline-flex items-center px-2 text-xs font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] cursor-pointer rounded"
+                  >
+                    Cancel
+                  </button>
+                </form>
+              ) : (
+                <FlaggedContent
+                  key={`comment-${comment.id}`}
+                  isFlagged={Boolean(comment.is_flagged ?? comment.isFlagged)}
+                  defaultHidden={
+                    isCommentAuthor || isStaff
+                      ? false
+                      : viewerHideFlagged !== false
+                  }
+                  contentType="comment"
+                >
+                  <span className="text-[var(--ink)]">{comment.body}</span>
+                </FlaggedContent>
+              )}
+              <div className="flex items-center gap-3 mt-1 text-xs text-[var(--ink-muted)]">
+                <span suppressHydrationWarning>{formatRelativeTime(comment.createdAt)}</span>
+                {currentUserId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReplyingTo(comment);
+                      const el = document.getElementById(`comment-input-${postId}`);
+                      if (el) el.focus();
+                    }}
+                    className="min-h-11 inline-flex items-center px-2 -mx-2 hover:text-[var(--ink)] font-medium cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+                  >
+                    Reply
+                  </button>
+                )}
+                {isCommentAuthor && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingCommentId(comment.id);
+                      setEditBody(comment.body);
+                    }}
+                    className="min-h-11 inline-flex items-center px-2 -mx-2 hover:text-[var(--ink)] font-medium cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <CommentActions
+            comment={comment}
+            currentUserId={currentUserId}
+            isStaff={isStaff}
+            onDelete={handleDeleteComment}
+            onReport={setReportingComment}
+            onEdit={(c) => {
+              setEditingCommentId(c.id);
+              setEditBody(c.body);
+            }}
+          />
+        </div>
+
+        {/* Nested Replies */}
+        {replies.length > 0 && (
+          <div className="pl-6 sm:pl-8 space-y-2 border-l-2 border-[var(--surface-strong)] ml-3">
+            {replies.map((reply) => renderCommentItem(reply, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-4">
       {/* Existing Comments List */}
       <div className="space-y-3">
-        {rootComments.length === 0 ? (
+        {commentTree.length === 0 ? (
           <p className="text-sm text-[var(--ink-muted)] py-4 text-center">
             No comments yet. Start the conversation.
           </p>
         ) : (
-          rootComments.map((comment) => {
-            const replies = getReplies(comment.id);
-            return (
-              <div key={comment.id} className="space-y-2 animate-fadeIn">
-                <div className="flex items-start justify-between gap-3 group">
-                  <div className="flex items-start gap-2.5 min-w-0">
-                    <Link href={`/u/${comment.author?.username}`} className="shrink-0 pt-0.5">
-                      <Avatar
-                        src={comment.author?.avatar_url}
-                        alt={comment.author?.display_name || comment.author?.username || "User"}
-                        name={comment.author?.display_name || comment.author?.username}
-                        size={24}
-                      />
-                    </Link>
-                    <div className="text-sm leading-snug break-words flex-1">
-                      <Link
-                        href={`/u/${comment.author?.username}`}
-                        className="font-semibold text-[var(--ink)] hover:underline mr-2"
-                      >
-                        {comment.author?.username}
-                      </Link>
-                      {editingCommentId === comment.id ? (
-                        <form onSubmit={(e) => handleSaveEdit(e, comment.id)} className="mt-1.5 flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={editBody}
-                            maxLength={LIMITS.COMMENT_BODY_MAX}
-                            onChange={(e) => setEditBody(e.target.value)}
-                            disabled={isEditingPending}
-                            autoFocus
-                            className="flex-1 px-2.5 py-1 text-xs border border-[var(--line)] rounded-lg bg-[var(--surface)] text-[var(--ink)] focus:bg-[var(--bg)] focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
-                          />
-                          <Button type="submit" size="sm" disabled={!editBody.trim() || isEditingPending} className="h-7 text-xs px-2.5">
-                            Save
-                          </Button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingCommentId(null);
-                              setEditBody("");
-                            }}
-                            className="min-h-11 inline-flex items-center px-2 text-xs font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] cursor-pointer rounded"
-                          >
-                            Cancel
-                          </button>
-                        </form>
-                      ) : (
-                        <FlaggedContent
-                          key={`comment-${comment.id}`}
-                          isFlagged={Boolean(comment.is_flagged ?? comment.isFlagged)}
-                          defaultHidden={
-                            (Boolean(currentUserId && (comment.authorId === currentUserId || comment.author?.id === currentUserId || comment.userId === currentUserId)) || isStaff)
-                              ? false
-                              : (viewerHideFlagged !== false)
-                          }
-                          contentType="comment"
-                        >
-                          <span className="text-[var(--ink)]">{comment.body}</span>
-                        </FlaggedContent>
-                      )}
-                      <div className="flex items-center gap-3 mt-1 text-xs text-[var(--ink-muted)]">
-                        <span suppressHydrationWarning>{formatRelativeTime(comment.createdAt)}</span>
-                        {currentUserId && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setReplyingTo(comment);
-                              const el = document.getElementById(`comment-input-${postId}`);
-                              if (el) el.focus();
-                            }}
-                            className="min-h-11 inline-flex items-center px-2 -mx-2 hover:text-[var(--ink)] font-medium cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-                          >
-                            Reply
-                          </button>
-                        )}
-                        {Boolean(currentUserId && (comment.authorId === currentUserId || comment.author?.id === currentUserId || comment.userId === currentUserId || comment.isOwner)) && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingCommentId(comment.id);
-                              setEditBody(comment.body);
-                            }}
-                            className="min-h-11 inline-flex items-center px-2 -mx-2 hover:text-[var(--ink)] font-medium cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-                          >
-                            Edit
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <CommentActions
-                    comment={comment}
-                    currentUserId={currentUserId}
-                    isStaff={isStaff}
-                    onDelete={handleDeleteComment}
-                    onReport={setReportingComment}
-                    onEdit={(c) => {
-                      setEditingCommentId(c.id);
-                      setEditBody(c.body);
-                    }}
-                  />
-                </div>
-
-                {/* Nested Replies */}
-                {replies.length > 0 && (
-                  <div className="pl-8 space-y-2 border-l-2 border-[var(--surface-strong)] ml-3">
-                    {replies.map((reply) => (
-                      <div key={reply.id} className="flex items-start justify-between gap-2 group animate-fadeIn">
-                        <div className="flex items-start gap-2 min-w-0">
-                          <Link href={`/u/${reply.author?.username}`} className="shrink-0 pt-0.5">
-                            <Avatar
-                              src={reply.author?.avatar_url}
-                              alt={reply.author?.display_name || reply.author?.username || "User"}
-                              name={reply.author?.display_name || reply.author?.username}
-                              size={20}
-                            />
-                          </Link>
-                          <div className="text-sm leading-snug break-words flex-1">
-                            <Link
-                              href={`/u/${reply.author?.username}`}
-                              className="font-semibold text-[var(--ink)] hover:underline mr-1.5"
-                            >
-                              {reply.author?.username}
-                            </Link>
-                            {editingCommentId === reply.id ? (
-                              <form onSubmit={(e) => handleSaveEdit(e, reply.id)} className="mt-1 flex items-center gap-2">
-                                <input
-                                  type="text"
-                                  value={editBody}
-                                  maxLength={LIMITS.COMMENT_BODY_MAX}
-                                  onChange={(e) => setEditBody(e.target.value)}
-                                  disabled={isEditingPending}
-                                  autoFocus
-                                  className="flex-1 px-2.5 py-1 text-xs border border-[var(--line)] rounded-lg bg-[var(--surface)] text-[var(--ink)] focus:bg-[var(--bg)] focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
-                                />
-                                <Button type="submit" size="sm" disabled={!editBody.trim() || isEditingPending} className="h-7 text-xs px-2.5">
-                                  Save
-                                </Button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingCommentId(null);
-                                    setEditBody("");
-                                  }}
-                                  className="min-h-11 inline-flex items-center px-2 text-xs font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] cursor-pointer rounded"
-                                >
-                                  Cancel
-                                </button>
-                              </form>
-                            ) : (
-                              <FlaggedContent
-                                key={`reply-${reply.id}`}
-                                isFlagged={Boolean(reply.is_flagged ?? reply.isFlagged)}
-                                defaultHidden={
-                                  (Boolean(currentUserId && (reply.authorId === currentUserId || reply.author?.id === currentUserId || reply.userId === currentUserId)) || isStaff)
-                                    ? false
-                                    : (viewerHideFlagged !== false)
-                                }
-                                contentType="comment"
-                              >
-                                <span className="text-[var(--ink)]">{reply.body}</span>
-                              </FlaggedContent>
-                            )}
-                            <div className="flex items-center gap-3 mt-0.5 text-xs text-[var(--ink-muted)]">
-                              <span suppressHydrationWarning>{formatRelativeTime(reply.createdAt)}</span>
-                              {currentUserId && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setReplyingTo(reply);
-                                    const el = document.getElementById(`comment-input-${postId}`);
-                                    if (el) el.focus();
-                                  }}
-                                  className="min-h-11 inline-flex items-center px-2 -mx-2 hover:text-[var(--ink)] font-medium cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-                                >
-                                  Reply
-                                </button>
-                              )}
-                              {Boolean(currentUserId && (reply.authorId === currentUserId || reply.author?.id === currentUserId || reply.userId === currentUserId || reply.isOwner)) && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingCommentId(reply.id);
-                                    setEditBody(reply.body);
-                                  }}
-                                  className="min-h-11 inline-flex items-center px-2 -mx-2 hover:text-[var(--ink)] font-medium cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-                                >
-                                  Edit
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <CommentActions
-                          comment={reply}
-                          currentUserId={currentUserId}
-                          isStaff={isStaff}
-                          onDelete={handleDeleteComment}
-                          onReport={setReportingComment}
-                          onEdit={(r) => {
-                            setEditingCommentId(r.id);
-                            setEditBody(r.body);
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })
+          commentTree.map((comment) => renderCommentItem(comment, 0))
         )}
       </div>
 

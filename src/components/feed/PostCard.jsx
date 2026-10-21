@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,6 +24,7 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [allCommentsLoaded, setAllCommentsLoaded] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
 
   useEffect(() => {
     setCurrentPost(post);
@@ -74,8 +75,6 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
     }
   };
 
-  if (isDeleted) return null;
-
   // Render body with clickable URLs and hashtag links
   const renderBody = (text) => {
     if (!text) return null;
@@ -114,9 +113,98 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
     });
   };
 
-  const displayedComments = showComments
-    ? localComments
-    : localComments.slice(-2);
+  const commentTree = useMemo(() => {
+    const map = new Map();
+    const roots = [];
+    const source = showComments ? localComments : localComments.slice(-2);
+    source.forEach((c) => {
+      map.set(c.id, { ...c, replies: [] });
+    });
+    source.forEach((c) => {
+      const node = map.get(c.id);
+      const parentId = c.parentId || c.parent_id;
+      if (parentId && map.has(parentId)) {
+        map.get(parentId).replies.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+    return roots;
+  }, [showComments, localComments]);
+
+  const renderFeedComment = (c, depth = 0) => {
+    const isCommentAuthor = Boolean(
+      currentUserId &&
+        (c.authorId === currentUserId ||
+          c.author_id === currentUserId ||
+          c.author?.id === currentUserId ||
+          c.userId === currentUserId ||
+          c.user_id === currentUserId)
+    );
+    const isFlaggedComment = Boolean(c.is_flagged ?? c.isFlagged);
+    const avatarSize = depth > 0 ? 18 : 22;
+
+    return (
+      <div key={c.id} className="space-y-1.5">
+        <div className="flex items-start gap-2 text-sm leading-snug">
+          <Link
+            href={`/u/${c.author?.username || "anonymous"}`}
+            className="shrink-0 pt-0.5 focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)] rounded-full"
+            title={c.author?.display_name || c.author?.username}
+          >
+            <Avatar
+              src={c.author?.avatar_url}
+              alt={c.author?.display_name || c.author?.username || "User avatar"}
+              name={c.author?.display_name || c.author?.username}
+              size={avatarSize}
+            />
+          </Link>
+          <div className="flex-1 min-w-0 break-words">
+            <Link
+              href={`/u/${c.author?.username || "anonymous"}`}
+              className="font-semibold text-[var(--ink)] hover:underline mr-1.5"
+            >
+              {c.author?.username}
+            </Link>
+            <FlaggedContent
+              key={`comment-${c.id}`}
+              isFlagged={isFlaggedComment}
+              defaultHidden={(isCommentAuthor || isStaff) ? false : (viewerHideFlagged !== false)}
+              contentType="comment"
+            >
+              <span className="text-[var(--ink)]">{c.body}</span>
+            </FlaggedContent>
+            <div className="flex items-center gap-2.5 mt-0.5 text-xs text-[var(--ink-muted)]">
+              {c.createdAt && (
+                <span suppressHydrationWarning>{formatRelativeTime(c.createdAt)}</span>
+              )}
+              {currentUserId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReplyingTo(c);
+                    setTimeout(() => {
+                      const el = document.getElementById(`comment-input-${currentPost.id}`);
+                      if (el) el.focus();
+                    }, 50);
+                  }}
+                  className="hover:text-[var(--ink)] font-medium cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+                >
+                  Reply
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {c.replies && c.replies.length > 0 && (
+          <div className="pl-6 sm:pl-8 space-y-1.5 border-l-2 border-[var(--surface-strong)] ml-3">
+            {c.replies.map((reply) => renderFeedComment(reply, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const handleOpenDetail = (e) => {
     if (e?.target?.closest("button, a, input, textarea, select, [role='button'], [data-interactive='true']")) {
@@ -124,6 +212,8 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
     }
     router.push(`/p/${currentPost.id}`, { scroll: false });
   };
+
+  if (isDeleted) return null;
 
   return (
     <article className="feed-card-contain border-b border-[var(--line)] bg-[var(--bg)] py-4 flex flex-col gap-3">
@@ -285,6 +375,7 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
           commentsCount={localCommentsCount}
           sharesCount={currentPost.sharesCount || 0}
           isAuthor={isAuthor}
+          isStaff={isStaff}
           onDelete={handleDelete}
           onPostUpdated={(updated) => setCurrentPost((prev) => ({ ...prev, ...updated }))}
           onCommentClick={async () => {
@@ -304,47 +395,11 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
         />
 
         {/* Comments Display */}
-        {displayedComments.length > 0 && (
+        {commentTree.length > 0 && (
           <div className={`mt-2 space-y-2 ${showComments ? "max-h-72 overflow-y-auto pr-1" : ""}`}>
-            {displayedComments.map((c) => {
-              const isCommentAuthor = Boolean(currentUserId && (c.authorId === currentUserId || c.author?.id === currentUserId));
-              const isFlaggedComment = Boolean(c.is_flagged ?? c.isFlagged);
-              return (
-                <div key={c.id} className="flex items-start gap-2 text-sm leading-snug">
-                  <Link
-                    href={`/u/${c.author?.username || "anonymous"}`}
-                    className="shrink-0 pt-0.5 focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)] rounded-full"
-                    title={c.author?.display_name || c.author?.username}
-                  >
-                    <Avatar
-                      src={c.author?.avatar_url}
-                      alt={c.author?.display_name || c.author?.username || "User avatar"}
-                      name={c.author?.display_name || c.author?.username}
-                      size={22}
-                    />
-                  </Link>
-                  <div className="flex-1 min-w-0 break-words">
-                    <Link
-                      href={`/u/${c.author?.username || "anonymous"}`}
-                      className="font-semibold text-[var(--ink)] hover:underline mr-1.5"
-                    >
-                      {c.author?.username}
-                    </Link>
-                    <FlaggedContent
-                      key={`comment-${c.id}`}
-                      isFlagged={isFlaggedComment}
-                      defaultHidden={(isCommentAuthor || isStaff) ? false : (viewerHideFlagged !== false)}
-                      contentType="comment"
-                    >
-                      <span className="text-[var(--ink)]">{c.body}</span>
-                    </FlaggedContent>
-                  </div>
-                </div>
-              );
-            })}
+            {commentTree.map((c) => renderFeedComment(c, 0))}
           </div>
         )}
-
 
         {/* Loading comments indicator */}
         {isLoadingComments && (
@@ -380,6 +435,8 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
             postId={currentPost.id}
             onCommentPosted={handleCommentPosted}
             currentUserId={currentUserId}
+            replyingTo={replyingTo}
+            onCancelReply={() => setReplyingTo(null)}
           />
         ) : showComments ? (
           <div className="pt-2 text-xs text-[var(--ink-muted)]">

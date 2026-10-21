@@ -507,3 +507,166 @@ export async function rescanContentBatchAction({ targetType = "posts", cursor = 
     targetType,
   };
 }
+
+/**
+ * Admin action: Fetch flagged posts and comments using partial indexes idx_posts_is_flagged and idx_comments_is_flagged.
+ * Supports filtering by type ('all' | 'posts' | 'comments'), date range (from, to), author search, and cursor-based pagination.
+ */
+export async function getFlaggedContentAction({
+  type = "all",
+  search = "",
+  from = null,
+  to = null,
+  cursor = null,
+  limit = 20,
+} = {}) {
+  await requireRole("admin");
+  const supabase = getAdminClient();
+
+  const safeLimit = Math.min(100, Math.max(5, parseInt(limit, 10) || 20));
+
+  // If author search is provided, look up matched profile IDs
+  let authorIds = null;
+  if (search && search.trim()) {
+    const { data: matchedProfiles } = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("username", `%${search.trim()}%`);
+
+    if (!matchedProfiles || matchedProfiles.length === 0) {
+      return { ok: true, items: [], nextCursor: null };
+    }
+    authorIds = matchedProfiles.map((p) => p.id);
+  }
+
+  const fetchPosts = type === "all" || type === "posts";
+  const fetchComments = type === "all" || type === "comments";
+
+  let postsData = [];
+  let commentsData = [];
+
+  if (fetchPosts) {
+    let postsQuery = supabase
+      .from("posts")
+      .select(`
+        id,
+        title,
+        body,
+        created_at,
+        is_flagged,
+        flagged_reason,
+        author:profiles!posts_author_id_fkey(
+          id,
+          username,
+          display_name,
+          avatar_url
+        )
+      `)
+      .eq("is_flagged", true);
+
+    if (authorIds) {
+      postsQuery = postsQuery.in("author_id", authorIds);
+    }
+    if (from) {
+      postsQuery = postsQuery.gte("created_at", from);
+    }
+    if (to) {
+      postsQuery = postsQuery.lte("created_at", to);
+    }
+    if (cursor && cursor.created_at) {
+      postsQuery = postsQuery.lt("created_at", cursor.created_at);
+    }
+
+    postsQuery = postsQuery
+      .order("created_at", { ascending: false })
+      .limit(safeLimit + 1);
+
+    const { data, error } = await postsQuery;
+    if (error) {
+      return { ok: false, error: error.message || "Failed to fetch flagged posts." };
+    }
+    postsData = (data || []).map((p) => ({
+      id: p.id,
+      postId: p.id,
+      type: "post",
+      title: p.title,
+      body: p.body,
+      created_at: p.created_at,
+      is_flagged: p.is_flagged,
+      flagged_reason: p.flagged_reason || "profanity",
+      author: p.author,
+    }));
+  }
+
+  if (fetchComments) {
+    let commentsQuery = supabase
+      .from("comments")
+      .select(`
+        id,
+        post_id,
+        parent_id,
+        body,
+        created_at,
+        is_flagged,
+        flagged_reason,
+        author:profiles!comments_author_id_fkey(
+          id,
+          username,
+          display_name,
+          avatar_url
+        )
+      `)
+      .eq("is_flagged", true);
+
+    if (authorIds) {
+      commentsQuery = commentsQuery.in("author_id", authorIds);
+    }
+    if (from) {
+      commentsQuery = commentsQuery.gte("created_at", from);
+    }
+    if (to) {
+      commentsQuery = commentsQuery.lte("created_at", to);
+    }
+    if (cursor && cursor.created_at) {
+      commentsQuery = commentsQuery.lt("created_at", cursor.created_at);
+    }
+
+    commentsQuery = commentsQuery
+      .order("created_at", { ascending: false })
+      .limit(safeLimit + 1);
+
+    const { data, error } = await commentsQuery;
+    if (error) {
+      return { ok: false, error: error.message || "Failed to fetch flagged comments." };
+    }
+    commentsData = (data || []).map((c) => ({
+      id: c.id,
+      postId: c.post_id,
+      parentId: c.parent_id,
+      type: "comment",
+      title: null,
+      body: c.body,
+      created_at: c.created_at,
+      is_flagged: c.is_flagged,
+      flagged_reason: c.flagged_reason || "profanity",
+      author: c.author,
+    }));
+  }
+
+  // Combine and sort results
+  const combined = [...postsData, ...commentsData].sort(
+    (a, b) => new Date(b.created_at) - new Date(a.created_at)
+  );
+
+  const hasMore = combined.length > safeLimit;
+  const items = hasMore ? combined.slice(0, safeLimit) : combined;
+  const nextCursor = hasMore && items.length > 0
+    ? { created_at: items[items.length - 1].created_at, id: items[items.length - 1].id }
+    : null;
+
+  return {
+    ok: true,
+    items,
+    nextCursor,
+  };
+}

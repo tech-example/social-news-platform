@@ -237,6 +237,7 @@ export function InterceptedPostTopSheet({
               commentsCount={post.commentsCount || comments.length || 0}
               sharesCount={post.sharesCount || 0}
               isAuthor={isAuthor}
+              isStaff={isStaff}
               onPostUpdated={(updated) => setPost((prev) => ({ ...prev, ...updated }))}
               currentUserId={viewerId}
             />

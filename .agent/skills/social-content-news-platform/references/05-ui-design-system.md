@@ -64,6 +64,16 @@ Rules:
 - No horizontal page scroll at any width. Support portrait and landscape and 200 percent browser zoom without loss of content.
 - Required test widths before sign-off: **320, 360, 390, 430, 768, 820, 1024, 1280, 1440, 1920**.
 
+#### 8.3.1 Z-Index Scale & Stacking Context Guidelines
+To prevent stacking context traps (e.g. from `overflow-y-auto`, `content-visibility`, `contain`, or CSS transforms clipping popups and dropdowns), use standard z-index layers and portals:
+- **Sticky headers / tabs / bottom navigation:** `z-10` to `z-40`
+- **Dialogs / Modals / Intercepted sheets / Backdrops:** `z-50`
+- **Floating / context menus (`FloatingMenu` portalled to `document.body`):** `z-[60]`
+- **Notifications / Toasts:** `z-[70]`
+- **Skip-to-content links:** `z-[100]`
+
+Popup menus and action dropdowns anchored to buttons must render through a portal (`FloatingMenu`) directly into `document.body` with fixed viewport coordinates to escape parent clipping and stacking contexts.
+
 ### 8.4 Components and States
 
 Every interactive component defines: default, hover, active, `:focus-visible`, disabled, loading, error.

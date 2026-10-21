@@ -1,11 +1,12 @@
 "use client";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Heart, MessageCircle, Send, Ellipsis, Link as LinkIcon, Flag, Trash2, Repeat, Pencil } from "lucide-react";
 import { IconButton } from "@/components/ui/icon-button";
 import { ShareDialog } from "@/components/feed/ShareDialog";
 import { ReportDialog } from "@/components/moderation/ReportDialog";
 import { EditPostDialog } from "@/components/feed/EditPostDialog";
+import { FloatingMenu } from "@/components/ui/floating-menu";
 import { toggleLikeAction, sharePostAction, unsharePostAction } from "@/server/actions/interactions";
 import { deletePostAction } from "@/server/actions/posts";
 import { formatCompactNumber } from "@/lib/format";
@@ -39,12 +40,19 @@ export function InteractiveActions({
   commentsCount = 0,
   sharesCount: initialSharesCount = 0,
   isAuthor = false,
+  isStaff = false,
   commentHref = null,
   onCommentClick = null,
   onDelete = null,
   onPostUpdated = null,
   currentUserId = null,
 }) {
+  const shareAnchorRef = useRef(null);
+  const moreAnchorRef = useRef(null);
+
+  const canEdit = Boolean(isAuthor);
+  const canDelete = Boolean(isAuthor || isStaff);
+  const canReport = Boolean(!isAuthor && currentUserId);
   const [likeState, setLikeState] = useState({
     isLiked: initialLiked,
     count: initialLikesCount,
@@ -294,8 +302,9 @@ export function InteractiveActions({
           {/* Share with Quick Menu */}
           <div className="relative">
             <IconButton
+              ref={shareAnchorRef}
               label="Share post"
-              pressed={shareState.isShared}
+              pressed={shareState.isShared || shareMenuOpen}
               onClick={() => setShareMenuOpen(!shareMenuOpen)}
             >
               <Send
@@ -308,139 +317,139 @@ export function InteractiveActions({
               />
             </IconButton>
 
-            {shareMenuOpen && (
-              <>
-                {/* Transparent backdrop for clicking outside */}
-                <div
-                  className="fixed inset-0 z-30 bg-transparent cursor-default"
-                  onClick={(e) => {
-                    e.stopPropagation();
+            <FloatingMenu
+              open={shareMenuOpen}
+              onClose={() => setShareMenuOpen(false)}
+              anchorRef={shareAnchorRef}
+              className="w-52"
+              align="left"
+              ariaLabel="Share post options"
+            >
+              {shareState.isShared ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={handleUnshare}
+                  className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+                >
+                  <Trash2 size={16} strokeWidth={1.75} className="text-[var(--danger)] shrink-0" />
+                  <span>Remove Repost</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={handleQuickShare}
+                  className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+                >
+                  <Repeat size={16} strokeWidth={2} className="text-[var(--accent)] shrink-0" />
+                  <span>Repost to Profile</span>
+                </button>
+              )}
+
+              {!shareState.isShared && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
                     setShareMenuOpen(false);
+                    if (!currentUserId) {
+                      addToast("Please sign in to share.", "error");
+                      return;
+                    }
+                    setShareOpen(true);
                   }}
-                  aria-hidden="true"
-                />
+                  className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+                >
+                  <Send size={16} strokeWidth={1.75} className="text-[var(--ink-muted)] shrink-0" />
+                  <span>Share with note...</span>
+                </button>
+              )}
 
-                <div className="absolute left-0 bottom-full mb-1 w-52 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-xl py-1.5 z-40 animate-slideDown">
-                  {shareState.isShared ? (
-                    <button
-                      type="button"
-                      onClick={handleUnshare}
-                      className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-                    >
-                      <Trash2 size={16} strokeWidth={1.75} className="text-[var(--danger)] shrink-0" />
-                      <span>Remove Repost</span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleQuickShare}
-                      className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-                    >
-                      <Repeat size={16} strokeWidth={2} className="text-[var(--accent)] shrink-0" />
-                      <span>Repost to Profile</span>
-                    </button>
-                  )}
-
-                  {!shareState.isShared && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShareMenuOpen(false);
-                        if (!currentUserId) {
-                          addToast("Please sign in to share.", "error");
-                          return;
-                        }
-                        setShareOpen(true);
-                      }}
-                      className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-                    >
-                      <Send size={16} strokeWidth={1.75} className="text-[var(--ink-muted)] shrink-0" />
-                      <span>Share with note...</span>
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={handleCopyLink}
-                    className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer rounded-b-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-                  >
-                    <LinkIcon size={16} strokeWidth={1.75} className="text-[var(--ink-muted)] shrink-0" />
-                    <span>Copy link</span>
-                  </button>
-                </div>
-              </>
-            )}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleCopyLink}
+                className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+              >
+                <LinkIcon size={16} strokeWidth={1.75} className="text-[var(--ink-muted)] shrink-0" />
+                <span>Copy link</span>
+              </button>
+            </FloatingMenu>
           </div>
         </div>
 
         {/* More Menu */}
         <div className="relative">
-          <IconButton label="More post options" onClick={() => setMenuOpen(!menuOpen)}>
+          <IconButton
+            ref={moreAnchorRef}
+            label="More post options"
+            pressed={menuOpen}
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
             <Ellipsis size={20} strokeWidth={1.75} aria-hidden="true" className="text-[var(--ink-muted)] hover:text-[var(--ink)]" />
           </IconButton>
 
-          {menuOpen && (
-            <>
-              {/* Transparent backdrop for clicking outside */}
-              <div
-                className="fixed inset-0 z-20 bg-transparent cursor-default"
-                onClick={(e) => {
-                  e.stopPropagation();
+          <FloatingMenu
+            open={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            anchorRef={moreAnchorRef}
+            className="w-44"
+            ariaLabel="More post options"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleCopyLink}
+              className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+            >
+              <LinkIcon size={16} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
+              <span>Copy Link</span>
+            </button>
+            {canReport && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
                   setMenuOpen(false);
+                  if (!currentUserId) {
+                    addToast("Please sign in to report.", "error");
+                    return;
+                  }
+                  setReportOpen(true);
                 }}
-                aria-hidden="true"
-              />
-
-              <div className="absolute right-0 bottom-full mb-1 w-44 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-xl py-1 z-30 animate-slideDown">
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left cursor-pointer rounded-t-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-                >
-                  <LinkIcon size={16} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
-                  <span>Copy Link</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    if (!currentUserId) {
-                      addToast("Please sign in to report.", "error");
-                      return;
-                    }
-                    setReportOpen(true);
-                  }}
-                  className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-                >
-                  <Flag size={16} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
-                  <span>Report Post</span>
-                </button>
-                {isAuthor && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setEditOpen(true);
-                      }}
-                      className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-                    >
-                      <Pencil size={16} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
-                      <span>Edit Post</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDelete}
-                      className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer rounded-b-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-                    >
-                      <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
-                      <span>Delete Post</span>
-                    </button>
-                  </>
-                )}
-              </div>
-            </>
-          )}
+                className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)] text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+              >
+                <Flag size={16} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
+                <span>Report Post</span>
+              </button>
+            )}
+            {canEdit && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setEditOpen(true);
+                }}
+                className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--ink)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+              >
+                <Pencil size={16} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
+                <span>Edit Post</span>
+              </button>
+            )}
+            {canDelete && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleDelete}
+                className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
+              >
+                <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
+                <span>Delete Post</span>
+              </button>
+            )}
+          </FloatingMenu>
         </div>
       </div>
 

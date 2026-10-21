@@ -246,6 +246,7 @@ export default async function PostDetailPage({ params }) {
               commentsCount={post.commentsCount || 0}
               sharesCount={post.sharesCount || 0}
               isAuthor={isAuthor}
+              isStaff={isStaff}
               currentUserId={viewerId}
             />
           </div>
