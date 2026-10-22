@@ -1,35 +1,22 @@
 import { requireRole } from "@/server/auth";
-import { getProfanityTermsAction, getProfanitySuggestionsAction } from "@/server/actions/profanity";
+import { getFlaggedContentAction, getProfanitySuggestionsAction } from "@/server/actions/profanity";
 import { ProfanityAdminClient } from "./ProfanityAdminClient";
 import { getServerAdminT } from "@/lib/i18n/server";
 import { AdminLanguageSwitcher } from "@/components/dashboard/AdminLanguageSwitcher";
 
 export const metadata = {
   title: "Profanity Filter Management - Admin",
-  description: "Manage dynamic blocked and allowed terms, review moderator suggestions, and re-scan content",
+  description: "Review flagged content, review moderator suggestions, and re-scan content",
 };
 
-export default async function ProfanityAdminPage({ searchParams }) {
+export default async function ProfanityAdminPage() {
   await requireRole("admin");
   const { t } = await getServerAdminT();
-  const resolvedParams = await searchParams;
 
-  const page = parseInt(resolvedParams?.page || "1", 10);
-  const search = resolvedParams?.search || "";
-  const language = resolvedParams?.language || "all";
-  const severity = resolvedParams?.severity || "all";
-  const kind = resolvedParams?.kind || "all";
-  const active = resolvedParams?.active || "all";
-
-  const [termsRes, suggestionsRes] = await Promise.all([
-    getProfanityTermsAction({
-      page,
-      limit: 25,
-      search,
-      language,
-      severity,
-      kind,
-      active,
+  const [flaggedRes, suggestionsRes] = await Promise.all([
+    getFlaggedContentAction({
+      type: "all",
+      limit: 20,
     }),
     getProfanitySuggestionsAction(),
   ]);
@@ -51,9 +38,8 @@ export default async function ProfanityAdminPage({ searchParams }) {
       </div>
 
       <ProfanityAdminClient
-        initialTermsRes={termsRes}
+        initialFlaggedRes={flaggedRes?.ok ? flaggedRes : { items: [], nextCursor: null }}
         initialSuggestions={suggestionsRes?.suggestions || []}
-        filters={{ page, search, language, severity, kind, active }}
       />
     </div>
   );

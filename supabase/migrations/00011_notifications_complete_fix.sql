@@ -185,6 +185,7 @@ security definer
 set search_path = public
 as $$
 declare
+  v_actor_id uuid := coalesce(p_actor_id, auth.uid());
   v_current_status public.report_status;
   v_target_type public.report_target_type;
   v_target_user_id uuid;
@@ -193,8 +194,12 @@ declare
   v_reporter_id uuid;
   v_actor_role public.user_role;
 begin
+  if v_actor_id is null then
+    raise exception 'Unauthorized: actor_id required';
+  end if;
+
   -- Fetch actor role
-  select role into v_actor_role from public.profiles where id = p_actor_id and not is_suspended;
+  select role into v_actor_role from public.profiles where id = v_actor_id and not is_suspended;
   if v_actor_role is null or v_actor_role not in ('moderator', 'admin') then
     raise exception 'Unauthorized: moderator or admin role required';
   end if;
