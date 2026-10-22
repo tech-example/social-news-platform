@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 import { FlaggedContent } from "@/components/feed/FlaggedContent";
@@ -1294,24 +1295,17 @@ export function ProfanityAdminClient({ initialTermsRes, initialSuggestions = [],
       </Dialog>
 
       {/* DIALOG: Confirm Delete */}
-      <Dialog open={Boolean(deletingId)} onOpenChange={(open) => !open && setDeletingId(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t("profanity.modal_delete_title")}</DialogTitle>
-          </DialogHeader>
-          <p className="text-xs text-[var(--ink-muted)] py-2">
-            {t("profanity.modal_delete_desc")}
-          </p>
-          <DialogFooter>
-            <Button variant="secondary" size="sm" onClick={() => setDeletingId(null)}>
-              {t("profanity.btn_cancel")}
-            </Button>
-            <Button variant="danger" size="sm" disabled={isPending} onClick={handleDeleteConfirm}>
-              {t("profanity.btn_delete")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={Boolean(deletingId)}
+        onOpenChange={(open) => !open && setDeletingId(null)}
+        title={t("profanity.modal_delete_title")}
+        description={t("profanity.modal_delete_desc")}
+        confirmLabel={t("profanity.btn_delete")}
+        cancelLabel={t("profanity.btn_cancel")}
+        destructive={true}
+        loading={isPending}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }

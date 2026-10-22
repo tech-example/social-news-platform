@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
 import { formatCompactNumber } from "@/lib/format";
@@ -551,73 +552,30 @@ export function UserAdminClient({
       </Dialog>
 
       {/* 3. Restore Account Confirmation Dialog */}
-      <Dialog
+      <ConfirmDialog
         open={restoreDialog.open}
         onClose={() => setRestoreDialog({ open: false, user: null })}
         title={t("users_admin.dialog_restore_title", "Restore User Access")}
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-[var(--ink)]">
-            {t("users_admin.dialog_restore_desc", { username: restoreDialog.user?.username })}
-          </p>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setRestoreDialog({ open: false, user: null })}
-              disabled={isPending}
-            >
-              {t("users_admin.btn_cancel", "Cancel")}
-            </Button>
-            <Button
-              type="button"
-              onClick={confirmRestore}
-              disabled={isPending}
-            >
-              {isPending ? t("users_admin.btn_saving", "Restoring...") : t("users_admin.action_restore", "Restore Account")}
-            </Button>
-          </DialogFooter>
-        </div>
-      </Dialog>
+        description={t("users_admin.dialog_restore_desc", { username: restoreDialog.user?.username })}
+        confirmLabel={isPending ? t("users_admin.btn_saving", "Restoring...") : t("users_admin.action_restore", "Restore Account")}
+        cancelLabel={t("users_admin.btn_cancel", "Cancel")}
+        destructive={false}
+        loading={isPending}
+        onConfirm={confirmRestore}
+      />
 
       {/* 4. Delete Account Confirmation Dialog */}
-      <Dialog
+      <ConfirmDialog
         open={deleteDialog.open}
         onClose={() => setDeleteDialog({ open: false, user: null })}
         title={t("users_admin.dialog_delete_title", "Delete User Account")}
-      >
-        <div className="space-y-4">
-          <div className="p-3 rounded-lg bg-[var(--danger)]/10 border border-[var(--danger)]/20 text-xs text-[var(--danger)] flex items-start gap-2">
-            <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">{t("users_admin.action_delete", "Permanently Delete")}</p>
-              <p className="mt-0.5">
-                {t("users_admin.dialog_delete_desc", { username: deleteDialog.user?.username })}
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setDeleteDialog({ open: false, user: null })}
-              disabled={isPending}
-            >
-              {t("users_admin.btn_cancel", "Cancel")}
-            </Button>
-            <Button
-              type="button"
-              variant="danger"
-              onClick={confirmDelete}
-              disabled={isPending}
-            >
-              {isPending ? t("users_admin.btn_deleting", "Deleting...") : t("users_admin.btn_confirm", "Delete")}
-            </Button>
-          </DialogFooter>
-        </div>
-      </Dialog>
+        description={t("users_admin.dialog_delete_desc", { username: deleteDialog.user?.username })}
+        confirmLabel={isPending ? t("users_admin.btn_deleting", "Deleting...") : t("users_admin.btn_confirm", "Delete")}
+        cancelLabel={t("users_admin.btn_cancel", "Cancel")}
+        destructive={true}
+        loading={isPending}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

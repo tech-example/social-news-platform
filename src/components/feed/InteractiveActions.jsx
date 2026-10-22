@@ -11,6 +11,7 @@ import { toggleLikeAction, sharePostAction, unsharePostAction } from "@/server/a
 import { deletePostAction } from "@/server/actions/posts";
 import { formatCompactNumber } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /**
  * Checks a server action result for UNAUTHENTICATED and shows a sign-in toast.
@@ -67,6 +68,8 @@ export function InteractiveActions({
   const [reportOpen, setReportOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
   const { addToast } = useToast();
   const authGuard = useAuthGuard();
@@ -211,23 +214,32 @@ export function InteractiveActions({
     );
   };
 
-  const handleDelete = () => {
-    if (window.confirm("Are you sure you want to delete this post?")) {
-      setIsDeleted(true);
-      deletePostAction(postId).then((res) => {
-        if (res?.ok) {
-          addToast("Post deleted.");
-          if (onDelete) onDelete(postId);
-        } else {
-          setIsDeleted(false);
-          if (authGuard(res)) return;
-          addToast(res?.error || "Failed to delete post.", "error");
-        }
-      }).catch((err) => {
-        console.error("Delete error:", err);
+  const handleDeleteClick = () => {
+    setMenuOpen(false);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setIsDeleting(true);
+    setDeleteConfirmOpen(false);
+    setIsDeleted(true);
+
+    try {
+      const res = await deletePostAction(postId);
+      if (res?.ok) {
+        addToast("Post deleted.");
+        if (onDelete) onDelete(postId);
+      } else {
         setIsDeleted(false);
-        addToast("Network error deleting post.", "error");
-      });
+        if (authGuard(res)) return;
+        addToast(res?.error || "Failed to delete post.", "error");
+      }
+    } catch (err) {
+      console.error("Delete error:", err);
+      setIsDeleted(false);
+      addToast("Network error deleting post.", "error");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -442,7 +454,7 @@ export function InteractiveActions({
               <button
                 type="button"
                 role="menuitem"
-                onClick={handleDelete}
+                onClick={handleDeleteClick}
                 className="w-full min-h-11 flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)] text-left border-t border-[var(--line)] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
               >
                 <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
@@ -492,6 +504,18 @@ export function InteractiveActions({
           onPostUpdated={onPostUpdated}
         />
       )}
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete this post?"
+        description="This action cannot be undone. The post, its comments, and associated likes will be permanently removed."
+        confirmLabel="Delete post"
+        cancelLabel="Cancel"
+        destructive={true}
+        loading={isDeleting}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

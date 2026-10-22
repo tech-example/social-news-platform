@@ -11,7 +11,7 @@ import { Inbox, CheckCheck, Trash2, FileText } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { deleteNotificationAction, markAllReadAction, clearAllNotificationsAction } from "@/server/actions/notifications";
 import { IconButton } from "@/components/ui/icon-button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
 
@@ -286,21 +286,17 @@ export function NotificationsClient({ initialNotifications = [], userId }) {
         </div>
       )}
 
-      <Dialog open={showClearConfirm} onOpenChange={setShowClearConfirm} title="Clear all notifications?">
-        <DialogContent>
-          <p className="text-sm text-[var(--ink)]">
-            This action cannot be undone. This will permanently delete all your notifications.
-          </p>
-        </DialogContent>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setShowClearConfirm(false)} disabled={clearingAll}>
-            Cancel
-          </Button>
-          <Button variant="destructive" onClick={handleClearAll} disabled={clearingAll}>
-            Clear all
-          </Button>
-        </DialogFooter>
-      </Dialog>
+      <ConfirmDialog
+        open={showClearConfirm}
+        onOpenChange={setShowClearConfirm}
+        title="Clear all notifications?"
+        description="This action cannot be undone. This will permanently delete all your notifications."
+        confirmLabel="Clear all"
+        cancelLabel="Cancel"
+        destructive={true}
+        loading={clearingAll}
+        onConfirm={handleClearAll}
+      />
     </div>
   );
 }

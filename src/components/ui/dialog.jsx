@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { IconButton } from "@/components/ui/icon-button";
@@ -16,28 +16,88 @@ export function Dialog({
   const dialogRef = useRef(null);
   const mounted = useMounted();
 
-  const handleClose = () => {
+  const triggerRef = useRef(null);
+
+  const handleClose = useCallback(() => {
     if (onClose) onClose();
     if (onOpenChange) onOpenChange(false);
-  };
+  }, [onClose, onOpenChange]);
+
+  useEffect(() => {
+    if (open) {
+      triggerRef.current = document.activeElement;
+    }
+  }, [open]);
 
   useEffect(() => {
     function handleKeyDown(e) {
-      if (e.key === "Escape" && open) {
+      if (!open) return;
+      if (e.key === "Escape") {
+        e.preventDefault();
         handleClose();
+        return;
+      }
+      if (e.key === "Tab") {
+        const dialogEl = dialogRef.current;
+        if (!dialogEl) return;
+        const focusables = dialogEl.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const focusableArr = Array.from(focusables).filter(
+          (el) => !el.disabled && el.offsetParent !== null
+        );
+        if (focusableArr.length === 0) return;
+        const first = focusableArr[0];
+        const last = focusableArr[focusableArr.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
       }
     }
+
     if (open) {
       document.body.style.overflow = "hidden";
       window.addEventListener("keydown", handleKeyDown);
+
+      // Focus first focusable element inside the dialog (or autofocus element)
+      const timer = setTimeout(() => {
+        if (!dialogRef.current) return;
+        const autoFocused = dialogRef.current.querySelector("[autofocus]");
+        if (autoFocused && !autoFocused.disabled) {
+          autoFocused.focus();
+        } else {
+          const firstFocusable = dialogRef.current.querySelector(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          );
+          if (firstFocusable && !firstFocusable.disabled) {
+            firstFocusable.focus();
+          } else {
+            dialogRef.current.focus();
+          }
+        }
+      }, 30);
+
+      return () => {
+        clearTimeout(timer);
+        document.body.style.overflow = "";
+        window.removeEventListener("keydown", handleKeyDown);
+        if (triggerRef.current && typeof triggerRef.current.focus === "function") {
+          triggerRef.current.focus();
+        }
+      };
     } else {
       document.body.style.overflow = "";
     }
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open, onClose, onOpenChange]);
+  }, [open, handleClose]);
 
   if (!open || !mounted) return null;
 

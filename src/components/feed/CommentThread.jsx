@@ -12,6 +12,7 @@ import { LIMITS } from "@/lib/constants";
 import { FlaggedContent } from "@/components/feed/FlaggedContent";
 import { ReportDialog } from "@/components/moderation/ReportDialog";
 import { FloatingMenu } from "@/components/ui/floating-menu";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 function CommentActions({ comment, currentUserId, isStaff, onDelete, onReport, onEdit }) {
   const [open, setOpen] = useState(false);
@@ -115,6 +116,8 @@ export function CommentThread({
   const [text, setText] = useState("");
   const [replyingTo, setReplyingTo] = useState(null);
   const [reportingComment, setReportingComment] = useState(null);
+  const [commentToDelete, setCommentToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editBody, setEditBody] = useState("");
   const [isEditingPending, setIsEditingPending] = useState(false);
@@ -207,36 +210,44 @@ export function CommentThread({
   };
 
   const handleDeleteComment = (commentId) => {
-    if (window.confirm("Are you sure you want to delete this comment?")) {
-      const prevComments = comments;
-      const idsToDelete = new Set([commentId]);
-      let added = true;
-      while (added) {
-        added = false;
-        for (const c of comments) {
-          const pid = c.parentId || c.parent_id;
-          if (!idsToDelete.has(c.id) && pid && idsToDelete.has(pid)) {
-            idsToDelete.add(c.id);
-            added = true;
-          }
+    setCommentToDelete(commentId);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!commentToDelete) return;
+    const commentId = commentToDelete;
+    setIsDeleting(true);
+
+    const prevComments = comments;
+    const idsToDelete = new Set([commentId]);
+    let added = true;
+    while (added) {
+      added = false;
+      for (const c of comments) {
+        const pid = c.parentId || c.parent_id;
+        if (!idsToDelete.has(c.id) && pid && idsToDelete.has(pid)) {
+          idsToDelete.add(c.id);
+          added = true;
         }
       }
-      setComments((prev) => prev.filter((c) => !idsToDelete.has(c.id)));
-      
-      deleteCommentAction(commentId, postId)
-        .then((res) => {
-          if (res?.ok) {
-            addToast("Comment deleted.");
-          } else {
-            setComments(prevComments);
-            addToast(res?.error || "Failed to delete comment.", "error");
-          }
-        })
-        .catch((err) => {
-          console.error("Delete error:", err);
-          setComments(prevComments);
-          addToast("Network error deleting comment.", "error");
-        });
+    }
+    setComments((prev) => prev.filter((c) => !idsToDelete.has(c.id)));
+    setCommentToDelete(null);
+
+    try {
+      const res = await deleteCommentAction(commentId, postId);
+      if (res?.ok) {
+        addToast("Comment deleted.");
+      } else {
+        setComments(prevComments);
+        addToast(res?.error || "Failed to delete comment.", "error");
+      }
+    } catch (err) {
+      console.error("Delete error:", err);
+      setComments(prevComments);
+      addToast("Network error deleting comment.", "error");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -451,6 +462,18 @@ export function CommentThread({
           targetId={reportingComment.id}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(commentToDelete)}
+        onOpenChange={(open) => !open && setCommentToDelete(null)}
+        title="Delete this comment?"
+        description="This action cannot be undone. The comment and any replies will be permanently removed."
+        confirmLabel="Delete comment"
+        cancelLabel="Cancel"
+        destructive={true}
+        loading={isDeleting}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }
