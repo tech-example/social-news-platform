@@ -3,6 +3,14 @@ import { createUserClient } from "@/server/supabase";
 import { getAdminClient } from "@/server/admin-client";
 import { containsProfanity } from "@/lib/profanity";
 
+export function resolvePostImages(imageUrl) {
+  if (!imageUrl) return { imageUrl: null, thumbnailUrl: null };
+  const thumbnailUrl = imageUrl.includes("-full.webp")
+    ? imageUrl.replace("-full.webp", "-thumb.webp")
+    : imageUrl;
+  return { imageUrl, thumbnailUrl };
+}
+
 export async function getFeedPosts({
   cursor = null,
   limit = 10,
@@ -26,6 +34,7 @@ export async function getFeedPosts({
         title: p.title,
         body: p.body,
         imageUrl: p.image_url,
+        thumbnailUrl: resolvePostImages(p.image_url).thumbnailUrl,
         status: p.status,
         is_flagged: p.is_flagged !== undefined && p.is_flagged !== null ? !!p.is_flagged : containsProfanity((p.title || "") + " " + (p.body || "")).flagged,
         flagged_reason: p.flagged_reason || (containsProfanity((p.title || "") + " " + (p.body || "")).flagged ? "profanity" : null),
@@ -209,6 +218,7 @@ export async function getFeedPosts({
     title: post.title,
     body: post.body,
     imageUrl: post.image_url,
+    thumbnailUrl: resolvePostImages(post.image_url).thumbnailUrl,
     status: post.status,
     is_flagged: post.is_flagged !== undefined && post.is_flagged !== null ? !!post.is_flagged : containsProfanity((post.title || "") + " " + (post.body || "")).flagged,
     flagged_reason: post.flagged_reason || (containsProfanity((post.title || "") + " " + (post.body || "")).flagged ? "profanity" : null),
@@ -301,6 +311,7 @@ export async function getPostById(postId, viewerId = null) {
     title: post.title,
     body: post.body,
     imageUrl: post.image_url,
+    thumbnailUrl: resolvePostImages(post.image_url).thumbnailUrl,
     status: post.status,
     is_flagged: post.is_flagged !== undefined && post.is_flagged !== null ? !!post.is_flagged : containsProfanity((post.title || "") + " " + (post.body || "")).flagged,
     flagged_reason: post.flagged_reason || (containsProfanity((post.title || "") + " " + (post.body || "")).flagged ? "profanity" : null),
@@ -411,6 +422,7 @@ export async function getUserPosts({
       title: s.post.title,
       body: s.post.body,
       imageUrl: s.post.image_url,
+      thumbnailUrl: resolvePostImages(s.post.image_url).thumbnailUrl,
       is_flagged: s.post.is_flagged !== undefined && s.post.is_flagged !== null ? !!s.post.is_flagged : containsProfanity((s.post.title || "") + " " + (s.post.body || "")).flagged,
       flagged_reason: s.post.flagged_reason || null,
       likesCount: s.post.likes_count || 0,
@@ -454,6 +466,7 @@ export async function getUserPosts({
     title: p.title,
     body: p.body,
     imageUrl: p.image_url,
+    thumbnailUrl: resolvePostImages(p.image_url).thumbnailUrl,
     is_flagged: p.is_flagged !== undefined && p.is_flagged !== null ? !!p.is_flagged : containsProfanity((p.title || "") + " " + (p.body || "")).flagged,
     flagged_reason: p.flagged_reason || null,
     likesCount: p.likes_count || 0,
@@ -500,6 +513,7 @@ export async function getPostsByTag(tagNameOrOptions, cursorParam = null, limitP
         title: p.title,
         body: p.body,
         imageUrl: p.image_url,
+        thumbnailUrl: resolvePostImages(p.image_url).thumbnailUrl,
         status: p.status,
         is_flagged: p.is_flagged !== undefined && p.is_flagged !== null ? !!p.is_flagged : containsProfanity((p.title || "") + " " + (p.body || "")).flagged,
         flagged_reason: p.flagged_reason || (containsProfanity((p.title || "") + " " + (p.body || "")).flagged ? "profanity" : null),
@@ -671,6 +685,7 @@ export async function getPostsByTag(tagNameOrOptions, cursorParam = null, limitP
     title: post.title,
     body: post.body,
     imageUrl: post.image_url,
+    thumbnailUrl: resolvePostImages(post.image_url).thumbnailUrl,
     status: post.status,
     is_flagged: post.is_flagged !== undefined && post.is_flagged !== null ? !!post.is_flagged : containsProfanity((post.title || "") + " " + (post.body || "")).flagged,
     flagged_reason: post.flagged_reason || (containsProfanity((post.title || "") + " " + (post.body || "")).flagged ? "profanity" : null),
@@ -732,6 +747,7 @@ export async function getExplorePosts({ limit = 18 } = {}) {
     title: p.title,
     body: p.body,
     imageUrl: p.image_url,
+    thumbnailUrl: resolvePostImages(p.image_url).thumbnailUrl,
     is_flagged: p.is_flagged !== undefined && p.is_flagged !== null ? !!p.is_flagged : containsProfanity((p.title || "") + " " + (p.body || "")).flagged,
     flagged_reason: p.flagged_reason || (containsProfanity((p.title || "") + " " + (p.body || "")).flagged ? "profanity" : null),
     likesCount: p.likes_count || 0,
@@ -760,6 +776,7 @@ export async function searchPosts(searchQuery, limit = 20) {
         title: p.title,
         body: p.body,
         imageUrl: p.image_url,
+        thumbnailUrl: resolvePostImages(p.image_url).thumbnailUrl,
         is_flagged: p.is_flagged !== undefined && p.is_flagged !== null ? !!p.is_flagged : containsProfanity((p.title || "") + " " + (p.body || "")).flagged,
         flagged_reason: p.flagged_reason || (containsProfanity((p.title || "") + " " + (p.body || "")).flagged ? "profanity" : null),
         likesCount: p.likes_count || 0,
@@ -810,6 +827,7 @@ export async function searchPosts(searchQuery, limit = 20) {
       title: p.title,
       body: p.body,
       imageUrl: p.image_url,
+      thumbnailUrl: resolvePostImages(p.image_url).thumbnailUrl,
       is_flagged: p.is_flagged !== undefined && p.is_flagged !== null ? !!p.is_flagged : containsProfanity((p.title || "") + " " + (p.body || "")).flagged,
       flagged_reason: p.flagged_reason || (containsProfanity((p.title || "") + " " + (p.body || "")).flagged ? "profanity" : null),
       likesCount: p.likes_count || 0,

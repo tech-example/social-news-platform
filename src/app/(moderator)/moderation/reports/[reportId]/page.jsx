@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { PostImage } from "@/components/ui/post-image";
 import { requireRole } from "@/server/auth";
 import { getReportById, getReportEvents } from "@/server/dal/reports";
 import { ModeratorActionPanel } from "@/components/moderation/ModeratorActionPanel";
@@ -254,13 +255,13 @@ export default async function ReportDetailPage({ params }) {
                     </p>
                     {target.image_url && (
                       <div className="relative w-full aspect-16/9 rounded-md overflow-hidden bg-black/5 mt-3">
-                        <Image
+                        <PostImage
                           src={target.image_url}
                           alt="Post media preview"
                           fill
                           sizes="(min-width: 768px) 600px, 100vw"
                           className="object-contain"
-                          unoptimized
+                          fallbackText="Image unavailable"
                         />
                       </div>
                     )}

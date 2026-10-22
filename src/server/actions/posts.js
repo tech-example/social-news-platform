@@ -4,10 +4,58 @@ import { requireRole } from "@/server/auth";
 import { createUserClient } from "@/server/supabase";
 import { postSchema } from "@/lib/validators";
 import { containsProfanity } from "@/lib/profanity";
+import { processAndUploadPostImage } from "@/server/images";
 
 export async function createPostAction(input) {
   const session = await requireRole("user");
-  const parsed = postSchema.safeParse(input);
+
+  let rawTitle = "";
+  let rawBody = "";
+  let rawImageUrl = null;
+  let rawTags = [];
+  let imageFile = null;
+
+  if (typeof FormData !== "undefined" && input instanceof FormData) {
+    rawTitle = input.get("title")?.toString() || "";
+    rawBody = input.get("body")?.toString() || "";
+    const tagsField = input.get("tags")?.toString();
+    if (tagsField) {
+      try {
+        rawTags = JSON.parse(tagsField);
+      } catch {
+        rawTags = tagsField.split(",").map((t) => t.trim()).filter(Boolean);
+      }
+    }
+    const file = input.get("image");
+    if (file && typeof file === "object" && file.size > 0) {
+      imageFile = file;
+    }
+  } else if (input && typeof input === "object") {
+    rawTitle = input.title || "";
+    rawBody = input.body || "";
+    rawImageUrl = input.imageUrl || null;
+    rawTags = input.tags || [];
+    if (input.image && typeof input.image === "object" && input.image.size > 0) {
+      imageFile = input.image;
+    }
+  }
+
+  // If a file is uploaded, process with sharp and upload to Supabase Storage server-side
+  if (imageFile) {
+    try {
+      const uploadResult = await processAndUploadPostImage(imageFile, session.user.id);
+      rawImageUrl = uploadResult.fullUrl;
+    } catch (err) {
+      return { ok: false, error: err.message || "Failed to process image." };
+    }
+  }
+
+  const parsed = postSchema.safeParse({
+    title: rawTitle || undefined,
+    body: rawBody,
+    imageUrl: rawImageUrl || undefined,
+    tags: rawTags,
+  });
 
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message || "Invalid post data." };

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
+import { PostImage } from "@/components/ui/post-image";
 import { InteractiveActions } from "@/components/feed/InteractiveActions";
 import { CommentThread } from "@/components/feed/CommentThread";
 import { IconButton } from "@/components/ui/icon-button";
@@ -181,14 +182,15 @@ export function InterceptedPostTopSheet({
             {/* Post Image (if any) */}
             {post.imageUrl && (
               <div className="relative w-full aspect-4/3 max-h-[360px] bg-[var(--surface)] border-b border-[var(--line)]">
-                <Image
+                <PostImage
                   src={post.imageUrl}
+                  thumbnailSrc={post.thumbnailUrl}
                   alt={post.title || "Post image preview"}
                   fill
                   sizes="(min-width: 640px) 670px, 100vw"
                   className="object-contain"
-                  unoptimized
                   priority
+                  fallbackText="Image unavailable"
                 />
               </div>
             )}

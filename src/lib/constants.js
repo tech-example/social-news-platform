@@ -55,8 +55,10 @@ export const LIMITS = {
   PROFILE_USERNAME_MIN: 3,
   PROFILE_USERNAME_MAX: 30,
   PROFILE_BIO_MAX: 300,
-  REPORT_DETAILS_MAX: 1000,
-  MAX_UPLOAD_IMAGE_BYTES: 5 * 1024 * 1024, // 5 MB
+  MAX_UPLOAD_IMAGE_BYTES: 5 * 1024 * 1024, // 5 MB for static images
+  MAX_UPLOAD_GIF_BYTES: 10 * 1024 * 1024, // 10 MB headroom for animated GIF
+  ALLOWED_IMAGE_TYPES: ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"],
+  ALLOWED_IMAGE_EXTENSIONS: [".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif"],
 };
 
 export const PAGINATION = {

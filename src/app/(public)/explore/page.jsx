@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { PostImage } from "@/components/ui/post-image";
 import { getExplorePosts } from "@/server/dal/posts";
 import { getSession } from "@/server/auth";
 import { ProfileGridSkeleton } from "@/components/ui/skeletons";
@@ -46,13 +47,15 @@ async function ExploreGrid({ viewerId, isStaff = false, viewerHideFlagged = true
                   href={`/p/${post.id}`}
                   className="relative block w-full h-full focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
                 >
-                  <Image
+                  <PostImage
                     src={post.imageUrl}
+                    thumbnailSrc={post.thumbnailUrl}
                     alt={post.title || "Post thumbnail"}
                     fill
                     sizes="(min-width: 768px) 300px, 33vw"
                     className="object-cover transition-transform duration-200 group-hover:scale-105"
-                    unoptimized
+                    useThumbnail
+                    fallbackText="Image unavailable"
                   />
 
                   {/* Hover overlay */}

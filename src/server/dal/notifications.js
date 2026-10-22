@@ -46,8 +46,16 @@ export async function getNotifications(userId, limit = 30, cursor = null) {
     isRead: !!n.read_at,
     readAt: n.read_at,
     createdAt: n.created_at,
-    actor: n.actor,
-    post: n.post,
+    post: n.post
+      ? {
+          id: n.post.id,
+          title: n.post.title,
+          imageUrl: n.post.image_url,
+          thumbnailUrl: n.post.image_url?.includes("-full.webp")
+            ? n.post.image_url.replace("-full.webp", "-thumb.webp")
+            : n.post.image_url,
+        }
+      : null,
     commentId: n.comment_id,
     reportId: n.report_id,
   }));

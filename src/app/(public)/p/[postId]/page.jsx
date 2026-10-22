@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { PostImage } from "@/components/ui/post-image";
 import { getPostById, getCommentsForPost } from "@/server/dal/posts";
 import { getSession } from "@/server/auth";
 import { Avatar } from "@/components/ui/avatar";
@@ -112,14 +113,15 @@ export default async function PostDetailPage({ params }) {
                 className="w-full flex items-center justify-center"
               >
                 <div className="relative w-full aspect-4/5 max-h-[650px]">
-                  <Image
+                  <PostImage
                     src={post.imageUrl}
+                    thumbnailSrc={post.thumbnailUrl}
                     alt={post.title || "Post image"}
                     fill
                     sizes="(min-width: 768px) 550px, 100vw"
                     className="object-contain"
-                    unoptimized
                     priority
+                    fallbackText="Image unavailable"
                   />
                 </div>
               </FlaggedContent>

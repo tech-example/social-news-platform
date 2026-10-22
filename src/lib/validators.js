@@ -28,6 +28,23 @@ export const postSchema = z.object({
     .string()
     .trim()
     .url("Must be a valid URL")
+    .refine(
+      (url) => {
+        if (!url) return true;
+        try {
+          const u = new URL(url);
+          return (
+            u.hostname.endsWith(".supabase.co") &&
+            u.pathname.startsWith("/storage/v1/object/public/media/")
+          );
+        } catch {
+          return false;
+        }
+      },
+      {
+        message: "External image URLs are not supported. Upload an image file directly.",
+      }
+    )
     .optional()
     .nullable()
     .or(z.literal("")),

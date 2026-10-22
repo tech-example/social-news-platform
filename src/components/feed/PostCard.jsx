@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
+import { PostImage } from "@/components/ui/post-image";
 import { InteractiveActions } from "@/components/feed/InteractiveActions";
 import { InlineCommentInput } from "@/components/feed/InlineCommentInput";
 import { formatRelativeTime } from "@/lib/format";
@@ -293,13 +294,14 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
             scroll={false}
             className="relative block w-full aspect-4/5 bg-[var(--surface)] max-h-[580px] overflow-hidden cursor-pointer"
           >
-            <Image
+            <PostImage
               src={currentPost.imageUrl}
+              thumbnailSrc={currentPost.thumbnailUrl}
               alt={currentPost.title || "Post image"}
               fill
               sizes="(min-width: 768px) 470px, 100vw"
               className="object-cover"
-              unoptimized
+              fallbackText="Image unavailable"
             />
           </Link>
         ) : null}

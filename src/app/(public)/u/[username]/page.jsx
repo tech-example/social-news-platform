@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { PostImage } from "@/components/ui/post-image";
 import { getProfileByUsername } from "@/server/dal/profiles";
 import { getUserPosts } from "@/server/dal/posts";
 import { getSession } from "@/server/auth";
@@ -66,13 +67,15 @@ async function UserPostsStream({ userId, tab, isViewer, viewerId, isStaff = fals
                     href={`/p/${post.id}`}
                     className="relative block w-full h-full focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)]"
                   >
-                    <Image
+                    <PostImage
                       src={post.imageUrl}
+                      thumbnailSrc={post.thumbnailUrl}
                       alt={post.title || "Post thumbnail"}
                       fill
                       sizes="(min-width: 768px) 300px, 33vw"
                       className="object-cover transition-transform duration-200 group-hover:scale-105"
-                      unoptimized
+                      useThumbnail
+                      fallbackText="Image unavailable"
                     />
 
                     {/* Hover overlay with Like/Comment counters */}

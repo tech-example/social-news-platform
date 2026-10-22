@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { PostImage } from "@/components/ui/post-image";
 import useSWR from "swr";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -253,12 +254,14 @@ export function NotificationsClient({ initialNotifications = [], userId }) {
               <div className="flex items-center gap-2 shrink-0">
                 {n.post?.imageUrl && (
                   <Link href={`/p/${n.post.id}`} className="relative w-10 h-10 rounded overflow-hidden border border-[var(--line)]">
-                    <Image
+                    <PostImage
                       src={n.post.imageUrl}
+                      thumbnailSrc={n.post.thumbnailUrl}
                       alt="Post thumbnail"
                       fill
                       className="object-cover"
-                      unoptimized
+                      useThumbnail
+                      fallbackText=""
                     />
                   </Link>
                 )}
