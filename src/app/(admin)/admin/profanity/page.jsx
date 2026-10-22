@@ -1,25 +1,22 @@
 import { requireRole } from "@/server/auth";
-import { getFlaggedContentAction, getProfanitySuggestionsAction } from "@/server/actions/profanity";
+import { getFlaggedContentAction } from "@/server/actions/profanity";
 import { ProfanityAdminClient } from "./ProfanityAdminClient";
 import { getServerAdminT } from "@/lib/i18n/server";
 import { AdminLanguageSwitcher } from "@/components/dashboard/AdminLanguageSwitcher";
 
 export const metadata = {
   title: "Profanity Filter Management - Admin",
-  description: "Review flagged content, review moderator suggestions, and re-scan content",
+  description: "Review flagged content and re-scan content",
 };
 
 export default async function ProfanityAdminPage() {
   await requireRole("admin");
   const { t } = await getServerAdminT();
 
-  const [flaggedRes, suggestionsRes] = await Promise.all([
-    getFlaggedContentAction({
-      type: "all",
-      limit: 20,
-    }),
-    getProfanitySuggestionsAction(),
-  ]);
+  const flaggedRes = await getFlaggedContentAction({
+    type: "all",
+    limit: 20,
+  });
 
   return (
     <div className="max-w-[1280px] mx-auto px-4 py-6 space-y-6">
@@ -39,7 +36,6 @@ export default async function ProfanityAdminPage() {
 
       <ProfanityAdminClient
         initialFlaggedRes={flaggedRes?.ok ? flaggedRes : { items: [], nextCursor: null }}
-        initialSuggestions={suggestionsRes?.suggestions || []}
       />
     </div>
   );

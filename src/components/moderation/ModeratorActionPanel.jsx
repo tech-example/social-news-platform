@@ -3,10 +3,8 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { transitionReportAction } from "@/server/actions/reports";
 import { hidePostAction, restorePostAction, hideCommentAction, restoreCommentAction } from "@/server/actions/moderation";
-import { suggestProfanityTermAction } from "@/server/actions/profanity";
 import { useToast } from "@/components/ui/toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ShieldCheck, EyeOff, Eye, ArrowUpRight, CheckCircle2, XCircle, AlertCircle, ShieldAlert } from "lucide-react";
+import { ShieldCheck, EyeOff, Eye, ArrowUpRight, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 
 export function ModeratorActionPanel({ report: initialReport, currentRole = "moderator", onStatusChange }) {
@@ -16,12 +14,6 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
   const [actionTaken, setActionTaken] = useState("content_hidden");
   const [isPending, startTransition] = useTransition();
   const [report, setReport] = useState(initialReport);
-
-  // Suggest Profanity Term modal state
-  const [isSuggestOpen, setIsSuggestOpen] = useState(false);
-  const [suggestTerm, setSuggestTerm] = useState("");
-  const [suggestLang, setSuggestLang] = useState("th");
-  const [suggestSev, setSuggestSev] = useState("moderate");
 
   const isAdmin = currentRole === "admin";
 
@@ -61,29 +53,7 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
     });
   };
 
-  const handleSuggestTerm = () => {
-    if (!suggestTerm.trim()) {
-      addToast(t("profanity.toast_term_required", "Term cannot be empty"), "error");
-      return;
-    }
 
-    startTransition(async () => {
-      const res = await suggestProfanityTermAction({
-        term: suggestTerm,
-        language: suggestLang,
-        severity: suggestSev,
-        sourceReportId: report.id,
-      });
-
-      if (res.ok) {
-        addToast(t("profanity.toast_suggestion_submitted", "Recommendation submitted successfully."));
-        setIsSuggestOpen(false);
-        setSuggestTerm("");
-      } else {
-        addToast(res.error || "Failed to submit recommendation.", "error");
-      }
-    });
-  };
 
   const isResolved = report.status.startsWith("resolved");
 
@@ -134,17 +104,6 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
             {t("moderation.btn_restore_content", "Restore Target Content")}
           </Button>
 
-          {/* Recommend word to filter */}
-          <Button
-            variant="secondary"
-            type="button"
-            onClick={() => setIsSuggestOpen(true)}
-            disabled={isPending}
-            className="text-xs"
-          >
-            <ShieldAlert size={14} strokeWidth={1.75} aria-hidden="true" className="mr-1.5 text-[var(--accent)]" />
-            {t("moderation.btn_recommend_term", "Recommend Filter Term")}
-          </Button>
         </div>
       )}
 
@@ -215,84 +174,6 @@ export function ModeratorActionPanel({ report: initialReport, currentRole = "mod
         </div>
       )}
 
-      {/* DIALOG: Recommend Profanity Term */}
-      <Dialog open={isSuggestOpen} onOpenChange={setIsSuggestOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("profanity.modal_suggest_title", "Suggest Profanity Term")}</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-3 py-2 text-xs">
-            <p className="text-[var(--ink-muted)]">
-              {t("profanity.modal_suggest_desc", "Submit a candidate offensive term for admin review. Once approved, it will be added to the active filter dictionary.")}
-            </p>
-
-            <div>
-              <label className="block font-semibold text-[var(--ink)] mb-1">
-                {t("profanity.suggestions_col_term", "Word / Phrase")}
-              </label>
-              <input
-                type="text"
-                value={suggestTerm}
-                onChange={(e) => setSuggestTerm(e.target.value)}
-                placeholder={t("profanity.modal_suggest_placeholder", "Enter term to suggest...")}
-                className="w-full px-3 py-2 text-xs bg-[var(--surface)] border border-[var(--line)] rounded-lg text-[var(--ink)] focus:outline-2 focus:outline-[var(--accent-bright)]"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block font-semibold text-[var(--ink)] mb-1">
-                  {t("profanity.suggestions_col_lang", "Language")}
-                </label>
-                <select
-                  value={suggestLang}
-                  onChange={(e) => setSuggestLang(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-[var(--surface)] border border-[var(--line)] rounded-lg text-[var(--ink)]"
-                >
-                  <option value="th">{t("profanity.filter_th", "Thai")}</option>
-                  <option value="en">{t("profanity.filter_en", "English")}</option>
-                  <option value="th_romanized">{t("profanity.filter_th_romanized", "Thai Romanized")}</option>
-                  <option value="other">{t("profanity.filter_other", "Other")}</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-[var(--ink)] mb-1">
-                  {t("profanity.suggestions_col_severity", "Severity")}
-                </label>
-                <select
-                  value={suggestSev}
-                  onChange={(e) => setSuggestSev(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-[var(--surface)] border border-[var(--line)] rounded-lg text-[var(--ink)]"
-                >
-                  <option value="moderate">{t("profanity.filter_moderate", "Moderate")}</option>
-                  <option value="severe">{t("profanity.filter_severe", "Severe")}</option>
-                  <option value="mild">{t("profanity.filter_mild", "Mild")}</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setIsSuggestOpen(false)}
-            >
-              {t("common.cancel", "Cancel")}
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              disabled={isPending}
-              onClick={handleSuggestTerm}
-            >
-              {t("common.submit", "Submit")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
