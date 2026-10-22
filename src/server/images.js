@@ -148,28 +148,40 @@ export async function processAndUploadPostImage(fileInput, userId) {
 
   try {
     if (isAnimated) {
-      // Animated WebP: preserve multi-frame animation, resize to max 2048px and 640px
+      // Animated WebP:
+      // GIFs use 8-bit indexed palettes and dithering patterns that degrade severely ("แตก")
+      // under lossy DCT compression (e.g. 300KB -> 63KB). Using lossless WebP (or high-fidelity
+      // near-lossless for very large files) preserves 100% pixel sharpness, clean transparency,
+      // and crisp edges with zero artifacting, while still optimizing file size.
+      const isVeryLargeGif = buffer.length > 4 * 1024 * 1024;
+      const fullOptions = isVeryLargeGif
+        ? { nearLossless: true, quality: 92, effort: 4, loop: 0 }
+        : { lossless: true, effort: 4, loop: 0 };
+      const thumbOptions = isVeryLargeGif
+        ? { nearLossless: true, quality: 88, effort: 4, loop: 0 }
+        : { lossless: true, effort: 4, loop: 0 };
+
       fullBuffer = await sharp(buffer, { animated: true })
         .resize({ width: 2048, height: 2048, fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 80, effort: 4, loop: 0 })
+        .webp(fullOptions)
         .toBuffer();
 
       thumbBuffer = await sharp(buffer, { animated: true })
         .resize({ width: 640, height: 640, fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 75, effort: 4, loop: 0 })
+        .webp(thumbOptions)
         .toBuffer();
     } else {
       // Static image: auto-rotate per EXIF orientation, strip metadata, resize to max 2048px and 640px
       fullBuffer = await sharp(buffer)
         .rotate()
         .resize({ width: 2048, height: 2048, fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 82, effort: 4 })
+        .webp({ quality: 85, effort: 4, smartSubsample: true })
         .toBuffer();
 
       thumbBuffer = await sharp(buffer)
         .rotate()
         .resize({ width: 640, height: 640, fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 80, effort: 4 })
+        .webp({ quality: 80, effort: 4, smartSubsample: true })
         .toBuffer();
     }
   } catch (compErr) {
