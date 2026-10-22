@@ -15,7 +15,6 @@ import {
   getModeratorWorkload,
   getSearchAnalytics,
   getFollowerDistribution,
-  getPostingHeatmap,
   getRolesDistribution,
   getRecentAuditLogs,
   getRecentSignups,
@@ -30,9 +29,7 @@ import {
   HorizontalBarChart,
   FollowerDistributionChart,
 } from "@/components/dashboard/Charts";
-import { PostingHeatmap } from "@/components/dashboard/PostingHeatmap";
 import { BarList } from "@/components/dashboard/BarList";
-import { BenefitsPanel } from "@/components/dashboard/BenefitsPanel";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import {
@@ -709,14 +706,6 @@ async function AdminGovernanceSecuritySection() {
 }
 
 // ==========================================
-// IMPACT PANEL WIDGET (B1-B6 + Heatmap)
-// ==========================================
-async function AdminImpactSection({ range, from, to }) {
-  const heatmapData = await getPostingHeatmap(range, from, to);
-  return <BenefitsPanel heatmapData={heatmapData} />;
-}
-
-// ==========================================
 // MAIN ADMIN DASHBOARD PAGE
 // ==========================================
 export default async function AdminDashboardPage({ searchParams }) {
@@ -754,11 +743,6 @@ export default async function AdminDashboardPage({ searchParams }) {
 
       {/* Global Controls */}
       <DashboardControls isAdmin={true} showBucket={true} showCompare={true} />
-
-      {/* Section: Expected Benefits (B1–B6) & Impact Mapping */}
-      <Suspense key={`impact-${range}-${from}-${to}`} fallback={<TableSkeleton rows={3} cols={3} standalone={false} />}>
-        <AdminImpactSection range={range} from={from} to={to} />
-      </Suspense>
 
       {/* ROW 1: KPI Stat Cards */}
       <div className="space-y-2">
