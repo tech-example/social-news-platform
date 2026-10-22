@@ -315,20 +315,28 @@ export async function suggestProfanityTermAction({ term, language = "th", severi
   }
 
   const supabase = getAdminClient();
-  const { error } = await supabase.from("profanity_term_suggestions").insert({
-    term: cleanTerm,
-    language,
-    severity,
-    source_report_id: sourceReportId,
-    suggested_by: session.user.id,
-    status: "pending",
-  });
+  const { data, error } = await supabase
+    .from("profanity_term_suggestions")
+    .insert({
+      term: cleanTerm,
+      language,
+      severity,
+      source_report_id: sourceReportId,
+      suggested_by: session.user.id,
+      status: "pending",
+    })
+    .select(`
+      id, term, language, severity, source_report_id, status, created_at,
+      suggested_by:profiles!profanity_term_suggestions_suggested_by_fkey(username, display_name)
+    `)
+    .single();
 
   if (error) {
     return { ok: false, error: error.message || "Failed to submit suggestion." };
   }
 
-  return { ok: true };
+  revalidatePath("/admin/profanity");
+  return { ok: true, suggestion: data };
 }
 
 /**
@@ -350,19 +358,30 @@ export async function approveProfanitySuggestionAction(suggestionId, { language,
 
   const finalLanguage = language || suggestion.language || "th";
   const finalSeverity = severity || suggestion.severity || "moderate";
+  const cleanTerm = (suggestion.term || "").trim().toLowerCase();
 
-  // Add to profanity_terms
-  const { error: insertErr } = await supabase.from("profanity_terms").upsert({
-    term: suggestion.term,
-    language: finalLanguage,
-    severity: finalSeverity,
-    kind,
-    is_active: true,
-    created_by: session.user.id,
-  }, { onConflict: "lower(term), kind, language" });
+  // Check if term already exists in profanity_terms
+  const { data: existing } = await supabase
+    .from("profanity_terms")
+    .select("id")
+    .ilike("term", cleanTerm)
+    .eq("kind", kind)
+    .eq("language", finalLanguage)
+    .maybeSingle();
 
-  if (insertErr) {
-    return { ok: false, error: insertErr.message || "Failed to approve suggestion." };
+  if (!existing) {
+    const { error: insertErr } = await supabase.from("profanity_terms").insert({
+      term: cleanTerm,
+      language: finalLanguage,
+      severity: finalSeverity,
+      kind,
+      is_active: true,
+      created_by: session.user.id,
+    });
+
+    if (insertErr) {
+      return { ok: false, error: insertErr.message || "Failed to approve suggestion." };
+    }
   }
 
   // Update suggestion status
@@ -378,7 +397,7 @@ export async function approveProfanitySuggestionAction(suggestionId, { language,
     action: "approve_profanity_suggestion",
     entity: "profanity_term_suggestion",
     entity_id: suggestionId,
-    metadata: { term: suggestion.term, language: finalLanguage, severity: finalSeverity },
+    metadata: { term: cleanTerm, language: finalLanguage, severity: finalSeverity },
   });
 
   revalidatePath("/admin/profanity");

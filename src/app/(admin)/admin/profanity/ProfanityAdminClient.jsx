@@ -13,16 +13,19 @@ import {
   ExternalLink,
   AlertCircle,
   Loader2,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 import { FlaggedContent } from "@/components/feed/FlaggedContent";
 import {
   approveProfanitySuggestionAction,
   rejectProfanitySuggestionAction,
+  suggestProfanityTermAction,
   rescanContentBatchAction,
   getFlaggedContentAction,
 } from "@/server/actions/profanity";
@@ -39,6 +42,12 @@ export function ProfanityAdminClient({
   // Active tab: "flagged" | "scanner" | "suggestions"
   const [activeTab, setActiveTab] = useState("flagged");
   const [suggestions, setSuggestions] = useState(initialSuggestions);
+
+  // Suggest Term modal state
+  const [isSuggestOpen, setIsSuggestOpen] = useState(false);
+  const [suggestTerm, setSuggestTerm] = useState("");
+  const [suggestLang, setSuggestLang] = useState("th");
+  const [suggestSev, setSuggestSev] = useState("moderate");
 
   // Scanner state
   const [scannerTarget, setScannerTarget] = useState("posts");
@@ -107,6 +116,32 @@ export function ProfanityAdminClient({
     if (flaggedCursor && !isLoadingFlagged) {
       loadFlaggedContent({ reset: false, cursor: flaggedCursor });
     }
+  };
+
+  // Submit new suggestion / recommendation
+  const handleSuggestTerm = () => {
+    if (!suggestTerm.trim()) {
+      addToast(t("profanity.toast_term_required", "Term cannot be empty"), "error");
+      return;
+    }
+    startTransition(async () => {
+      const res = await suggestProfanityTermAction({
+        term: suggestTerm,
+        language: suggestLang,
+        severity: suggestSev,
+      });
+      if (res.ok) {
+        addToast(t("profanity.toast_suggestion_submitted", "Recommendation submitted successfully."));
+        if (res.suggestion) {
+          setSuggestions((prev) => [res.suggestion, ...prev]);
+        }
+        setIsSuggestOpen(false);
+        setSuggestTerm("");
+        router.refresh();
+      } else {
+        addToast(res.error || t("profanity.toast_error_suggest", "Failed to submit recommendation."), "error");
+      }
+    });
   };
 
   // Approve / Reject Suggestion
@@ -560,39 +595,52 @@ export function ProfanityAdminClient({
         </div>
       )}
 
-      {/* TAB 3: Moderator Suggestions */}
+      {/* TAB 3: Moderator Recommendations */}
       {activeTab === "suggestions" && (
         <div className="space-y-4">
-          <div className="p-4 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-xs space-y-1">
-            <h2 className="text-sm font-bold text-[var(--ink)]">
-              {t("profanity.suggestions_title")}
-            </h2>
-            <p className="text-xs text-[var(--ink-muted)]">
-              {t("profanity.suggestions_desc")}
-            </p>
+          <div className="p-4 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold text-[var(--ink)]">
+                {t("profanity.suggestions_title")}
+              </h2>
+              <p className="text-xs text-[var(--ink-muted)]">
+                {t("profanity.suggestions_subtitle")}
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsSuggestOpen(true)}
+              className="h-8 text-xs flex items-center gap-1.5 shrink-0 self-start sm:self-auto"
+            >
+              <Plus size={13} strokeWidth={2} aria-hidden="true" />
+              <span>{t("profanity.btn_suggest_term")}</span>
+            </Button>
           </div>
 
           <div className="bg-[var(--bg)] border border-[var(--line)] rounded-xl overflow-hidden shadow-xs">
             {suggestions.length === 0 ? (
               <div className="p-12 text-center text-xs text-[var(--ink-muted)] space-y-2">
                 <div className="flex justify-center mb-1">
-                  <Clock size={32} className="text-[var(--ink-muted)] opacity-35" />
+                  <Clock size={32} className="text-[var(--ink-muted)] opacity-35" aria-hidden="true" />
                 </div>
                 <p className="font-semibold text-sm text-[var(--ink)]">
-                  {t("profanity.empty_suggestions")}
+                  {t("profanity.suggestions_empty")}
                 </p>
-                <p>{t("profanity.empty_suggestions_sub")}</p>
+                <p className="text-xs text-[var(--ink-muted)]">
+                  {t("profanity.suggestions_empty_sub")}
+                </p>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t("profanity.col_term")}</TableHead>
-                    <TableHead>{t("profanity.col_lang")}</TableHead>
-                    <TableHead>{t("profanity.col_sev")}</TableHead>
-                    <TableHead>{t("profanity.col_suggested_by")}</TableHead>
-                    <TableHead>{t("profanity.col_created")}</TableHead>
-                    <TableHead className="text-right">{t("profanity.col_actions")}</TableHead>
+                    <TableHead>{t("profanity.suggestions_col_term")}</TableHead>
+                    <TableHead>{t("profanity.suggestions_col_lang")}</TableHead>
+                    <TableHead>{t("profanity.suggestions_col_severity")}</TableHead>
+                    <TableHead>{t("profanity.suggestions_col_by")}</TableHead>
+                    <TableHead>{t("profanity.suggestions_col_date")}</TableHead>
+                    <TableHead className="text-right">{t("profanity.suggestions_col_actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -643,6 +691,85 @@ export function ProfanityAdminClient({
           </div>
         </div>
       )}
+
+      {/* DIALOG: Suggest Profanity Term */}
+      <Dialog open={isSuggestOpen} onOpenChange={setIsSuggestOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("profanity.modal_suggest_title")}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2 text-xs">
+            <p className="text-[var(--ink-muted)]">
+              {t("profanity.modal_suggest_desc")}
+            </p>
+
+            <div>
+              <label className="block font-semibold text-[var(--ink)] mb-1">
+                {t("profanity.suggestions_col_term")}
+              </label>
+              <input
+                type="text"
+                value={suggestTerm}
+                onChange={(e) => setSuggestTerm(e.target.value)}
+                placeholder={t("profanity.modal_suggest_placeholder")}
+                className="w-full px-3 py-2 text-xs bg-[var(--surface)] border border-[var(--line)] rounded-lg text-[var(--ink)] focus:outline-2 focus:outline-[var(--accent-bright)]"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-[var(--ink)] mb-1">
+                  {t("profanity.suggestions_col_lang")}
+                </label>
+                <select
+                  value={suggestLang}
+                  onChange={(e) => setSuggestLang(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-[var(--surface)] border border-[var(--line)] rounded-lg text-[var(--ink)]"
+                >
+                  <option value="th">{t("profanity.filter_th", "Thai")}</option>
+                  <option value="en">{t("profanity.filter_en", "English")}</option>
+                  <option value="th_romanized">{t("profanity.filter_th_romanized", "Thai Romanized")}</option>
+                  <option value="other">{t("profanity.filter_other", "Other")}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-[var(--ink)] mb-1">
+                  {t("profanity.suggestions_col_severity")}
+                </label>
+                <select
+                  value={suggestSev}
+                  onChange={(e) => setSuggestSev(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-[var(--surface)] border border-[var(--line)] rounded-lg text-[var(--ink)]"
+                >
+                  <option value="moderate">{t("profanity.filter_moderate", "Moderate")}</option>
+                  <option value="severe">{t("profanity.filter_severe", "Severe")}</option>
+                  <option value="mild">{t("profanity.filter_mild", "Mild")}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsSuggestOpen(false)}
+            >
+              {t("common.cancel", "Cancel")}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={isPending}
+              onClick={handleSuggestTerm}
+            >
+              {t("common.submit", "Submit")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
