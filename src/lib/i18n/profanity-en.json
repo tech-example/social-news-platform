@@ -1,11 +1,10 @@
 {
   "profanity": {
     "title": "Profanity & Offensive Language Filter",
-    "subtitle": "Manage dynamic blocked and allowed terms, review moderator suggestions, and re-scan existing content",
+    "subtitle": "Review and manage posts and comments flagged for offensive language",
 
     "tab_terms": "Terms & Rules ({count})",
     "tab_suggestions": "Pending Suggestions ({count})",
-    "tab_scanner": "Batch Content Scanner",
     "tab_flagged": "Flagged Content",
 
     "btn_add": "Add Term",
@@ -63,16 +62,6 @@
     "btn_approve": "Approve",
     "btn_reject": "Reject",
 
-    "scanner_title": "Re-Scan Historical Content",
-    "scanner_desc": "Re-evaluates published posts and comments against the current layered profanity detector and database terms. Updates is_flagged and flagged_reason in batches without modifying the underlying text or publishing state.",
-    "scanner_target": "Target Content",
-    "scanner_opt_posts": "All Posts",
-    "scanner_opt_comments": "All Comments",
-    "scanner_btn_start": "Start Batch Re-Scan",
-    "scanner_btn_scanning": "Scanning in progress...",
-    "scanner_processed": "Processed: {count} items",
-    "scanner_flagged": "Flagged for Language: {count}",
-    "scanner_complete": "Batch scanning finished successfully. All records are up to date.",
 
     "flagged_title": "Flagged Content Results",
     "flagged_subtitle": "Review posts and comments flagged for offensive language.",
@@ -127,16 +116,7 @@
     "toast_bulk_success": "Import complete. {imported} added, {skipped} duplicates skipped.",
     "toast_export_success": "Exported {count} terms to CSV.",
     "toast_suggestion_approved": "Suggestion approved and added to active terms.",
-    "toast_suggestion_rejected": "Suggestion rejected.",
-    "toast_rescan_start": "Beginning re-scan of {target}...",
-    "toast_rescan_complete": "Re-scan completed! {processed} checked, {flagged} flagged.",
-    "toast_error_update": "Update failed.",
-    "toast_error_add": "Failed to add term.",
-    "toast_error_delete": "Delete failed.",
-    "toast_error_bulk": "Bulk import failed.",
-    "toast_error_export": "Export failed.",
     "toast_error_approve": "Approval failed.",
-    "toast_error_reject": "Rejection failed.",
-    "toast_error_scanner": "Re-scan stopped due to error."
+    "toast_error_reject": "Rejection failed."
   }
 }

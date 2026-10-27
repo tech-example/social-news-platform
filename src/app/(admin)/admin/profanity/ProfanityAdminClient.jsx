@@ -1,10 +1,9 @@
 "use client";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Search,
-  RefreshCw,
   Filter,
   Flag,
   FileText,
@@ -20,7 +19,6 @@ import { useToast } from "@/components/ui/toast";
 import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 import { FlaggedContent } from "@/components/feed/FlaggedContent";
 import {
-  rescanContentBatchAction,
   getFlaggedContentAction,
 } from "@/server/actions/profanity";
 
@@ -29,16 +27,7 @@ export function ProfanityAdminClient({
 }) {
   const router = useRouter();
   const { addToast } = useToast();
-  const [isPending, startTransition] = useTransition();
-  const { t, formatRelative, formatNumber } = useAdminLocale();
-
-  // Active tab: "flagged" | "scanner"
-  const [activeTab, setActiveTab] = useState("flagged");
-
-  // Scanner state
-  const [scannerTarget, setScannerTarget] = useState("posts");
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanProgress, setScanProgress] = useState({ processed: 0, flagged: 0, cursor: null, isComplete: false });
+  const { t, formatRelative } = useAdminLocale();
 
   // Flagged Content state
   const [flaggedItems, setFlaggedItems] = useState(initialFlaggedRes?.items || []);
@@ -88,10 +77,10 @@ export function ProfanityAdminClient({
   };
 
   useEffect(() => {
-    if (activeTab === "flagged" && !flaggedLoadedOnce) {
+    if (!flaggedLoadedOnce) {
       loadFlaggedContent({ reset: true });
     }
-  }, [activeTab, flaggedLoadedOnce]);
+  }, [flaggedLoadedOnce]);
 
   const handleFlaggedFilterSubmit = (e) => {
     e?.preventDefault();
@@ -106,82 +95,8 @@ export function ProfanityAdminClient({
 
 
 
-  // Run Content Re-scanner
-  const handleStartScanner = async () => {
-    setIsScanning(true);
-    let currentCursor = null;
-    let totalProcessed = 0;
-    let totalFlagged = 0;
-
-    addToast(t("profanity.toast_rescan_start", { target: scannerTarget === "posts" ? t("profanity.scanner_opt_posts") : t("profanity.scanner_opt_comments") }));
-
-    while (true) {
-      const res = await rescanContentBatchAction({
-        targetType: scannerTarget,
-        cursor: currentCursor,
-        batchSize: 50,
-      });
-
-      if (!res.ok) {
-        addToast(res.error || t("profanity.toast_error_scanner"), "error");
-        break;
-      }
-
-      totalProcessed += res.processed;
-      totalFlagged += res.flagged;
-      currentCursor = res.nextCursor;
-
-      setScanProgress({
-        processed: totalProcessed,
-        flagged: totalFlagged,
-        cursor: currentCursor,
-        isComplete: res.isComplete,
-      });
-
-      if (res.isComplete || !res.nextCursor) {
-        addToast(t("profanity.toast_rescan_complete", { processed: formatNumber(totalProcessed), flagged: formatNumber(totalFlagged) }));
-        break;
-      }
-    }
-
-    setIsScanning(false);
-  };
-
   return (
-    <div className="space-y-6">
-      {/* Tab Navigation - Focused on Moderation & Content Safety */}
-      <div className="flex items-center gap-2 border-b border-[var(--line)]">
-        <button
-          type="button"
-          onClick={() => setActiveTab("flagged")}
-          className={`flex items-center gap-2 py-3 px-4 text-xs font-semibold uppercase tracking-wider transition-colors border-b-2 -mb-px ${
-            activeTab === "flagged"
-              ? "border-[var(--ink)] text-[var(--ink)]"
-              : "border-transparent text-[var(--ink-muted)] hover:text-[var(--ink)]"
-          }`}
-        >
-          <Flag size={14} strokeWidth={2} aria-hidden="true" />
-          <span>{t("profanity.tab_flagged")}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("scanner")}
-          className={`flex items-center gap-2 py-3 px-4 text-xs font-semibold uppercase tracking-wider transition-colors border-b-2 -mb-px ${
-            activeTab === "scanner"
-              ? "border-[var(--ink)] text-[var(--ink)]"
-              : "border-transparent text-[var(--ink-muted)] hover:text-[var(--ink)]"
-          }`}
-        >
-          <RefreshCw size={14} strokeWidth={2} aria-hidden="true" />
-          <span>{t("profanity.tab_scanner")}</span>
-        </button>
-
-      </div>
-
-      {/* TAB 1: Flagged Content (Default) */}
-      {activeTab === "flagged" && (
-        <div className="space-y-4">
+    <div className="space-y-4">
           {/* Header & Filter Controls */}
           <div className="p-4 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-xs space-y-3">
             <div className="flex items-center gap-2">
@@ -443,77 +358,6 @@ export function ProfanityAdminClient({
               </>
             )}
           </div>
-        </div>
-      )}
-
-      {/* TAB 2: Content Re-Scanner */}
-      {activeTab === "scanner" && (
-        <div className="space-y-4">
-          <div className="p-5 bg-[var(--bg)] border border-[var(--line)] rounded-xl shadow-xs space-y-3">
-            <div className="flex items-center gap-2">
-              <RefreshCw size={16} className="text-[var(--accent)]" />
-              <h2 className="text-sm font-bold text-[var(--ink)]">
-                {t("profanity.scanner_title")}
-              </h2>
-            </div>
-            <p className="text-xs text-[var(--ink-muted)] leading-relaxed">
-              {t("profanity.scanner_desc")}
-            </p>
-
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <div>
-                <label className="block text-[11px] font-semibold text-[var(--ink-muted)] mb-1">
-                  {t("profanity.scanner_target")}
-                </label>
-                <select
-                  value={scannerTarget}
-                  disabled={isScanning}
-                  onChange={(e) => setScannerTarget(e.target.value)}
-                  className="px-3 py-1.5 text-xs bg-[var(--surface)] border border-[var(--line)] rounded-lg text-[var(--ink)]"
-                >
-                  <option value="posts">{t("profanity.scanner_opt_posts")}</option>
-                  <option value="comments">{t("profanity.scanner_opt_comments")}</option>
-                </select>
-              </div>
-
-              <div className="pt-5">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={isScanning}
-                  onClick={handleStartScanner}
-                  className="h-8 text-xs flex items-center gap-1.5"
-                >
-                  <RefreshCw size={13} className={isScanning ? "animate-spin" : ""} />
-                  <span>{isScanning ? t("profanity.scanner_btn_scanning") : t("profanity.scanner_btn_start")}</span>
-                </Button>
-              </div>
-            </div>
-
-            {/* Progress Display */}
-            {scanProgress.processed > 0 && (
-              <div className="mt-4 p-4 rounded-lg bg-[var(--surface)] border border-[var(--line)] space-y-2">
-                <div className="flex items-center justify-between text-xs font-semibold text-[var(--ink)]">
-                  <span>{t("profanity.scanner_processed", { count: formatNumber(scanProgress.processed) })}</span>
-                  <span className="text-[var(--warning)]">{t("profanity.scanner_flagged", { count: formatNumber(scanProgress.flagged) })}</span>
-                </div>
-                <div className="w-full bg-[var(--line)] h-2 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full bg-[var(--accent)] transition-all duration-300 ${isScanning ? "animate-pulse" : ""}`}
-                    style={{ width: scanProgress.isComplete ? "100%" : "60%" }}
-                  />
-                </div>
-                {scanProgress.isComplete && (
-                  <p className="text-[11px] font-medium text-[var(--success)]">
-                    {t("profanity.scanner_complete")}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

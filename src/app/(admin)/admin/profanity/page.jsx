@@ -6,7 +6,7 @@ import { AdminLanguageSwitcher } from "@/components/dashboard/AdminLanguageSwitc
 
 export const metadata = {
   title: "Profanity Filter Management - Admin",
-  description: "Review flagged content and re-scan content",
+  description: "Review and manage flagged content",
 };
 
 export default async function ProfanityAdminPage() {
