@@ -46,14 +46,10 @@ export function BenefitsPanel({ heatmapData = [] }) {
       icon: Search,
       widgets: locale === "th" ? [
         "แฮชแท็กยอดนิยมพร้อมจำนวนการมีส่วนร่วม",
-        "คำค้นหายอดนิยมและปริมาณการค้นหา",
-        "อัตราคำค้นหาที่ไม่พบผลลัพธ์",
         "สัดส่วนร้อยละของโพสต์ที่จัดหมวดหมู่ด้วยแท็ก",
         "การเข้าชมหน้าแท็กโดยตรงและสัดส่วนการค้นพบ",
       ] : [
         "Top hashtags with engagement counts",
-        "Top search queries & volume",
-        "Zero-result search query rate",
         "% of posts categorized with tags",
         "Tag page direct visits and discovery ratio",
       ],

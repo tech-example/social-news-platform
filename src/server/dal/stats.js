@@ -750,59 +750,6 @@ export async function getModeratorWorkload(rangePreset = "30d", customFrom = nul
   return [];
 }
 
-export async function getSearchAnalytics(limit = 10, rangePreset = "30d", customFrom = null, customTo = null) {
-  await requireRole("admin");
-  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
-  const adminSupabase = getAdminClient();
-
-  const { data, error } = await adminSupabase.rpc("stats_search_terms", {
-    p_from: from,
-    p_to: to,
-    p_limit: limit,
-  });
-
-  if (!error && Array.isArray(data)) {
-    return data.map((d) => ({
-      query: d.term || d.query,
-      search_count: d.search_count || d.count || 0,
-      zero_result_count: d.zero_result_count || 0,
-      zero_result_rate: d.zero_result_rate || 0,
-    }));
-  }
-
-  // Fallback to activity_events search queries
-  try {
-    const { data: events } = await adminSupabase
-      .from("activity_events")
-      .select("query")
-      .eq("kind", "search")
-      .gte("created_at", from)
-      .lte("created_at", to);
-
-    if (events && events.length > 0) {
-      const counts = {};
-      for (const e of events) {
-        if (!e.query) continue;
-        const q = e.query.trim().toLowerCase();
-        counts[q] = (counts[q] || 0) + 1;
-      }
-      return Object.entries(counts)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, limit)
-        .map(([query, search_count]) => ({
-          query,
-          search_count,
-          zero_result_count: 0,
-          zero_result_rate: 0,
-        }));
-    }
-  } catch (err) {
-    console.error("Search analytics fallback error:", err);
-  }
-
-  return [];
-}
-
 export async function getFollowerDistribution() {
   await requireRole("admin");
   const adminSupabase = getAdminClient();

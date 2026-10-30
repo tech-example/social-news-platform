@@ -83,14 +83,6 @@
     "mod_workload_col_handled": "Reports Handled",
     "mod_workload_empty": "No moderation actions recorded in range.",
 
-    "search_queries_title": "Top Search Queries",
-    "search_queries_col_query": "Query",
-    "search_queries_col_count": "Searches",
-    "search_queries_col_results": "Zero-Result",
-    "search_queries_empty": "No search queries recorded yet.",
-    "search_zero_rate_title": "Zero-Result Query Rate",
-    "search_zero_rate_sub": "Queries returning zero results",
-
     "roles_dist_title": "User Roles Distribution",
     "roles_dist_tooltip": "Breakdown of accounts by access tier",
     "recent_audit_title": "Recent Privileged Audit Events",

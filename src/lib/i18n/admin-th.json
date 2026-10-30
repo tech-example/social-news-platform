@@ -83,14 +83,6 @@
     "mod_workload_col_handled": "รายงานที่จัดการแล้ว",
     "mod_workload_empty": "ไม่พบการดำเนินการของผู้ดูแลในช่วงเวลานี้",
 
-    "search_queries_title": "คำค้นหายอดนิยม",
-    "search_queries_col_query": "คำค้นหา",
-    "search_queries_col_count": "จำนวนครั้ง",
-    "search_queries_col_results": "ไม่พบผลลัพธ์",
-    "search_queries_empty": "ยังไม่มีประวัติการค้นหา",
-    "search_zero_rate_title": "อัตราการค้นหาที่ไม่พบผลลัพธ์",
-    "search_zero_rate_sub": "การค้นหาที่ไม่พบข้อมูลใดๆ",
-
     "roles_dist_title": "การกระจายตัวของบทบาทผู้ใช้งาน",
     "roles_dist_tooltip": "การแจกแจงบัญชีตามระดับสิทธิ์การเข้าถึง",
     "recent_audit_title": "เหตุการณ์ตรวจสอบสิทธิ์ล่าสุด",

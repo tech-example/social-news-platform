@@ -12,7 +12,6 @@ import {
   getReportsByStatus,
   getReportsByReason,
   getModeratorWorkload,
-  getSearchAnalytics,
   getFollowerDistribution,
   getRolesDistribution,
   getRecentAuditLogs,
@@ -50,7 +49,6 @@ import {
   CheckCircle2,
   TriangleAlert,
   ShieldAlert,
-  Search,
   Database,
   ScrollText,
   UserCheck,
@@ -448,60 +446,13 @@ async function AdminModerationSafetySection({ range, from, to }) {
 // ==========================================
 async function AdminSearchDiscoverySection({ range, bucket, from, to }) {
   const { t } = await getServerAdminT();
-  const [searchAnalytics, followsSeries, followerDist] = await Promise.all([
-    getSearchAnalytics(6, range, from, to),
+  const [followsSeries, followerDist] = await Promise.all([
     getTimeseries("follows", bucket, range, from, to),
     getFollowerDistribution(),
   ]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {/* Top Search Terms + Zero Result Rate */}
-      <div className="border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs space-y-3">
-        <div className="flex items-center gap-2">
-          <Search size={16} strokeWidth={1.75} aria-hidden="true" className="text-[var(--accent)]" />
-          <div>
-            <h3 className="text-sm font-bold text-[var(--ink)]">{t("admin.search_queries_title", "Top Search Queries")}</h3>
-            <p className="text-xs text-[var(--ink-muted)]">Identifies missing content and failed queries</p>
-          </div>
-        </div>
-
-        {searchAnalytics.length === 0 ? (
-          <p className="text-xs text-[var(--ink-muted)] py-8 text-center">
-            {t("admin.search_queries_empty", "No search queries recorded yet.")}
-          </p>
-        ) : (
-          <table className="w-full text-xs text-left">
-            <thead className="bg-[var(--surface)] border-b border-[var(--line)] text-[var(--ink-muted)]">
-              <tr>
-                <th className="py-2 px-2.5 font-semibold">{t("admin.search_queries_col_query", "Query")}</th>
-                <th className="py-2 px-2 font-semibold text-right">{t("admin.search_queries_col_count", "Searches")}</th>
-                <th className="py-2 px-2 font-semibold text-right">{t("admin.search_queries_col_results", "Zero-Res %")}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--line)]">
-              {searchAnalytics.map((s, idx) => (
-                <tr key={idx} className="hover:bg-[var(--surface)]">
-                  <td className="py-2 px-2.5 font-medium max-w-[120px] truncate text-[var(--ink)]">
-                    &quot;{s.query}&quot;
-                  </td>
-                  <td className="py-2 px-2 text-right tabular-nums">{s.search_count}</td>
-                  <td className="py-2 px-2 text-right tabular-nums">
-                    <span
-                      className={`font-semibold ${
-                        s.zero_result_rate > 50 ? "text-[var(--danger)]" : "text-[var(--ink-muted)]"
-                      }`}
-                    >
-                      {s.zero_result_rate}%
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Follows Created Over Time */}
       <TimeseriesChart
         data={followsSeries}
@@ -774,8 +725,7 @@ export default async function AdminDashboardPage({ searchParams }) {
         <Suspense
           key={`search-${range}-${bucket}-${from}-${to}`}
           fallback={
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <TableSkeleton rows={5} cols={3} standalone={false} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />
               <ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />
             </div>
