@@ -129,13 +129,13 @@ export function BenefitsPanel({ heatmapData = [] }) {
       icon: CheckCircle,
       widgets: locale === "th" ? [
         "การกระจายตัวของบทบาท (ผู้ใช้งาน, ผู้ดูแล, ผู้ดูแลระบบ)",
-        "บันทึกการบังคับใช้การระงับบัญชีผู้ใช้",
+        "บันทึกการจัดการสิทธิ์บัญชีผู้ใช้",
         "บันทึกประวัติการตรวจสอบการทำงานระบบระดับสูง",
         "การดำเนินการที่ต้องใช้สิทธิ์พิเศษต่อวัน",
         "การแยกความลับผ่าน BFF และการควบคุมสิทธิ์ผ่าน RLS",
       ] : [
         "Role distribution (user, moderator, admin)",
-        "Suspended user enforcement log",
+        "User privilege management log",
         "Audit trail of privileged system operations",
         "Privileged actions per day",
         "BFF secret isolation and RLS authorization",

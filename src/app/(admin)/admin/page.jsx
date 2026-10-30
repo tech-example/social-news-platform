@@ -51,7 +51,6 @@ import {
   CheckCircle2,
   TriangleAlert,
   ShieldAlert,
-  Ban,
   Search,
   Database,
   ScrollText,
@@ -80,7 +79,7 @@ async function AdminKPISection({ range, from, to }) {
   const engSparkline = engagementSeries.map((d) => Number(d.total || (d.likes + d.comments + d.shares)) || 0);
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-3">
       {/* 1. Total Users */}
       <StatCard
         title={t("admin.kpi_total_users", "Total Users")}
@@ -170,16 +169,6 @@ async function AdminKPISection({ range, from, to }) {
         subtitle={t("admin.kpi_escalated_reports_sub", "Awaiting admin")}
         icon={ShieldAlert}
         tooltip={t("admin.kpi_escalated_reports_tip", "High-severity reports elevated by moderators for administrator decision")}
-        locale={locale}
-      />
-
-      {/* 9. Suspended Users */}
-      <StatCard
-        title={t("admin.kpi_suspended_users", "Suspended")}
-        value={kpis.suspended_users || 0}
-        subtitle={t("admin.kpi_suspended_users_sub", "Accounts restricted")}
-        icon={Ban}
-        tooltip={t("admin.kpi_suspended_users_tip", "User accounts currently suspended by administrators")}
         locale={locale}
       />
     </div>
@@ -589,7 +578,6 @@ async function AdminGovernanceSecuritySection() {
     { name: t("users_admin.role_user", "User"), count: rolesDist.users || 0 },
     { name: t("users_admin.role_moderator", "Moderator"), count: rolesDist.moderators || 0 },
     { name: t("users_admin.role_admin", "Admin"), count: rolesDist.admins || 0 },
-    { name: t("users_admin.status_suspended", "Suspended"), count: rolesDist.suspended || 0 },
   ];
 
   return (
@@ -598,7 +586,7 @@ async function AdminGovernanceSecuritySection() {
       <DonutChart
         data={rolesChartData}
         title={t("admin.roles_dist_title", "User Roles Distribution")}
-        tooltip="Breakdown of accounts by access tier and suspension status"
+        tooltip={t("admin.roles_dist_tooltip", "Breakdown of accounts by access tier")}
       />
 
       {/* 2. Recent Audit Log */}
@@ -657,7 +645,6 @@ async function AdminGovernanceSecuritySection() {
                   <Badge variant={u.role === "admin" ? "danger" : u.role === "moderator" ? "warning" : "neutral"} size="sm">
                     {u.role}
                   </Badge>
-                  {u.is_suspended && <Badge variant="danger" size="sm">{t("users_admin.status_suspended", "Suspended")}</Badge>}
                 </div>
               </div>
             ))}
@@ -752,8 +739,8 @@ export default async function AdminDashboardPage({ searchParams }) {
         <Suspense
           key={`kpi-${range}-${from}-${to}`}
           fallback={
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-3">
-              {Array.from({ length: 9 }).map((_, i) => (
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-3">
+              {Array.from({ length: 8 }).map((_, i) => (
                 <StatCardSkeleton key={i} standalone={false} />
               ))}
             </div>

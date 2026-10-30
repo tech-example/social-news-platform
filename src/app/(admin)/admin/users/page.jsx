@@ -14,13 +14,11 @@ export default async function UserManagementPage({ searchParams }) {
   const resolvedParams = await searchParams;
   const query = resolvedParams?.q || "";
   const role = resolvedParams?.role || "all";
-  const status = resolvedParams?.status || "all";
   const offset = parseInt(resolvedParams?.offset || "0", 10);
 
   const { users, total } = await getUsersAdmin({
     query,
     role,
-    status,
     limit: 25,
     offset,
   });
@@ -33,7 +31,7 @@ export default async function UserManagementPage({ searchParams }) {
             {t("users_admin.title", "User Management")}
           </h1>
           <p className="text-xs text-[var(--ink-muted)]">
-            {t("users_admin.subtitle", "Manage member accounts, role privileges, and suspension controls")}
+            {t("users_admin.subtitle", "Manage member accounts and role privileges")}
           </p>
         </div>
         <div className="flex items-center">
@@ -47,7 +45,6 @@ export default async function UserManagementPage({ searchParams }) {
         currentAdminId={session.user.id}
         initialQuery={query}
         initialRole={role}
-        initialStatus={status}
         offset={offset}
         limit={25}
       />

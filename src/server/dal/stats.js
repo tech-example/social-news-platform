@@ -102,7 +102,6 @@ export async function getAdminKPIs(rangePreset = "30d", customFrom = null, custo
       prev_open_reports: ov.prev_open_reports || 0,
       escalated_reports: ov.escalated_reports || 0,
       prev_escalated_reports: ov.prev_escalated_reports || 0,
-      suspended_users: ov.suspended_users || 0,
     };
   }
 
@@ -127,7 +126,6 @@ export async function getAdminKPIs(rangePreset = "30d", customFrom = null, custo
       prevReportsOpen,
       reportsEsc,
       prevReportsEsc,
-      suspendedRes,
     ] = await Promise.all([
       adminSupabase.from("profiles").select("id", { count: "exact", head: true }),
       adminSupabase.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", from).lte("created_at", to),
@@ -147,7 +145,6 @@ export async function getAdminKPIs(rangePreset = "30d", customFrom = null, custo
       adminSupabase.from("reports").select("id", { count: "exact", head: true }).in("status", ["pending", "in_review"]).lte("created_at", prevTo),
       adminSupabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "escalated"),
       adminSupabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "escalated").lte("created_at", prevTo),
-      adminSupabase.from("profiles").select("id", { count: "exact", head: true }).eq("is_suspended", true),
     ]);
 
     const likesCount = likesRes.count || 0;
@@ -181,7 +178,6 @@ export async function getAdminKPIs(rangePreset = "30d", customFrom = null, custo
       prev_open_reports: prevReportsOpen.count || 0,
       escalated_reports: reportsEsc.count || 0,
       prev_escalated_reports: prevReportsEsc.count || 0,
-      suspended_users: suspendedRes.count || 0,
     };
   } catch (err) {
     console.error("Failed to fetch KPIs:", err);
@@ -211,7 +207,6 @@ export async function getAdminKPIs(rangePreset = "30d", customFrom = null, custo
     prev_open_reports: 0,
     escalated_reports: 0,
     prev_escalated_reports: 0,
-    suspended_users: 0,
   };
 }
 
@@ -416,7 +411,6 @@ export async function getTopUsers(limit = 10, rangePreset = "30d", customFrom = 
     const { data: users } = await adminSupabase
       .from("profiles")
       .select("id, username, display_name, avatar_url, posts_count, followers_count")
-      .eq("is_suspended", false)
       .order("followers_count", { ascending: false })
       .limit(limit);
 
@@ -668,8 +662,6 @@ export async function getModeratorWorkload(rangePreset = "30d", customFrom = nul
         "report_escalated",
         "post_removed",
         "post_restored",
-        "user_suspended",
-        "user_unsuspended",
       ])
       .gte("created_at", from)
       .lte("created_at", to);
@@ -761,8 +753,7 @@ export async function getFollowerDistribution() {
   try {
     const { data: profiles } = await adminSupabase
       .from("profiles")
-      .select("followers_count")
-      .eq("is_suspended", false);
+      .select("followers_count");
 
     if (profiles) {
       const buckets = { "0": 0, "1-9": 0, "10-99": 0, "100+": 0 };
@@ -854,17 +845,15 @@ export async function getRolesDistribution() {
   try {
     const { data: profiles } = await adminSupabase
       .from("profiles")
-      .select("role, is_suspended");
+      .select("role");
 
     if (profiles) {
       let users = 0;
       let moderators = 0;
       let admins = 0;
-      let suspended = 0;
 
       for (const p of profiles) {
-        if (p.is_suspended) suspended++;
-        else if (p.role === "admin") admins++;
+        if (p.role === "admin") admins++;
         else if (p.role === "moderator") moderators++;
         else users++;
       }
@@ -873,7 +862,6 @@ export async function getRolesDistribution() {
         users,
         moderators,
         admins,
-        suspended,
         total: profiles.length,
       };
     }
@@ -881,7 +869,7 @@ export async function getRolesDistribution() {
     console.error("Roles distribution fallback error:", err);
   }
 
-  return { users: 0, moderators: 0, admins: 0, suspended: 0, total: 0 };
+  return { users: 0, moderators: 0, admins: 0, total: 0 };
 }
 
 export async function getRecentAuditLogs(limit = 10) {
@@ -918,7 +906,7 @@ export async function getRecentSignups(limit = 10) {
   try {
     const { data, error } = await adminSupabase
       .from("profiles")
-      .select("id, username, display_name, avatar_url, role, is_suspended, created_at")
+      .select("id, username, display_name, avatar_url, role, created_at")
       .order("created_at", { ascending: false })
       .limit(limit);
 

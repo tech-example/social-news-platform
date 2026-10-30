@@ -327,9 +327,6 @@ export default async function ReportDetailPage({ params }) {
                   )}
                   <div className="flex items-center gap-3 mt-2 text-xs">
                     <span>{t("users_admin.col_role", "Role")}: <strong className="capitalize">{target.role}</strong></span>
-                    {target.is_suspended && (
-                      <span className="text-[var(--danger)] font-semibold">{t("users_admin.status_suspended", "Suspended")}</span>
-                    )}
                   </div>
                 </div>
                 <Link href={`/u/${target.username}`} target="_blank">

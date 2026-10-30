@@ -7,7 +7,6 @@ export async function getUsersAdmin({
   offset = 0,
   query = "",
   role = "all",
-  status = "all",
 } = {}) {
   await requireRole("admin");
   const adminSupabase = getAdminClient();
@@ -21,7 +20,6 @@ export async function getUsersAdmin({
       avatar_url,
       bio,
       role,
-      is_suspended,
       posts_count,
       followers_count,
       following_count,
@@ -36,12 +34,6 @@ export async function getUsersAdmin({
 
   if (role && role !== "all") {
     q = q.eq("role", role);
-  }
-
-  if (status === "suspended") {
-    q = q.eq("is_suspended", true);
-  } else if (status === "active") {
-    q = q.eq("is_suspended", false);
   }
 
   const { data, count, error } = await q;

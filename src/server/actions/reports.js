@@ -65,8 +65,7 @@ export async function createReportAction(input) {
 export async function transitionReportAction({ reportId, nextStatus, actionTaken, note }) {
   const requiresAdmin =
     nextStatus === "resolved_actioned" ||
-    actionTaken === "remove" ||
-    actionTaken === "suspend_user";
+    actionTaken === "remove";
 
   const session = await requireRole(requiresAdmin ? "admin" : "moderator");
   const adminSupabase = getAdminClient();

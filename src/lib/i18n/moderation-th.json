@@ -98,7 +98,6 @@
     "action_opt_content_hidden": "ซ่อนเนื้อหาจากฟีดสาธารณะ",
     "action_opt_content_removed": "ลบเนื้อหาถาวร",
     "action_opt_user_warned": "ส่งคำเตือนไปยังผู้เขียน",
-    "action_opt_user_suspended": "ระงับบัญชีผู้ใช้งาน",
     "action_opt_no_action": "ไม่พบการละเมิด / ยกเลิกรายงาน",
     "btn_start_review": "ทำเครื่องหมายว่ากำลังตรวจสอบ",
     "btn_resolve_action": "ดำเนินการและปิดรายงาน",

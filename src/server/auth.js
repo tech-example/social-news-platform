@@ -21,14 +21,14 @@ export const getSession = cache(async () => {
 
     let { data: profile, error: profileErr } = await supabase
       .from("profiles")
-      .select("id, username, display_name, avatar_url, role, is_suspended, hide_flagged_content")
+      .select("id, username, display_name, avatar_url, role, hide_flagged_content")
       .eq("id", user.id)
       .maybeSingle();
 
     if (profileErr && (profileErr.code === "42703" || profileErr.message?.includes("hide_flagged_content"))) {
       const fallback = await supabase
         .from("profiles")
-        .select("id, username, display_name, avatar_url, role, is_suspended")
+        .select("id, username, display_name, avatar_url, role")
         .eq("id", user.id)
         .maybeSingle();
       if (fallback.data) {
@@ -55,7 +55,7 @@ export const getSession = cache(async () => {
             role: "user",
             hide_flagged_content: true,
           })
-          .select("id, username, display_name, avatar_url, role, is_suspended, hide_flagged_content")
+          .select("id, username, display_name, avatar_url, role, hide_flagged_content")
           .maybeSingle();
         createdProfile = p1;
       } catch {
@@ -65,7 +65,7 @@ export const getSession = cache(async () => {
       if (!createdProfile) {
         const { data: p2 } = await adminSupabase
           .from("profiles")
-          .select("id, username, display_name, avatar_url, role, is_suspended")
+          .select("id, username, display_name, avatar_url, role")
           .eq("id", user.id)
           .maybeSingle();
         if (p2) {
@@ -83,8 +83,6 @@ export const getSession = cache(async () => {
     if (profile) {
       profile.hide_flagged_content = profile.hide_flagged_content !== false;
     }
-
-    if (profile.is_suspended) return null;
 
     return { user, profile };
   } catch (err) {

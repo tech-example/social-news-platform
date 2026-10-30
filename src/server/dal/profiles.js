@@ -14,7 +14,6 @@ export async function getProfileByUsername(username, viewerId = null) {
       avatar_url,
       bio,
       role,
-      is_suspended,
       posts_count,
       followers_count,
       following_count,
@@ -62,7 +61,6 @@ export async function getProfileById(userId) {
       avatar_url,
       bio,
       role,
-      is_suspended,
       posts_count,
       followers_count,
       following_count,
@@ -81,7 +79,6 @@ export async function getSuggestedProfiles(viewerId = null, limit = 5) {
   let query = supabase
     .from("profiles")
     .select("id, username, display_name, avatar_url, followers_count")
-    .eq("is_suspended", false)
     .order("followers_count", { ascending: false })
     .limit(limit);
 
@@ -102,8 +99,7 @@ export async function searchProfiles(query, limit = 20) {
 
   const { data: profiles, error } = await supabase
     .from("profiles")
-    .select("id, username, display_name, avatar_url, followers_count, is_suspended")
-    .eq("is_suspended", false)
+    .select("id, username, display_name, avatar_url, followers_count")
     .or(`username.ilike.%${clean}%,display_name.ilike.%${clean}%`)
     .order("followers_count", { ascending: false })
     .limit(limit);

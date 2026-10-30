@@ -98,7 +98,6 @@
     "action_opt_content_hidden": "Hide Content from Public Feed",
     "action_opt_content_removed": "Permanently Remove Content",
     "action_opt_user_warned": "Issue Warning to Author",
-    "action_opt_user_suspended": "Suspend User Account",
     "action_opt_no_action": "No Violation / Dismiss",
     "btn_start_review": "Mark In Review",
     "btn_resolve_action": "Resolve & Action",

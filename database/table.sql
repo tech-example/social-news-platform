@@ -8,8 +8,6 @@ CREATE TABLE public.profiles (
   bio text CHECK (char_length(bio) <= 300),
   avatar_url text,
   role USER-DEFINED NOT NULL DEFAULT 'user'::user_role,
-  is_suspended boolean NOT NULL DEFAULT false,
-  suspended_reason text,
   followers_count integer NOT NULL DEFAULT 0,
   following_count integer NOT NULL DEFAULT 0,
   posts_count integer NOT NULL DEFAULT 0,

@@ -214,7 +214,7 @@ export async function getReportById(reportId) {
   } else if (report.target_type === "user" && targetId) {
     const { data: userProfile } = await adminSupabase
       .from("profiles")
-      .select("id, username, display_name, avatar_url, bio, role, is_suspended")
+      .select("id, username, display_name, avatar_url, bio, role")
       .eq("id", targetId)
       .maybeSingle();
     targetDetails = userProfile;

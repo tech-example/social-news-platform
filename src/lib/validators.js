@@ -160,9 +160,3 @@ export const roleUpdateSchema = z.object({
   targetUserId: z.string().uuid("Invalid user ID"),
   role: z.enum(USER_ROLES),
 });
-
-export const suspendUserSchema = z.object({
-  targetUserId: z.string().uuid("Invalid user ID"),
-  isSuspended: z.boolean(),
-  reason: z.string().trim().max(500).optional().nullable(),
-});
