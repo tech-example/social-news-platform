@@ -87,13 +87,13 @@ export function BenefitsPanel({ heatmapData = [] }) {
       widgets: locale === "th" ? [
         "รายงานแยกตามสถานะ (รอดำเนินการ, ตรวจสอบ, ส่งต่อ, ดำเนินการแล้ว)",
         "การกระจายตัวของรายงานตามสาเหตุ",
-        "ระยะเวลาเฉลี่ยและ P90 ในการจัดการรายงาน",
+        "ปริมาณและประสิทธิภาพการจัดการรายงานของผู้ดูแล",
         "การกระจายภาระงานของผู้ดูแล",
         "จำนวนเนื้อหาที่ถูกซ่อนและอัตราการกู้คืน",
       ] : [
         "Reports by status (pending, review, escalated, resolved)",
         "Reports by reason distribution",
-        "Median and P90 resolution turnaround time",
+        "Moderator review throughput and workload",
         "Moderator workload distribution",
         "Recently hidden content count & recovery rate",
       ],

@@ -21,14 +21,14 @@ export const getSession = cache(async () => {
 
     let { data: profile, error: profileErr } = await supabase
       .from("profiles")
-      .select("id, username, display_name, avatar_url, role, hide_flagged_content")
+      .select("id, username, display_name, avatar_url, role, hide_flagged_content, last_seen_at")
       .eq("id", user.id)
       .maybeSingle();
 
     if (profileErr && (profileErr.code === "42703" || profileErr.message?.includes("hide_flagged_content"))) {
       const fallback = await supabase
         .from("profiles")
-        .select("id, username, display_name, avatar_url, role")
+        .select("id, username, display_name, avatar_url, role, last_seen_at")
         .eq("id", user.id)
         .maybeSingle();
       if (fallback.data) {
@@ -82,6 +82,20 @@ export const getSession = cache(async () => {
 
     if (profile) {
       profile.hide_flagged_content = profile.hide_flagged_content !== false;
+
+      // Throttled activity tracking (at most once every 5 minutes per user)
+      // Counts users of ALL roles (user, moderator, admin) without filtering
+      const lastSeenTime = profile.last_seen_at ? new Date(profile.last_seen_at).getTime() : 0;
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+      if (!profile.last_seen_at || lastSeenTime < fiveMinutesAgo) {
+        const nowIso = new Date().toISOString();
+        const adminSb = getAdminClient();
+        Promise.allSettled([
+          adminSb.from("profiles").update({ last_seen_at: nowIso }).eq("id", profile.id),
+          adminSb.from("activity_events").insert({ user_id: profile.id, kind: "sign_in", created_at: nowIso }),
+        ]).catch(() => {});
+        profile.last_seen_at = nowIso;
+      }
     }
 
     return { user, profile };
@@ -90,6 +104,24 @@ export const getSession = cache(async () => {
     return null;
   }
 });
+
+/**
+ * Record user activity event and touch last_seen_at.
+ * Throttled or direct write helper.
+ */
+export async function recordUserActivity(userId, kind = "sign_in") {
+  if (!userId) return;
+  try {
+    const adminSb = getAdminClient();
+    const nowIso = new Date().toISOString();
+    await Promise.allSettled([
+      adminSb.from("profiles").update({ last_seen_at: nowIso }).eq("id", userId),
+      adminSb.from("activity_events").insert({ user_id: userId, kind: "sign_in", created_at: nowIso }),
+    ]);
+  } catch (err) {
+    console.error("Error recording user activity:", err);
+  }
+}
 
 export async function requireRole(minRole = "user") {
   const session = await getSession();

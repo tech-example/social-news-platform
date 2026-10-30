@@ -52,10 +52,67 @@ export function getDateRanges(rangePreset = "30d", customFrom = null, customTo =
   };
 }
 
+/**
+ * Active User Definition:
+ * A user across ALL roles (user, moderator, admin) who had at least one activity
+ * (login/session, post, comment, like, follow, share) within the selected date range.
+ * Does NOT filter by role. Respects the range selector.
+ */
+export async function getActiveUsersMetrics(from, to, prevFrom = null, prevTo = null) {
+  const adminSupabase = getAdminClient();
+
+  const fetchActiveIds = async (rangeStart, rangeEnd) => {
+    if (!rangeStart || !rangeEnd) return new Set();
+    const [actRes, pRes, postsRes, comRes, likesRes, folRes, shaRes] = await Promise.all([
+      adminSupabase.from("activity_events").select("user_id").gte("created_at", rangeStart).lte("created_at", rangeEnd),
+      adminSupabase.from("profiles").select("id").gte("last_seen_at", rangeStart).lte("last_seen_at", rangeEnd),
+      adminSupabase.from("posts").select("author_id").gte("created_at", rangeStart).lte("created_at", rangeEnd),
+      adminSupabase.from("comments").select("author_id").gte("created_at", rangeStart).lte("created_at", rangeEnd),
+      adminSupabase.from("likes").select("user_id").gte("created_at", rangeStart).lte("created_at", rangeEnd),
+      adminSupabase.from("follows").select("follower_id").gte("created_at", rangeStart).lte("created_at", rangeEnd),
+      adminSupabase.from("shares").select("user_id").gte("created_at", rangeStart).lte("created_at", rangeEnd),
+    ]);
+
+    const activeIds = new Set();
+    actRes.data?.forEach((r) => r.user_id && activeIds.add(r.user_id));
+    pRes.data?.forEach((r) => r.id && activeIds.add(r.id));
+    postsRes.data?.forEach((r) => r.author_id && activeIds.add(r.author_id));
+    comRes.data?.forEach((r) => r.author_id && activeIds.add(r.author_id));
+    likesRes.data?.forEach((r) => r.user_id && activeIds.add(r.user_id));
+    folRes.data?.forEach((r) => r.follower_id && activeIds.add(r.follower_id));
+    shaRes.data?.forEach((r) => r.user_id && activeIds.add(r.user_id));
+    return activeIds;
+  };
+
+  const toDate = new Date(to);
+  const oneDayAgo = new Date(toDate.getTime() - 24 * 3600 * 1000).toISOString();
+  const sevenDaysAgo = new Date(toDate.getTime() - 7 * 24 * 3600 * 1000).toISOString();
+  const thirtyDaysAgo = new Date(toDate.getTime() - 30 * 24 * 3600 * 1000).toISOString();
+
+  const [currentRangeSet, prevRangeSet, dauSet, wauSet, mauSet] = await Promise.all([
+    fetchActiveIds(from, to),
+    prevFrom && prevTo ? fetchActiveIds(prevFrom, prevTo) : Promise.resolve(new Set()),
+    fetchActiveIds(oneDayAgo, to),
+    fetchActiveIds(sevenDaysAgo, to),
+    fetchActiveIds(thirtyDaysAgo, to),
+  ]);
+
+  return {
+    active_users: currentRangeSet.size,
+    prev_active_users: prevRangeSet.size,
+    active_users_dau: dauSet.size,
+    active_users_wau: wauSet.size,
+    active_users_mau: mauSet.size,
+  };
+}
+
 export async function getAdminKPIs(rangePreset = "30d", customFrom = null, customTo = null) {
   await requireRole("admin");
   const { from, to, prevFrom, prevTo } = getDateRanges(rangePreset, customFrom, customTo);
   const adminSupabase = getAdminClient();
+
+  // Active users metrics calculated across all activity types and all roles
+  const activeMetrics = await getActiveUsersMetrics(from, to, prevFrom, prevTo);
 
   // Try stats_kpis RPC first
   const { data: kpiData, error: kpiErr } = await adminSupabase.rpc("stats_kpis", {
@@ -67,7 +124,16 @@ export async function getAdminKPIs(rangePreset = "30d", customFrom = null, custo
 
   if (!kpiErr && kpiData) {
     const res = Array.isArray(kpiData) ? kpiData[0] : kpiData;
-    if (res) return res;
+    if (res) {
+      return {
+        ...res,
+        active_users: res.active_users ?? activeMetrics.active_users,
+        prev_active_users: res.prev_active_users ?? activeMetrics.prev_active_users,
+        active_users_dau: res.active_users_dau ?? activeMetrics.active_users_dau,
+        active_users_wau: res.active_users_wau ?? activeMetrics.active_users_wau,
+        active_users_mau: res.active_users_mau ?? activeMetrics.active_users_mau,
+      };
+    }
   }
 
   // Fallback to stats_overview RPC
@@ -95,9 +161,11 @@ export async function getAdminKPIs(rangePreset = "30d", customFrom = null, custo
       prev_shares: ov.prev_shares || 0,
       follows: ov.follows || 0,
       prev_follows: ov.prev_follows || 0,
-      active_users_dau: 0,
-      active_users_wau: 0,
-      active_users_mau: 0,
+      active_users: activeMetrics.active_users,
+      prev_active_users: activeMetrics.prev_active_users,
+      active_users_dau: activeMetrics.active_users_dau,
+      active_users_wau: activeMetrics.active_users_wau,
+      active_users_mau: activeMetrics.active_users_mau,
       open_reports: ov.open_reports || 0,
       prev_open_reports: ov.prev_open_reports || 0,
       escalated_reports: ov.escalated_reports || 0,
@@ -171,9 +239,11 @@ export async function getAdminKPIs(rangePreset = "30d", customFrom = null, custo
       prev_shares: prevSharesCount,
       follows: followsRes.count || 0,
       prev_follows: prevFollowsRes.count || 0,
-      active_users_dau: 0,
-      active_users_wau: 0,
-      active_users_mau: 0,
+      active_users: activeMetrics.active_users,
+      prev_active_users: activeMetrics.prev_active_users,
+      active_users_dau: activeMetrics.active_users_dau,
+      active_users_wau: activeMetrics.active_users_wau,
+      active_users_mau: activeMetrics.active_users_mau,
       open_reports: reportsOpen.count || 0,
       prev_open_reports: prevReportsOpen.count || 0,
       escalated_reports: reportsEsc.count || 0,
@@ -200,9 +270,11 @@ export async function getAdminKPIs(rangePreset = "30d", customFrom = null, custo
     prev_shares: 0,
     follows: 0,
     prev_follows: 0,
-    active_users_dau: 0,
-    active_users_wau: 0,
-    active_users_mau: 0,
+    active_users: activeMetrics?.active_users || 0,
+    prev_active_users: activeMetrics?.prev_active_users || 0,
+    active_users_dau: activeMetrics?.active_users_dau || 0,
+    active_users_wau: activeMetrics?.active_users_wau || 0,
+    active_users_mau: activeMetrics?.active_users_mau || 0,
     open_reports: 0,
     prev_open_reports: 0,
     escalated_reports: 0,
@@ -226,6 +298,46 @@ export async function getTimeseries(metric = "posts", bucket = "day", rangePrese
 
   // Fallback query for timeseries if RPC unavailable
   try {
+    if (metric === "active_users") {
+      const [act, posts, com, likes, fol, sha] = await Promise.all([
+        adminSupabase.from("activity_events").select("created_at").gte("created_at", from).lte("created_at", to),
+        adminSupabase.from("posts").select("created_at").gte("created_at", from).lte("created_at", to).neq("status", "removed"),
+        adminSupabase.from("comments").select("created_at").gte("created_at", from).lte("created_at", to).neq("status", "removed"),
+        adminSupabase.from("likes").select("created_at").gte("created_at", from).lte("created_at", to),
+        adminSupabase.from("follows").select("created_at").gte("created_at", from).lte("created_at", to),
+        adminSupabase.from("shares").select("created_at").gte("created_at", from).lte("created_at", to),
+      ]);
+      const allRows = [
+        ...(act.data || []),
+        ...(posts.data || []),
+        ...(com.data || []),
+        ...(likes.data || []),
+        ...(fol.data || []),
+        ...(sha.data || []),
+      ];
+      if (allRows.length > 0) {
+        const bucketCounts = {};
+        for (const r of allRows) {
+          const d = new Date(r.created_at);
+          let key;
+          if (bucket === "week") {
+            const startOfWeek = new Date(d);
+            startOfWeek.setDate(d.getDate() - d.getDay());
+            key = startOfWeek.toISOString().slice(0, 10);
+          } else if (bucket === "month") {
+            key = d.toISOString().slice(0, 7) + "-01";
+          } else {
+            key = d.toISOString().slice(0, 10);
+          }
+          bucketCounts[key] = (bucketCounts[key] || 0) + 1;
+        }
+        return Object.entries(bucketCounts)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([b, val]) => ({ bucket: b, value: val }));
+      }
+      return [];
+    }
+
     const tableMap = {
       posts: "posts",
       users: "profiles",
@@ -234,7 +346,6 @@ export async function getTimeseries(metric = "posts", bucket = "day", rangePrese
       shares: "shares",
       follows: "follows",
       reports: "reports",
-      active_users: "activity_events",
     };
     const tableName = tableMap[metric];
     if (tableName) {
@@ -588,56 +699,6 @@ export async function getReportsByReason(rangePreset = "30d", customFrom = null,
   return [];
 }
 
-export async function getModerationResolutionTime(rangePreset = "30d", customFrom = null, customTo = null) {
-  await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
-  const adminSupabase = getAdminClient();
-
-  const { data, error } = await adminSupabase.rpc("stats_report_resolution_time", {
-    p_from: from,
-    p_to: to,
-  });
-
-  if (!error && data) {
-    const res = Array.isArray(data) ? data[0] : data;
-    if (res) return res;
-  }
-
-  // Fallback calculation from reports
-  try {
-    const { data: reports } = await adminSupabase
-      .from("reports")
-      .select("created_at, updated_at")
-      .in("status", ["resolved_actioned", "resolved_dismissed"])
-      .gte("created_at", from)
-      .lte("created_at", to);
-
-    if (reports && reports.length > 0) {
-      const durations = reports
-        .map((r) => (new Date(r.updated_at).getTime() - new Date(r.created_at).getTime()) / (1000 * 3600))
-        .filter((d) => d >= 0)
-        .sort((a, b) => a - b);
-
-      if (durations.length > 0) {
-        const median = durations[Math.floor(durations.length / 2)];
-        const p90 = durations[Math.floor(durations.length * 0.9)] || durations[durations.length - 1];
-        return {
-          median_hours: Math.round(median * 10) / 10,
-          p90_hours: Math.round(p90 * 10) / 10,
-          resolved_count: durations.length,
-        };
-      }
-    }
-  } catch (err) {
-    console.error("Resolution time fallback error:", err);
-  }
-
-  return {
-    median_hours: 0,
-    p90_hours: 0,
-    resolved_count: 0,
-  };
-}
 
 export async function getModeratorWorkload(rangePreset = "30d", customFrom = null, customTo = null) {
   await requireRole("admin");

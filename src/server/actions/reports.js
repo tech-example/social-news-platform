@@ -94,14 +94,7 @@ export async function transitionReportAction({ reportId, nextStatus, actionTaken
     return { ok: false, error: error.message || "Failed to update report status." };
   }
 
-  // Audit log
-  await adminSupabase.from("audit_logs").insert({
-    actor_id: session.user.id,
-    action: `report_transition_to_${nextStatus}`,
-    entity: "report",
-    entity_id: reportId,
-    metadata: { nextStatus, actionTaken, note },
-  });
+  // Note: report_transition SQL function already logs to audit_logs atomically
 
   revalidatePath("/moderation");
   revalidatePath("/moderation/reports");

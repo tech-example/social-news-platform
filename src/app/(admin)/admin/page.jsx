@@ -11,7 +11,6 @@ import {
   getContentMix,
   getReportsByStatus,
   getReportsByReason,
-  getModerationResolutionTime,
   getModeratorWorkload,
   getSearchAnalytics,
   getFollowerDistribution,
@@ -140,13 +139,18 @@ async function AdminKPISection({ range, from, to }) {
         locale={locale}
       />
 
-      {/* 6. Active Users (DAU) */}
+      {/* 6. Active Users */}
+      {/* Active User Definition: Distinct users across all roles (user, moderator, admin) with at least one activity (login, post, comment, like, follow, share) within the selected range */}
       <StatCard
-        title={t("admin.kpi_dau", "Active (DAU)")}
-        value={kpis.active_users_dau || 0}
-        subtitle={`WAU ${kpis.active_users_wau || 0} · MAU ${kpis.active_users_mau || 0}`}
+        title={t("admin.kpi_active_users", "Active Users")}
+        value={kpis.active_users ?? 0}
+        previousValue={kpis.prev_active_users}
+        subtitle={`DAU ${kpis.active_users_dau ?? 0} · WAU ${kpis.active_users_wau ?? 0} · MAU ${kpis.active_users_mau ?? 0}`}
         icon={CheckCircle2}
-        tooltip={t("admin.kpi_dau_tip", "Daily Active Users (last 24h), plus WAU (7d) and MAU (30d) based on activity log")}
+        tooltip={t(
+          "admin.kpi_active_users_tip",
+          "Distinct users across all roles (user, moderator, admin) with at least one activity (login, post, comment, like, follow, share) within the selected range."
+        )}
         locale={locale}
       />
 
@@ -376,26 +380,24 @@ async function AdminContentPerformanceSection({ range, from, to }) {
 // ROW 4: MODERATION & SAFETY
 // ==========================================
 async function AdminModerationSafetySection({ range, from, to }) {
-  const { t, formatRelative } = await getServerAdminT();
-  const [reportsStatus, reportsReason, resolutionTime, moderatorWorkload, recentAudit] =
+  const { t } = await getServerAdminT();
+  const [reportsStatus, reportsReason, moderatorWorkload] =
     await Promise.all([
       getReportsByStatus(range, from, to),
       getReportsByReason(range, from, to),
-      getModerationResolutionTime(range, from, to),
       getModeratorWorkload(range, from, to),
-      getRecentAuditLogs(5),
     ]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {/* Reports by status donut */}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* 1. Reports by status donut */}
       <DonutChart
         data={reportsStatus}
         title={t("admin.chart_reports_status", "Reports by Status")}
         tooltip={t("admin.chart_reports_status", "Proportion of reports in pending, review, escalated, and resolved states")}
       />
 
-      {/* Reports by reason */}
+      {/* 2. Reports by reason */}
       <HorizontalBarChart
         data={reportsReason}
         title={t("admin.chart_reports_reason", "Reports by Alleged Reason")}
@@ -403,79 +405,36 @@ async function AdminModerationSafetySection({ range, from, to }) {
         tooltip={t("admin.chart_reports_reason", "Breakdown of user reports by category of violation")}
       />
 
-      {/* Resolution Turnaround & Workload */}
-      <div className="border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs flex flex-col justify-between space-y-3">
+      {/* 3. Moderator Workload */}
+      <div className="border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs flex flex-col justify-between space-y-3 md:col-span-2 lg:col-span-1">
         <div>
-          <h3 className="text-sm font-bold text-[var(--ink)]">{t("admin.mod_resolution_title", "Resolution Turnaround")}</h3>
-          <p className="text-xs text-[var(--ink-muted)]">Median and 90th percentile handling time</p>
+          <h3 className="text-sm font-bold text-[var(--ink)]">{t("admin.mod_workload_title", "Moderator Workload")}</h3>
+          <p className="text-xs text-[var(--ink-muted)]">{t("admin.mod_workload_sub", "Reports handled and resolved by moderation staff")}</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 py-2">
-          <div className="p-3 rounded-lg bg-[var(--surface)] border border-[var(--line)] text-center">
-            <span className="text-[11px] text-[var(--ink-muted)] block">{t("admin.mod_resolution_median", "Median SLA")}</span>
-            <span className="text-lg font-bold text-[var(--ink)] tabular-nums">
-              {resolutionTime.median_hours || 0}h
-            </span>
-          </div>
-          <div className="p-3 rounded-lg bg-[var(--surface)] border border-[var(--line)] text-center">
-            <span className="text-[11px] text-[var(--ink-muted)] block">{t("admin.mod_resolution_p90", "P90 SLA")}</span>
-            <span className="text-lg font-bold text-[var(--ink)] tabular-nums">
-              {resolutionTime.p90_hours || 0}h
-            </span>
-          </div>
-        </div>
-
-        <div>
-          <h4 className="text-xs font-bold text-[var(--ink)] mb-1.5">{t("admin.mod_workload_title", "Moderator Workload")}</h4>
+        <div className="flex-1 my-2">
           {moderatorWorkload.length === 0 ? (
-            <p className="text-[11px] text-[var(--ink-muted)]">{t("admin.mod_workload_empty", "No review activity recorded.")}</p>
+            <p className="text-xs text-[var(--ink-muted)] py-6 text-center">{t("admin.mod_workload_empty", "No review activity recorded.")}</p>
           ) : (
-            <div className="space-y-1.5 text-xs">
-              {moderatorWorkload.slice(0, 3).map((m) => (
-                <div key={m.moderator_id} className="flex justify-between py-1 border-b border-[var(--line)]/50">
-                  <span className="truncate max-w-[120px]">@{m.username}</span>
-                  <span className="font-semibold tabular-nums text-[var(--accent)]">
-                    {m.handled_count} {t("admin.mod_workload_col_handled", "handled")}
+            <div className="space-y-2 text-xs">
+              {moderatorWorkload.map((m) => (
+                <div key={m.moderator_id} className="flex justify-between items-center py-1.5 border-b border-[var(--line)]/50 last:border-none">
+                  <div className="truncate max-w-[160px]">
+                    <span className="font-semibold text-[var(--ink)] block truncate">@{m.username}</span>
+                    {m.display_name && <span className="text-[10px] text-[var(--ink-muted)] block truncate">{m.display_name}</span>}
+                  </div>
+                  <span className="font-semibold tabular-nums text-[var(--accent)] text-sm">
+                    {m.handled_count} <span className="text-xs font-normal text-[var(--ink-muted)]">{t("admin.mod_workload_col_handled", "handled")}</span>
                   </span>
                 </div>
               ))}
             </div>
           )}
         </div>
-      </div>
-
-      {/* Recent Moderation Actions */}
-      <div className="border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs space-y-3 flex flex-col justify-between">
-        <div>
-          <h3 className="text-sm font-bold text-[var(--ink)]">{t("admin.recent_audit_title", "Recent Privileged Audit Events")}</h3>
-          <p className="text-xs text-[var(--ink-muted)]">Enforcement timeline from audit log</p>
-        </div>
-
-        {recentAudit.length === 0 ? (
-          <p className="text-xs text-[var(--ink-muted)] py-6 text-center">{t("admin.recent_audit_empty", "No moderation actions in log.")}</p>
-        ) : (
-          <div className="space-y-2 text-xs">
-            {recentAudit.slice(0, 4).map((a) => (
-              <div key={a.id} className="p-2 rounded-lg bg-[var(--surface)] border border-[var(--line)]">
-                <div className="flex justify-between items-center mb-0.5">
-                  <span className="font-semibold text-[var(--ink)] capitalize">
-                    {a.action.replace("_", " ")}
-                  </span>
-                  <span className="text-[10px] text-[var(--ink-muted)]" suppressHydrationWarning>
-                    {formatRelative(a.created_at)}
-                  </span>
-                </div>
-                <span className="text-[11px] text-[var(--ink-muted)] block truncate">
-                  By @{a.actor?.username || "system"} · {a.entity}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
 
         <Link
           href="/moderation/reports"
-          className="text-xs font-semibold text-[var(--accent)] hover:underline inline-flex items-center gap-1"
+          className="text-xs font-semibold text-[var(--accent)] hover:underline inline-flex items-center gap-1 pt-2 border-t border-[var(--line)]"
         >
           <span>{t("moderation.header_title", "Moderation Dashboard")}</span>
         </Link>
@@ -796,11 +755,10 @@ export default async function AdminDashboardPage({ searchParams }) {
         <Suspense
           key={`moderation-${range}-${from}-${to}`}
           fallback={
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />
               <ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />
-              <StatCardSkeleton standalone={false} />
-              <TableSkeleton rows={4} cols={2} standalone={false} />
+              <TableSkeleton rows={4} cols={2} standalone={false} className="md:col-span-2 lg:col-span-1" />
             </div>
           }
         >
