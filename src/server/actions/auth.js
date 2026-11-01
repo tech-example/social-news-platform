@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createUserClient } from "@/server/supabase";
 import { getAdminClient } from "@/server/admin-client";
 import { signInSchema, signUpSchema } from "@/lib/validators";
+import { containsProfanity } from "@/lib/profanity";
 
 export async function signInAction(prevState, formData) {
   const email = formData.get("email");
@@ -63,6 +64,15 @@ export async function signUpAction(prevState, formData) {
       ok: false,
       error: result.error.issues[0]?.message || "Invalid input.",
       fieldErrors,
+    };
+  }
+
+  const profanityCheck = containsProfanity(result.data.displayName);
+  if (profanityCheck.flagged) {
+    return {
+      ok: false,
+      error: "Display name contains inappropriate language.",
+      fieldErrors: { displayName: "Display name contains inappropriate language." },
     };
   }
 

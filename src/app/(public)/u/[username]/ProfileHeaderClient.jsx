@@ -7,18 +7,36 @@ import { FollowButton } from "./FollowButton";
 import { EditProfileDialog } from "./EditProfileDialog";
 import { ProfileDetailsDialog } from "./ProfileDetailsDialog";
 import { formatCompactNumber } from "@/lib/format";
-import { Settings, Info, UserCheck, Shield, ShieldCheck } from "lucide-react";
+import { Settings, Info, UserCheck, Shield, ShieldCheck, Activity } from "lucide-react";
+import { getDisplayName } from "@/lib/user";
+import { UserName } from "@/components/ui/user-name";
+import { FollowListDialog } from "@/components/profile/FollowListDialog";
+import { OwnerActivityDialog } from "@/components/profile/OwnerActivityDialog";
+import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog";
 
 export function ProfileHeaderClient({ initialProfile, viewerId }) {
   const [profile, setProfile] = useState(initialProfile);
   const [editOpen, setEditOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [followListOpen, setFollowListOpen] = useState(false);
+  const [followListTab, setFollowListTab] = useState("followers");
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
 
   useEffect(() => {
     setProfile(initialProfile);
   }, [initialProfile]);
 
   const isViewer = profile.isViewer || viewerId === profile.id;
+
+  const handleOpenFollowList = (tab) => {
+    if (!viewerId) {
+      setLoginPromptOpen(true);
+      return;
+    }
+    setFollowListTab(tab);
+    setFollowListOpen(true);
+  };
 
   const handleProfileUpdated = (updatedFields) => {
     setProfile((prev) => ({
@@ -53,7 +71,7 @@ export function ProfileHeaderClient({ initialProfile, viewerId }) {
         <div className="shrink-0 relative group">
           <Avatar
             src={profile.avatar_url}
-            name={profile.display_name || profile.username}
+            name={getDisplayName(profile)}
             size={110}
             className="w-24 h-24 sm:w-32 sm:h-32 ring-2 ring-[var(--line)] shadow-xs"
           />
@@ -64,7 +82,7 @@ export function ProfileHeaderClient({ initialProfile, viewerId }) {
           {/* Top Row: Username + Badges + Buttons */}
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 sm:gap-3 w-full">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--ink)] truncate">
-              {profile.username}
+              <UserName profile={profile} />
             </h1>
             {getRoleBadge(profile.role)}
 
@@ -77,6 +95,15 @@ export function ProfileHeaderClient({ initialProfile, viewerId }) {
                     className="text-xs h-8 px-3.5 gap-1.5 font-semibold"
                   >
                     <span>Edit Profile</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setActivityOpen(true)}
+                    className="text-xs h-8 px-2.5 sm:px-3 gap-1.5 font-semibold text-[var(--ink)]"
+                    title="View Recent Activity"
+                  >
+                    <Activity size={14} strokeWidth={2} aria-hidden="true" />
+                    <span className="hidden sm:inline">Activity</span>
                   </Button>
                   <Button
                     variant="outline"
@@ -121,31 +148,40 @@ export function ProfileHeaderClient({ initialProfile, viewerId }) {
             </div>
           </div>
 
-          {/* Counts Row */}
-          <div className="flex items-center justify-center sm:justify-start gap-6 sm:gap-8 text-sm text-[var(--ink)] py-0.5">
-            <div>
+          {/* Counts Row with interactive buttons */}
+          <div className="flex items-center justify-center sm:justify-start gap-4 sm:gap-6 text-sm text-[var(--ink)] py-0.5">
+            <div className="py-1">
               <strong className="tabular-nums font-bold">{formatCompactNumber(profile.posts_count || 0)}</strong>{" "}
               <span className="text-[var(--ink-muted)]">posts</span>
             </div>
-            <div>
-              <strong className="tabular-nums font-bold">{formatCompactNumber(profile.followers_count || 0)}</strong>{" "}
+            <button
+              type="button"
+              onClick={() => handleOpenFollowList("followers")}
+              className="py-1 px-1 rounded hover:underline focus-visible:outline-2 focus-visible:outline-[var(--accent)] cursor-pointer text-left transition-colors"
+              aria-label={`View ${profile.followers_count || 0} followers`}
+            >
+              <strong className="tabular-nums font-bold text-[var(--ink)]">{formatCompactNumber(profile.followers_count || 0)}</strong>{" "}
               <span className="text-[var(--ink-muted)]">followers</span>
-            </div>
-            <div>
-              <strong className="tabular-nums font-bold">{formatCompactNumber(profile.following_count || 0)}</strong>{" "}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleOpenFollowList("following")}
+              className="py-1 px-1 rounded hover:underline focus-visible:outline-2 focus-visible:outline-[var(--accent)] cursor-pointer text-left transition-colors"
+              aria-label={`View ${profile.following_count || 0} following`}
+            >
+              <strong className="tabular-nums font-bold text-[var(--ink)]">{formatCompactNumber(profile.following_count || 0)}</strong>{" "}
               <span className="text-[var(--ink-muted)]">following</span>
-            </div>
+            </button>
           </div>
 
-          {/* Display Name & Bio */}
-          <div className="text-sm text-[var(--ink)] space-y-1 max-w-lg">
-            <p className="font-bold text-sm text-[var(--ink)]">{profile.display_name}</p>
-            {profile.bio && (
+          {/* Bio */}
+          {profile.bio && (
+            <div className="text-sm text-[var(--ink)] max-w-lg">
               <p className="text-xs sm:text-sm text-[var(--ink-muted)] whitespace-pre-wrap leading-relaxed">
                 {profile.bio}
               </p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -164,6 +200,41 @@ export function ProfileHeaderClient({ initialProfile, viewerId }) {
         profile={profile}
         isViewer={isViewer}
         onOpenEdit={() => setEditOpen(true)}
+      />
+
+      {/* Followers & Following Lists Dialog */}
+      <FollowListDialog
+        open={followListOpen}
+        onClose={() => setFollowListOpen(false)}
+        initialTab={followListTab}
+        targetUserId={profile.id}
+        followersCount={profile.followers_count || 0}
+        followingCount={profile.following_count || 0}
+        currentUserId={viewerId}
+        onFollowToggled={(userId, newFollowing, tab) => {
+          if (isViewer && tab === "following") {
+            setProfile((prev) => ({
+              ...prev,
+              following_count: Math.max(0, (prev.following_count || 0) + (newFollowing ? 1 : -1)),
+            }));
+          }
+        }}
+      />
+
+      {/* Owner Activity Dialog */}
+      {isViewer && (
+        <OwnerActivityDialog
+          open={activityOpen}
+          onClose={() => setActivityOpen(false)}
+        />
+      )}
+
+      {/* Login Prompt Dialog for Guests */}
+      <LoginPromptDialog
+        open={loginPromptOpen}
+        onClose={() => setLoginPromptOpen(false)}
+        title="Followers & Following"
+        description="Sign in to view who follows this user and who they are following."
       />
     </section>
   );

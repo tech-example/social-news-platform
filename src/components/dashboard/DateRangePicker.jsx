@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { CalendarDays } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-
 import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 
 function DateRangePickerInner({ className = "" }) {
@@ -11,26 +10,32 @@ function DateRangePickerInner({ className = "" }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { t } = useAdminLocale();
-  const currentRange = searchParams.get("range") || "30d";
+
+  const rawRange = searchParams.get("range");
+  const validRanges = ["day", "week", "month", "year"];
+  const currentRange = validRanges.includes(rawRange) ? rawRange : "week";
 
   const ranges = [
-    { id: "today", label: t("controls.today", "Today") },
-    { id: "7d", label: t("controls.7d", "Last 7 Days") },
-    { id: "30d", label: t("controls.30d", "Last 30 Days") },
-    { id: "90d", label: t("controls.90d", "Last 90 Days") },
+    { id: "day", label: t("controls.day_window", "Day") },
+    { id: "week", label: t("controls.week_window", "Week") },
+    { id: "month", label: t("controls.month_window", "Month") },
+    { id: "year", label: t("controls.year_window", "Year") },
   ];
 
   const handleSelect = (rangeId) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("range", rangeId);
+    params.delete("from");
+    params.delete("to");
+    params.delete("bucket");
     router.push(`${pathname}?${params.toString()}`);
   };
 
   return (
-    <div className={`flex items-center gap-1.5 p-1 bg-[var(--surface)] border border-[var(--line)] rounded-lg text-xs font-medium ${className}`}>
+    <div className={`flex items-center gap-1.5 p-1 bg-[var(--surface)] border border-[var(--line)] rounded-xl text-xs font-medium ${className}`}>
       <div className="pl-2 pr-1 text-[var(--ink-muted)] flex items-center gap-1">
         <CalendarDays size={14} strokeWidth={1.75} aria-hidden="true" />
-        <span className="hidden sm:inline">{t("controls.range", "Range")}:</span>
+        <span className="hidden sm:inline font-semibold">{t("controls.range", "Window")}:</span>
       </div>
       {ranges.map((r) => {
         const isActive = currentRange === r.id;
@@ -39,9 +44,9 @@ function DateRangePickerInner({ className = "" }) {
             key={r.id}
             type="button"
             onClick={() => handleSelect(r.id)}
-            className={`px-2.5 py-1 rounded transition-colors focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)] ${
+            className={`min-h-8 px-2.5 py-1 rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)] ${
               isActive
-                ? "bg-[var(--bg)] text-[var(--ink)] font-semibold shadow-2xs border border-[var(--line)]"
+                ? "bg-[var(--bg)] text-[var(--ink)] font-bold shadow-2xs border border-[var(--line)]"
                 : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
             }`}
           >

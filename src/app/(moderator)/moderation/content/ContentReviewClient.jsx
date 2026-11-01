@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/toast";
 import { Eye, FileText, MessageSquare } from "lucide-react";
 import { FlaggedContent } from "@/components/feed/FlaggedContent";
 import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
+import { getDisplayName } from "@/lib/user";
 
 export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComments: initialComments = [] }) {
   const { addToast } = useToast();
@@ -89,7 +90,7 @@ export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComm
                 {posts.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="text-xs font-semibold">
-                      @{p.author?.username || "anonymous"}
+                      {getDisplayName(p.author)}
                     </TableCell>
                     <TableCell className="text-xs max-w-md">
                       <FlaggedContent
@@ -143,7 +144,7 @@ export function ContentReviewClient({ hiddenPosts: initialPosts = [], hiddenComm
                 {comments.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="text-xs font-semibold">
-                      @{c.author?.username || "anonymous"}
+                      {getDisplayName(c.author)}
                     </TableCell>
                     <TableCell className="text-xs max-w-md">
                       <FlaggedContent

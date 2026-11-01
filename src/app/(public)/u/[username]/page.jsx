@@ -10,17 +10,21 @@ import { ProfileHeaderClient } from "./ProfileHeaderClient";
 import { DeleteShareButton } from "@/components/profile/DeleteShareButton";
 import { ProfileGridSkeleton } from "@/components/ui/skeletons";
 import { FlaggedContent } from "@/components/feed/FlaggedContent";
-import { Grid3x3, Repeat2, Heart, MessageCircle, FileText, Inbox } from "lucide-react";
+import { Grid3x3, Repeat2, Heart, MessageCircle, FileText, Inbox, Activity } from "lucide-react";
 import { formatCompactNumber } from "@/lib/format";
+import { OwnerActivitySection } from "@/components/profile/OwnerActivitySection";
+
+import { getDisplayName } from "@/lib/user";
 
 export async function generateMetadata({ params }) {
   const { username } = await params;
   const profile = await getProfileByUsername(username);
   if (!profile) return { title: "User Not Found" };
 
+  const displayName = getDisplayName(profile);
   return {
-    title: `${profile.display_name} (@${profile.username}) - SocialNews`,
-    description: profile.bio || `Check out ${profile.display_name}'s profile on SocialNews.`,
+    title: `${displayName} - SocialNews`,
+    description: profile.bio || `Check out ${displayName}'s profile on SocialNews.`,
   };
 }
 
@@ -127,7 +131,7 @@ async function UserPostsStream({ userId, tab, isViewer, viewerId, isStaff = fals
 export default async function UserProfilePage({ params, searchParams }) {
   const { username } = await params;
   const resolvedSearchParams = await searchParams;
-  const tab = resolvedSearchParams?.tab === "shares" ? "shares" : "posts";
+  const requestedTab = resolvedSearchParams?.tab;
 
   const session = await getSession();
   const viewerId = session?.user?.id || null;
@@ -138,6 +142,12 @@ export default async function UserProfilePage({ params, searchParams }) {
   if (!profile) {
     notFound();
   }
+
+  const tab = requestedTab === "activity" && profile.isViewer
+    ? "activity"
+    : requestedTab === "shares"
+    ? "shares"
+    : "posts";
 
   return (
     <div className="max-w-[935px] mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-6 sm:space-y-8">
@@ -172,20 +182,38 @@ export default async function UserProfilePage({ params, searchParams }) {
             <Repeat2 size={16} strokeWidth={2} aria-hidden="true" />
             <span>Shares</span>
           </Link>
+          {profile.isViewer && (
+            <Link
+              href={`/u/${profile.username}?tab=activity`}
+              prefetch
+              className={`flex items-center gap-2 py-3.5 px-6 text-xs sm:text-sm font-bold tracking-wider uppercase transition-colors ${
+                tab === "activity"
+                  ? "text-[var(--ink)] border-b-2 border-[var(--ink)] bg-[var(--bg)]"
+                  : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
+              }`}
+            >
+              <Activity size={16} strokeWidth={2} aria-hidden="true" />
+              <span>Activity</span>
+            </Link>
+          )}
         </div>
 
-        {/* Posts Grid Area */}
+        {/* Posts Grid or Activity Area */}
         <div className="p-3 sm:p-6">
-          <Suspense key={tab} fallback={<ProfileGridSkeleton count={9} />}>
-            <UserPostsStream
-              userId={profile.id}
-              tab={tab}
-              isViewer={profile.isViewer}
-              viewerId={viewerId}
-              isStaff={isStaff}
-              viewerHideFlagged={viewerHideFlagged}
-            />
-          </Suspense>
+          {tab === "activity" && profile.isViewer ? (
+            <OwnerActivitySection />
+          ) : (
+            <Suspense key={tab} fallback={<ProfileGridSkeleton count={9} />}>
+              <UserPostsStream
+                userId={profile.id}
+                tab={tab}
+                isViewer={profile.isViewer}
+                viewerId={viewerId}
+                isStaff={isStaff}
+                viewerHideFlagged={viewerHideFlagged}
+              />
+            </Suspense>
+          )}
         </div>
       </section>
     </div>

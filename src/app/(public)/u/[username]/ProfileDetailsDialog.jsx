@@ -6,6 +6,8 @@ import { formatRelativeTime } from "@/lib/format";
 import { formatCompactNumber } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
 import { Shield, ShieldCheck, User, Calendar, Link as LinkIcon, Edit3 } from "lucide-react";
+import { getDisplayName } from "@/lib/user";
+import { UserName } from "@/components/ui/user-name";
 
 export function ProfileDetailsDialog({ open, onClose, profile, isViewer, onOpenEdit }) {
   const { addToast } = useToast();
@@ -48,18 +50,19 @@ export function ProfileDetailsDialog({ open, onClose, profile, isViewer, onOpenE
         <div className="flex items-center gap-4">
           <Avatar
             src={profile.avatar_url}
-            name={profile.display_name || profile.username}
+            name={getDisplayName(profile)}
             size={68}
             className="ring-2 ring-[var(--line)]"
           />
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-[var(--ink)] truncate">
-                {profile.display_name}
-              </h3>
+              <UserName
+                profile={profile}
+                as="h3"
+                className="text-base font-bold text-[var(--ink)] truncate"
+              />
               {getRoleBadge(profile.role)}
             </div>
-            <p className="text-xs text-[var(--ink-muted)]">@{profile.username}</p>
             {profile.created_at && (
               <p className="flex items-center gap-1 text-[11px] text-[var(--ink-muted)] mt-1">
                 <Calendar size={12} />

@@ -5,15 +5,12 @@ import {
   CalendarDays,
   RefreshCw,
   Download,
-  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 
 export function DashboardControls({
   isAdmin = false,
-  showBucket = true,
-  showCompare = true,
   className = "",
 }) {
   const router = useRouter();
@@ -22,9 +19,9 @@ export function DashboardControls({
   const [isPending, startTransition] = useTransition();
   const { t, formatDate } = useAdminLocale();
 
-  const currentRange = searchParams.get("range") || "30d";
-  const currentBucket = searchParams.get("bucket") || (currentRange === "today" ? "day" : currentRange === "90d" ? "week" : "day");
-  const compareEnabled = searchParams.get("compare") === "1";
+  const rawRange = searchParams.get("range");
+  const validRanges = ["day", "week", "month", "year"];
+  const currentRange = validRanges.includes(rawRange) ? rawRange : "week";
 
   const [lastUpdated, setLastUpdated] = useState("");
   const [isSpinning, setIsSpinning] = useState(false);
@@ -43,94 +40,19 @@ export function DashboardControls({
   }, [formatDate]);
 
   const ranges = [
-    { id: "today", label: t("controls.today", "Today") },
-    { id: "7d", label: t("controls.7d", "7 Days") },
-    { id: "30d", label: t("controls.30d", "30 Days") },
-    { id: "90d", label: t("controls.90d", "90 Days") },
+    { id: "day", label: t("controls.day_window", "Day") },
+    { id: "week", label: t("controls.week_window", "Week") },
+    { id: "month", label: t("controls.month_window", "Month") },
+    { id: "year", label: t("controls.year_window", "Year") },
   ];
-
-  const buckets = [
-    { id: "day", label: t("controls.day", "Day") },
-    { id: "week", label: t("controls.week", "Week") },
-    { id: "month", label: t("controls.month", "Month") },
-  ];
-
-  // Calculate from & to ISO timestamps based on selected range preset
-  const calculateDatesForRange = (rangeId) => {
-    const now = new Date();
-    let from = new Date();
-
-    if (rangeId === "today") {
-      from.setHours(0, 0, 0, 0);
-    } else if (rangeId === "7d") {
-      from.setDate(now.getDate() - 7);
-    } else if (rangeId === "90d") {
-      from.setDate(now.getDate() - 90);
-    } else {
-      // 30d default
-      from.setDate(now.getDate() - 30);
-    }
-
-    return {
-      from: from.toISOString(),
-      to: now.toISOString(),
-    };
-  };
 
   const handleRangeChange = (rangeId) => {
     const params = new URLSearchParams(searchParams.toString());
-    const { from, to } = calculateDatesForRange(rangeId);
-
     params.set("range", rangeId);
-    params.set("from", from);
-    params.set("to", to);
-
-    // Sensible default bucket for the range if not compatible or not set
-    const currentB = params.get("bucket");
-    if (rangeId === "today") {
-      params.set("bucket", "day");
-    } else if (rangeId === "90d" && currentB === "day") {
-      params.set("bucket", "week");
-    } else if (!currentB) {
-      params.set("bucket", rangeId === "90d" ? "week" : "day");
-    }
-
-    startTransition(() => {
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    });
-  };
-
-  const handleBucketChange = (bucketId) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("bucket", bucketId);
-
-    // If from and to aren't present yet, populate them based on current range
-    if (!params.get("from") || !params.get("to")) {
-      const { from, to } = calculateDatesForRange(currentRange);
-      params.set("range", currentRange);
-      params.set("from", from);
-      params.set("to", to);
-    }
-
-    startTransition(() => {
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    });
-  };
-
-  const handleCompareChange = (checked) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (checked) {
-      params.set("compare", "1");
-    } else {
-      params.delete("compare");
-    }
-
-    if (!params.get("from") || !params.get("to")) {
-      const { from, to } = calculateDatesForRange(currentRange);
-      params.set("range", currentRange);
-      params.set("from", from);
-      params.set("to", to);
-    }
+    // Remove obsolete params
+    params.delete("from");
+    params.delete("to");
+    params.delete("bucket");
 
     startTransition(() => {
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -153,14 +75,13 @@ export function DashboardControls({
   };
 
   return (
-    <div className={`flex flex-wrap items-center justify-between gap-3 p-2 rounded-xl bg-[var(--surface)] border border-[var(--line)] ${className}`}>
-      {/* Left controls: Range & Bucket & Compare */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Date Range Selector */}
-        <div className="flex items-center gap-1 bg-[var(--bg)] border border-[var(--line)] rounded-lg p-1 text-xs">
+    <div className={`flex flex-wrap items-center justify-between gap-3 p-2.5 rounded-2xl bg-[var(--surface)] border border-[var(--line)] ${className}`}>
+      {/* Left controls: 4 Rolling Window Range Buttons */}
+      <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 bg-[var(--bg)] border border-[var(--line)] rounded-xl p-1 text-xs">
           <div className="px-2 text-[var(--ink-muted)] flex items-center gap-1">
-            <CalendarDays size={13} strokeWidth={1.75} aria-hidden="true" />
-            <span className="font-medium hidden sm:inline">{t("controls.range", "Range")}:</span>
+            <CalendarDays size={14} strokeWidth={1.75} aria-hidden="true" />
+            <span className="font-semibold hidden sm:inline">{t("controls.range", "Window")}:</span>
           </div>
           {ranges.map((r) => {
             const isActive = currentRange === r.id;
@@ -169,10 +90,10 @@ export function DashboardControls({
                 key={r.id}
                 type="button"
                 onClick={() => handleRangeChange(r.id)}
-                className={`px-2.5 py-1 rounded transition-colors text-xs cursor-pointer ${
+                className={`min-h-8 px-3 py-1 rounded-lg transition-colors text-xs cursor-pointer font-medium focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)] ${
                   isActive
-                    ? "bg-[var(--surface-strong)] text-[var(--ink)] font-semibold shadow-2xs"
-                    : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
+                    ? "bg-[var(--surface-strong)] text-[var(--ink)] font-bold shadow-2xs border border-[var(--line)]"
+                    : "text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-strong)]/50"
                 }`}
               >
                 {r.label}
@@ -180,52 +101,12 @@ export function DashboardControls({
             );
           })}
         </div>
-
-        {/* Bucket Selector */}
-        {showBucket && (
-          <div className="flex items-center gap-1 bg-[var(--bg)] border border-[var(--line)] rounded-lg p-1 text-xs">
-            <div className="px-2 text-[var(--ink-muted)] flex items-center gap-1">
-              <SlidersHorizontal size={13} strokeWidth={1.75} aria-hidden="true" />
-              <span className="font-medium hidden sm:inline">{t("controls.bucket", "Bucket")}:</span>
-            </div>
-            {buckets.map((b) => {
-              const isActive = currentBucket === b.id;
-              return (
-                <button
-                  key={b.id}
-                  type="button"
-                  onClick={() => handleBucketChange(b.id)}
-                  className={`px-2 py-1 rounded transition-colors text-xs cursor-pointer ${
-                    isActive
-                      ? "bg-[var(--surface-strong)] text-[var(--ink)] font-semibold shadow-2xs"
-                      : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
-                  }`}
-                >
-                  {b.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Compare to Previous Period Toggle */}
-        {showCompare && (
-          <label className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--bg)] border border-[var(--line)] text-xs text-[var(--ink)] cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={compareEnabled}
-              onChange={(e) => handleCompareChange(e.target.checked)}
-              className="rounded border-[var(--line)] text-[var(--accent)] focus:ring-[var(--accent-bright)]"
-            />
-            <span className="font-medium">{t("controls.compare", "Compare period")}</span>
-          </label>
-        )}
       </div>
 
       {/* Right controls: Last Updated, Refresh, CSV Export */}
       <div className="flex items-center gap-2 text-xs">
         {lastUpdated && (
-          <span className="text-[var(--ink-muted)] tabular-nums hidden sm:inline">
+          <span className="text-[var(--ink-muted)] tabular-nums hidden sm:inline text-xs">
             {t("controls.updated", "Updated")} {lastUpdated}
           </span>
         )}
@@ -235,7 +116,7 @@ export function DashboardControls({
           size="sm"
           onClick={handleRefresh}
           disabled={isPending || isSpinning}
-          className="h-8 px-2.5 text-xs flex items-center gap-1.5"
+          className="min-h-11 sm:min-h-9 px-3 text-xs flex items-center gap-1.5 rounded-lg"
           aria-label={t("controls.refresh", "Refresh dashboard data")}
         >
           <RefreshCw
@@ -248,10 +129,19 @@ export function DashboardControls({
         </Button>
 
         {isAdmin && (
-          <a href="/api/reports/export" download>
-            <Button variant="secondary" size="sm" className="h-8 px-2.5 text-xs flex items-center gap-1.5">
+          <a
+            href={`/api/reports/export?range=${currentRange}`}
+            download={`admin-report-${currentRange}.csv`}
+            className="inline-flex"
+          >
+            <Button
+              variant="secondary"
+              size="sm"
+              className="min-h-11 sm:min-h-9 px-3 text-xs flex items-center gap-1.5 rounded-lg"
+              title={t("controls.export_csv", "Export aggregate CSV report for this range")}
+            >
               <Download size={13} strokeWidth={2} aria-hidden="true" />
-              <span>{t("controls.export_csv", "Export CSV")}</span>
+              <span>{t("controls.export_csv", "Export Report")}</span>
             </Button>
           </a>
         )}

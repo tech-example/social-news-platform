@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getServerAdminT } from "@/lib/i18n/server";
 import { AdminLanguageSwitcher } from "@/components/dashboard/AdminLanguageSwitcher";
+import { getDisplayName } from "@/lib/user";
+import { UserName } from "@/components/ui/user-name";
 import {
   ChevronLeft,
   Flag,
@@ -182,12 +184,10 @@ export default async function ReportDetailPage({ params }) {
                 >
                   <Avatar
                     src={report.reporter.avatar_url}
-                    name={report.reporter.display_name || report.reporter.username}
+                    name={getDisplayName(report.reporter)}
                     size={24}
                   />
-                  <span className="text-xs font-semibold text-[var(--ink)]">
-                    @{report.reporter.username}
-                  </span>
+                  <UserName profile={report.reporter} className="text-xs font-semibold text-[var(--ink)]" />
                 </Link>
               ) : (
                 <span className="text-xs text-[var(--ink-muted)]">{t("moderation.detail_anonymous", "Anonymous User")}</span>
@@ -221,12 +221,12 @@ export default async function ReportDetailPage({ params }) {
                   <div className="flex items-center gap-2.5">
                     <Avatar
                       src={target.author?.avatar_url}
-                      name={target.author?.display_name || target.author?.username}
+                      name={getDisplayName(target.author)}
                       size={32}
                     />
                     <div>
                       <Link href={`/u/${target.author?.username}`} className="text-xs font-bold text-[var(--ink)] hover:underline block">
-                        @{target.author?.username}
+                        <UserName profile={target.author} />
                       </Link>
                       <span className="text-[11px] text-[var(--ink-muted)]">
                         {t("users_admin.filter_status", "Status")}: <strong className="capitalize">{target.status}</strong>
@@ -274,12 +274,12 @@ export default async function ReportDetailPage({ params }) {
                   <div className="flex items-center gap-2.5">
                     <Avatar
                       src={target.author?.avatar_url}
-                      name={target.author?.display_name || target.author?.username}
+                      name={getDisplayName(target.author)}
                       size={32}
                     />
                     <div>
                       <Link href={`/u/${target.author?.username}`} className="text-xs font-bold text-[var(--ink)] hover:underline block">
-                        @{target.author?.username}
+                        <UserName profile={target.author} />
                       </Link>
                       <span className="text-[11px] text-[var(--ink-muted)]">
                         {t("users_admin.filter_status", "Status")}: <strong className="capitalize">{target.status}</strong>
@@ -312,15 +312,12 @@ export default async function ReportDetailPage({ params }) {
               <div className="flex items-center gap-4 p-4 rounded-lg bg-[var(--surface)] border border-[var(--line)]">
                 <Avatar
                   src={target.avatar_url}
-                  name={target.display_name || target.username}
+                  name={getDisplayName(target)}
                   size={52}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-[var(--ink)] truncate">
-                      {target.display_name}
-                    </h3>
-                    <span className="text-xs text-[var(--ink-muted)]">(@{target.username})</span>
+                    <UserName profile={target} as="h3" className="text-base font-bold text-[var(--ink)] truncate" />
                   </div>
                   {target.bio && (
                     <p className="text-xs text-[var(--ink-muted)] mt-1 line-clamp-2">{target.bio}</p>
@@ -361,7 +358,7 @@ export default async function ReportDetailPage({ params }) {
                       </span>
                       {ev.actor && (
                         <span className="text-[var(--ink-muted)]">
-                          {t("moderation.detail_by_actor", { username: ev.actor.username, role: ev.actor.role }, `by @${ev.actor.username} (${ev.actor.role})`)}
+                          {t("moderation.detail_by_actor", { name: getDisplayName(ev.actor), username: getDisplayName(ev.actor), role: ev.actor.role }, `by ${getDisplayName(ev.actor)} (${ev.actor.role})`)}
                         </span>
                       )}
                       <span className="text-[10px] text-[var(--ink-muted)] ml-auto" suppressHydrationWarning>

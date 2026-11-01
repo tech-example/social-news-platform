@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { LogOut, CircleAlert, CircleCheck, ImagePlus, LoaderCircle } from "lucide-react";
 import { LIMITS } from "@/lib/constants";
+import { getDisplayName } from "@/lib/user";
 
 import { compressImage } from "@/lib/compress-image";
 
@@ -109,7 +110,7 @@ export function SettingsForm({ session }) {
           <div className="flex items-center gap-4 pb-4 border-b border-[var(--line)]">
             <Avatar
               src={avatarUrl}
-              name={profile.display_name || profile.username}
+              name={getDisplayName(profile)}
               size={64}
               className="ring-2 ring-[var(--line)]"
             />

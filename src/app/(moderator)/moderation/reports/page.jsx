@@ -5,6 +5,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, ChevronLeft, ShieldAlert } from "lucide-react";
+import { getDisplayName } from "@/lib/user";
 import { getServerAdminT } from "@/lib/i18n/server";
 import { AdminLanguageSwitcher } from "@/components/dashboard/AdminLanguageSwitcher";
 
@@ -137,7 +138,7 @@ export default async function ReportsQueuePage({ searchParams }) {
                     {r.reason}
                   </TableCell>
                   <TableCell className="text-xs text-[var(--ink-muted)]">
-                    @{r.reporter?.username || "anonymous"}
+                    {getDisplayName(r.reporter)}
                   </TableCell>
                   <TableCell className="text-xs text-[var(--ink-muted)] max-w-xs truncate">
                     {r.details || "No additional note"}

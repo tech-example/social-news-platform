@@ -135,12 +135,10 @@ export default async function ModerationDashboardPage({ searchParams }) {
   await requireRole("moderator");
   const { t } = await getServerAdminT();
   const resolvedParams = await searchParams;
-  const range = resolvedParams?.range || "30d";
+  const range = resolvedParams?.range || "week";
   const from = resolvedParams?.from || null;
   const to = resolvedParams?.to || null;
-  const bucket =
-    resolvedParams?.bucket ||
-    (range === "today" ? "day" : range === "90d" ? "week" : "day");
+  const bucket = resolvedParams?.bucket || (range === "day" ? "hour" : range === "year" ? "month" : "day");
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 py-6 space-y-6">

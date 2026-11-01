@@ -21,6 +21,8 @@ import {
 import { Avatar } from "@/components/ui/avatar";
 import { signOutAction } from "@/server/actions/auth";
 import { COPY } from "@/lib/copy";
+import { getDisplayName } from "@/lib/user";
+import { UserName } from "@/components/ui/user-name";
 import useSWR from "swr";
 
 const fetcher = (url) => fetch(url).then((r) => r.json());
@@ -208,11 +210,11 @@ export function AppShell({ children, session = null }) {
               <Link
                 href={`/u/${profile.username}`}
                 className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-[var(--surface-strong)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
-                aria-label={profile.username}
+                aria-label={getDisplayName(profile)}
               >
                 <Avatar
                   src={profile.avatar_url}
-                  name={profile.display_name || profile.username}
+                  name={getDisplayName(profile)}
                   size={28}
                 />
               </Link>
@@ -339,17 +341,15 @@ export function AppShell({ children, session = null }) {
                   >
                     <Avatar
                       src={profile.avatar_url}
-                      name={profile.display_name || profile.username}
+                      name={getDisplayName(profile)}
                       size={38}
                       className="shrink-0"
                     />
                     <div className="flex flex-col min-w-0">
-                      <span className="text-sm font-bold text-[var(--ink)] truncate">
-                        {profile.display_name || profile.username}
-                      </span>
-                      <span className="text-xs text-[var(--ink-muted)] truncate">
-                        @{profile.username}
-                      </span>
+                      <UserName
+                        profile={profile}
+                        className="text-sm font-bold text-[var(--ink)] truncate"
+                      />
                     </div>
                   </Link>
 
@@ -508,16 +508,14 @@ export function AppShell({ children, session = null }) {
               >
                 <Avatar
                   src={profile.avatar_url}
-                  name={profile.display_name || profile.username}
+                  name={getDisplayName(profile)}
                   size={36}
                 />
                 <div className="flex flex-col min-w-0">
-                  <span className="font-bold text-sm text-[var(--ink)] truncate">
-                    {profile.display_name || profile.username}
-                  </span>
-                  <span className="text-xs text-[var(--ink-muted)] truncate">
-                    @{profile.username}
-                  </span>
+                  <UserName
+                    profile={profile}
+                    className="font-bold text-sm text-[var(--ink)] truncate"
+                  />
                 </div>
               </Link>
               <Link

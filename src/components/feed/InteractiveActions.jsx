@@ -12,6 +12,8 @@ import { deletePostAction } from "@/server/actions/posts";
 import { formatCompactNumber } from "@/lib/format";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PostLikersDialog } from "@/components/feed/PostLikersDialog";
+import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog";
 
 /**
  * Checks a server action result for UNAUTHENTICATED and shows a sign-in toast.
@@ -71,6 +73,8 @@ export function InteractiveActions({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
+  const [likersOpen, setLikersOpen] = useState(false);
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const { addToast } = useToast();
   const authGuard = useAuthGuard();
 
@@ -101,6 +105,14 @@ export function InteractiveActions({
       return () => window.removeEventListener("keydown", handleKeyDown);
     }
   }, [shareMenuOpen, menuOpen]);
+
+  const handleOpenLikers = () => {
+    if (!currentUserId) {
+      setLoginPromptOpen(true);
+      return;
+    }
+    setLikersOpen(true);
+  };
 
   const handleLike = () => {
     // Client-side pre-check: if not logged in, prompt user immediately
@@ -467,18 +479,38 @@ export function InteractiveActions({
 
       {/* Numerical Counters Row */}
       <div className="flex items-center gap-3 text-xs font-semibold text-[var(--ink)] px-1">
-        <span>{formatCompactNumber(likeState.count)} likes</span>
+        <button
+          type="button"
+          onClick={handleOpenLikers}
+          className="hover:underline focus-visible:outline-2 focus-visible:outline-[var(--accent)] rounded cursor-pointer tabular-nums text-left py-1"
+          aria-label={`View who liked this post (${likeState.count} likes)`}
+        >
+          <span>{formatCompactNumber(likeState.count)} {likeState.count === 1 ? "like" : "likes"}</span>
+        </button>
         {commentsCount > 0 && (
           <span className="text-[var(--ink-muted)] font-normal">
-            {formatCompactNumber(commentsCount)} comments
+            {formatCompactNumber(commentsCount)} {commentsCount === 1 ? "comment" : "comments"}
           </span>
         )}
         {shareState.count > 0 && (
           <span className="text-[var(--ink-muted)] font-normal">
-            {formatCompactNumber(shareState.count)} shares
+            {formatCompactNumber(shareState.count)} {shareState.count === 1 ? "share" : "shares"}
           </span>
         )}
       </div>
+
+      {/* "Liked by" line for owner post */}
+      {isAuthor && likeState.count > 0 && (
+        <div className="px-1 -mt-1">
+          <button
+            type="button"
+            onClick={handleOpenLikers}
+            className="text-[11px] text-[var(--ink-muted)] hover:text-[var(--ink)] hover:underline cursor-pointer flex items-center gap-1 focus-visible:outline-2 focus-visible:outline-[var(--accent)] rounded py-0.5"
+          >
+            <span>Liked by {formatCompactNumber(likeState.count)} {likeState.count === 1 ? "person" : "people"}</span>
+          </button>
+        </div>
+      )}
 
       <ShareDialog
         open={shareOpen}
@@ -515,6 +547,21 @@ export function InteractiveActions({
         destructive={true}
         loading={isDeleting}
         onConfirm={handleConfirmDelete}
+      />
+
+      <PostLikersDialog
+        open={likersOpen}
+        onClose={() => setLikersOpen(false)}
+        postId={postId}
+        initialLikesCount={likeState.count}
+        currentUserId={currentUserId}
+      />
+
+      <LoginPromptDialog
+        open={loginPromptOpen}
+        onClose={() => setLoginPromptOpen(false)}
+        title="Likes"
+        description="Sign in to see who liked this post."
       />
     </div>
   );

@@ -11,6 +11,8 @@ import { FlaggedContent } from "@/components/feed/FlaggedContent";
 import { Skeleton, TagChipsSkeleton, SearchResultsSkeleton } from "@/components/ui/skeletons";
 import { Hash, Heart, MessageCircle, SearchX } from "lucide-react";
 import { formatCompactNumber, formatRelativeTime } from "@/lib/format";
+import { getDisplayName } from "@/lib/user";
+import { UserName } from "@/components/ui/user-name";
 
 export const metadata = {
   title: "Search - SocialNews",
@@ -76,7 +78,7 @@ async function SearchResults({ query, type, viewerId, isStaff, viewerHideFlagged
           posts.map((p) => {
             const likes = p.likesCount ?? p.likes_count ?? 0;
             const comments = p.commentsCount ?? p.comments_count ?? 0;
-            const authorName = p.author?.display_name || p.author?.username || "Unknown";
+            const authorName = getDisplayName(p.author);
             const username = p.author?.username || "user";
             const avatarUrl = p.author?.avatar_url;
             const time = p.createdAt ? formatRelativeTime(p.createdAt) : "";
@@ -89,7 +91,7 @@ async function SearchResults({ query, type, viewerId, isStaff, viewerHideFlagged
                 <div className="flex items-center justify-between text-xs text-[var(--ink-muted)]">
                   <Link href={`/u/${username}`} className="flex items-center gap-2 min-w-0 hover:underline">
                     <Avatar src={avatarUrl} name={authorName} size={24} />
-                    <span className="font-semibold text-[var(--ink)] truncate">@{username}</span>
+                    <UserName profile={p.author} className="font-semibold text-[var(--ink)] truncate" />
                     {time && (
                       <>
                         <span>&bull;</span>
@@ -148,16 +150,14 @@ async function SearchResults({ query, type, viewerId, isStaff, viewerHideFlagged
               <div className="flex items-center gap-3 min-w-0">
                 <Avatar
                   src={user.avatar_url}
-                  name={user.display_name || user.username}
+                  name={getDisplayName(user)}
                   size={40}
                 />
                 <div className="flex flex-col min-w-0">
-                  <span className="text-sm font-semibold text-[var(--ink)] truncate">
-                    {user.username}
-                  </span>
-                  <span className="text-xs text-[var(--ink-muted)] truncate">
-                    {user.display_name}
-                  </span>
+                  <UserName
+                    profile={user}
+                    className="text-sm font-semibold text-[var(--ink)] truncate"
+                  />
                 </div>
               </div>
               <span className="text-xs text-[var(--ink-muted)] tabular-nums shrink-0">

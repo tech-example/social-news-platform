@@ -50,9 +50,27 @@ export async function GET(request) {
       deletedCount = deleted?.length || 0;
     }
 
+    // Clean up post_views older than 400 days
+    let viewsDeleted = 0;
+    const { data: rpcViewsDeleted, error: rpcViewsError } = await adminSupabase.rpc(
+      "delete_old_post_views"
+    );
+    if (!rpcViewsError && rpcViewsDeleted !== null) {
+      viewsDeleted = rpcViewsDeleted;
+    } else {
+      const viewsCutoff = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: vDel } = await adminSupabase
+        .from("post_views")
+        .delete()
+        .lt("viewed_at", viewsCutoff)
+        .select("id");
+      viewsDeleted = vDel?.length || 0;
+    }
+
     return NextResponse.json({
       ok: true,
       deletedCount: deletedCount ?? 0,
+      viewsDeleted: viewsDeleted ?? 0,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

@@ -43,6 +43,17 @@ export async function getNotifications(userId, limit = 30, cursor = null) {
   const notifications = data.map((n) => ({
     id: n.id,
     type: n.type,
+    actorId: n.actor_id,
+    actor: n.actor
+      ? {
+          id: n.actor.id,
+          username: n.actor.username,
+          displayName: n.actor.display_name,
+          display_name: n.actor.display_name,
+          avatarUrl: n.actor.avatar_url,
+          avatar_url: n.actor.avatar_url,
+        }
+      : null,
     isRead: !!n.read_at,
     readAt: n.read_at,
     createdAt: n.created_at,

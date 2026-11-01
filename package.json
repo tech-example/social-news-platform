@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "prebuild": "node scripts/check-no-emoji.mjs && node scripts/check-icons.mjs",
+    "check-icons": "node scripts/check-icons.mjs",
+    "check-no-emoji": "node scripts/check-no-emoji.mjs",
     "build": "next build",
     "postbuild": "node scripts/check-secrets.mjs",
     "start": "next start",

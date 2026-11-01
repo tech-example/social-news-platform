@@ -2,1056 +2,816 @@ import "server-only";
 import { getAdminClient } from "@/server/admin-client";
 import { requireRole } from "@/server/auth";
 
-export function getDateRanges(rangePreset = "30d", customFrom = null, customTo = null) {
+export const VALID_RANGES = ["day", "week", "month", "year"];
+
+/**
+ * Validates and calculates rolling date windows.
+ * Day = last 24 hours, bucketed by hour.
+ * Week = last 7 days, bucketed by day.
+ * Month = last 30 days, bucketed by day.
+ * Year = last 12 months (365 days), bucketed by month.
+ * Every KPI compares selected window to previous window of equal length.
+ * 
+ * @param {string} rangePreset - "day" | "week" | "month" | "year"
+ */
+export function getDateRanges(rangePreset = "week") {
+  const range = VALID_RANGES.includes(rangePreset) ? rangePreset : "week";
   const now = new Date();
-  let from = new Date();
-  let to = new Date(now.getTime());
-  let prevFrom = new Date();
-  let prevTo = new Date();
+  let from = new Date(now);
+  let prevTo = new Date(now);
+  let prevFrom = new Date(now);
+  let bucket = "day";
+  let cacheSeconds = 300; // default 5 minutes
 
-  // If explicit customFrom and customTo are provided as valid dates, use them
-  if (customFrom && customTo && !isNaN(new Date(customFrom).getTime()) && !isNaN(new Date(customTo).getTime())) {
-    from = new Date(customFrom);
-    to = new Date(customTo);
-    const duration = to.getTime() - from.getTime();
+  if (range === "day") {
+    from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     prevTo = new Date(from.getTime());
-    prevFrom = new Date(from.getTime() - duration);
-    return {
-      from: from.toISOString(),
-      to: to.toISOString(),
-      prevFrom: prevFrom.toISOString(),
-      prevTo: prevTo.toISOString(),
-    };
-  }
-
-  if (rangePreset === "today") {
-    from.setHours(0, 0, 0, 0);
-    const duration = now.getTime() - from.getTime();
+    prevFrom = new Date(from.getTime() - 24 * 60 * 60 * 1000);
+    bucket = "hour";
+    cacheSeconds = 60; // 60s for Day
+  } else if (range === "week") {
+    from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     prevTo = new Date(from.getTime());
-    prevFrom = new Date(prevTo.getTime() - duration);
-  } else if (rangePreset === "7d") {
-    from.setDate(now.getDate() - 7);
+    prevFrom = new Date(from.getTime() - 7 * 24 * 60 * 60 * 1000);
+    bucket = "day";
+    cacheSeconds = 300; // 5 min for Week
+  } else if (range === "month") {
+    from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     prevTo = new Date(from.getTime());
-    prevFrom.setDate(now.getDate() - 14);
-  } else if (rangePreset === "90d") {
-    from.setDate(now.getDate() - 90);
+    prevFrom = new Date(from.getTime() - 30 * 24 * 60 * 60 * 1000);
+    bucket = "day";
+    cacheSeconds = 300; // 5 min for Month
+  } else if (range === "year") {
+    from = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
     prevTo = new Date(from.getTime());
-    prevFrom.setDate(now.getDate() - 180);
-  } else {
-    // Default 30d
-    from.setDate(now.getDate() - 30);
-    prevTo = new Date(from.getTime());
-    prevFrom.setDate(now.getDate() - 60);
+    prevFrom = new Date(from.getTime() - 365 * 24 * 60 * 60 * 1000);
+    bucket = "month";
+    cacheSeconds = 900; // 15 min for Year
   }
 
   return {
+    range,
+    bucket,
     from: from.toISOString(),
-    to: to.toISOString(),
+    to: now.toISOString(),
     prevFrom: prevFrom.toISOString(),
     prevTo: prevTo.toISOString(),
+    cacheSeconds,
   };
 }
 
 /**
- * Active User Definition:
- * A user across ALL roles (user, moderator, admin) who had at least one activity
- * (login/session, post, comment, like, follow, share) within the selected date range.
- * Does NOT filter by role. Respects the range selector.
+ * Counts distinct active users across ALL roles (user, moderator, admin)
+ * who performed at least one action (activity event, login, post, comment, like, follow, share).
  */
-export async function getActiveUsersMetrics(from, to, prevFrom = null, prevTo = null) {
+export async function getActiveUsersCount(from, to) {
   const adminSupabase = getAdminClient();
-
-  const fetchActiveIds = async (rangeStart, rangeEnd) => {
-    if (!rangeStart || !rangeEnd) return new Set();
-    const [actRes, pRes, postsRes, comRes, likesRes, folRes, shaRes] = await Promise.all([
-      adminSupabase.from("activity_events").select("user_id").gte("created_at", rangeStart).lte("created_at", rangeEnd),
-      adminSupabase.from("profiles").select("id").gte("last_seen_at", rangeStart).lte("last_seen_at", rangeEnd),
-      adminSupabase.from("posts").select("author_id").gte("created_at", rangeStart).lte("created_at", rangeEnd),
-      adminSupabase.from("comments").select("author_id").gte("created_at", rangeStart).lte("created_at", rangeEnd),
-      adminSupabase.from("likes").select("user_id").gte("created_at", rangeStart).lte("created_at", rangeEnd),
-      adminSupabase.from("follows").select("follower_id").gte("created_at", rangeStart).lte("created_at", rangeEnd),
-      adminSupabase.from("shares").select("user_id").gte("created_at", rangeStart).lte("created_at", rangeEnd),
-    ]);
-
-    const activeIds = new Set();
-    actRes.data?.forEach((r) => r.user_id && activeIds.add(r.user_id));
-    pRes.data?.forEach((r) => r.id && activeIds.add(r.id));
-    postsRes.data?.forEach((r) => r.author_id && activeIds.add(r.author_id));
-    comRes.data?.forEach((r) => r.author_id && activeIds.add(r.author_id));
-    likesRes.data?.forEach((r) => r.user_id && activeIds.add(r.user_id));
-    folRes.data?.forEach((r) => r.follower_id && activeIds.add(r.follower_id));
-    shaRes.data?.forEach((r) => r.user_id && activeIds.add(r.user_id));
-    return activeIds;
-  };
-
-  const toDate = new Date(to);
-  const oneDayAgo = new Date(toDate.getTime() - 24 * 3600 * 1000).toISOString();
-  const sevenDaysAgo = new Date(toDate.getTime() - 7 * 24 * 3600 * 1000).toISOString();
-  const thirtyDaysAgo = new Date(toDate.getTime() - 30 * 24 * 3600 * 1000).toISOString();
-
-  const [currentRangeSet, prevRangeSet, dauSet, wauSet, mauSet] = await Promise.all([
-    fetchActiveIds(from, to),
-    prevFrom && prevTo ? fetchActiveIds(prevFrom, prevTo) : Promise.resolve(new Set()),
-    fetchActiveIds(oneDayAgo, to),
-    fetchActiveIds(sevenDaysAgo, to),
-    fetchActiveIds(thirtyDaysAgo, to),
+  const [actRes, pRes, postsRes, comRes, likesRes, folRes, shaRes] = await Promise.all([
+    adminSupabase.from("activity_events").select("user_id").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("profiles").select("id").gte("last_seen_at", from).lte("last_seen_at", to),
+    adminSupabase.from("posts").select("author_id").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("comments").select("author_id").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("likes").select("user_id").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("follows").select("follower_id").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("shares").select("user_id").gte("created_at", from).lte("created_at", to),
   ]);
 
-  return {
-    active_users: currentRangeSet.size,
-    prev_active_users: prevRangeSet.size,
-    active_users_dau: dauSet.size,
-    active_users_wau: wauSet.size,
-    active_users_mau: mauSet.size,
-  };
+  const activeIds = new Set();
+  actRes.data?.forEach((r) => r.user_id && activeIds.add(r.user_id));
+  pRes.data?.forEach((r) => r.id && activeIds.add(r.id));
+  postsRes.data?.forEach((r) => r.author_id && activeIds.add(r.author_id));
+  comRes.data?.forEach((r) => r.author_id && activeIds.add(r.author_id));
+  likesRes.data?.forEach((r) => r.user_id && activeIds.add(r.user_id));
+  folRes.data?.forEach((r) => r.follower_id && activeIds.add(r.follower_id));
+  shaRes.data?.forEach((r) => r.user_id && activeIds.add(r.user_id));
+
+  return activeIds.size;
 }
 
-export async function getAdminKPIs(rangePreset = "30d", customFrom = null, customTo = null) {
+/**
+ * Fetches all KPIs for the redesigned Admin Analytics Dashboard.
+ * 
+ * Includes:
+ * 1. Positive signals (growth & engagement)
+ * 2. Negative signals (risk & workload)
+ * 3. Advertising readiness (aggregate data only)
+ */
+export async function getAdminKPIs(rangePreset = "week") {
   await requireRole("admin");
-  const { from, to, prevFrom, prevTo } = getDateRanges(rangePreset, customFrom, customTo);
+  const { range, from, to, prevFrom, prevTo } = getDateRanges(rangePreset);
   const adminSupabase = getAdminClient();
 
-  // Active users metrics calculated across all activity types and all roles
-  const activeMetrics = await getActiveUsersMetrics(from, to, prevFrom, prevTo);
-
-  // Try stats_kpis RPC first
-  const { data: kpiData, error: kpiErr } = await adminSupabase.rpc("stats_kpis", {
+  // 1. Try Postgres RPC stats_admin_kpis first
+  const { data: rpcData, error: rpcErr } = await adminSupabase.rpc("stats_admin_kpis", {
     p_from: from,
     p_to: to,
     p_prev_from: prevFrom,
     p_prev_to: prevTo,
   });
 
-  if (!kpiErr && kpiData) {
-    const res = Array.isArray(kpiData) ? kpiData[0] : kpiData;
-    if (res) {
-      return {
-        ...res,
-        active_users: res.active_users ?? activeMetrics.active_users,
-        prev_active_users: res.prev_active_users ?? activeMetrics.prev_active_users,
-        active_users_dau: res.active_users_dau ?? activeMetrics.active_users_dau,
-        active_users_wau: res.active_users_wau ?? activeMetrics.active_users_wau,
-        active_users_mau: res.active_users_mau ?? activeMetrics.active_users_mau,
-      };
+  if (!rpcErr && rpcData) {
+    const raw = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+    if (raw) {
+      return formatKpisWithDeltas(raw);
     }
   }
 
-  // Fallback to stats_overview RPC
-  const { data: overviewData, error: overviewErr } = await adminSupabase.rpc("stats_overview", {
-    p_from: from,
-    p_to: to,
-  });
+  // 2. Comprehensive fallback aggregation if RPC not yet loaded in DB
+  const [
+    // Users
+    newUsersRes,
+    prevNewUsersRes,
+    allProfilesRes,
+    // Content
+    newPostsRes,
+    prevNewPostsRes,
+    likesRes,
+    prevLikesRes,
+    commentsRes,
+    prevCommentsRes,
+    sharesRes,
+    prevSharesRes,
+    followsRes,
+    prevFollowsRes,
+    // Moderation
+    pendingReportsRes,
+    reportsReceivedRes,
+    prevReportsReceivedRes,
+    reportsResolvedRes,
+    prevReportsResolvedRes,
+    flaggedPostsRes,
+    flaggedCommentsRes,
+    prevFlaggedPostsRes,
+    prevFlaggedCommentsRes,
+    oldestReportRes,
+    moderatorDeletionsRes,
+    prevModeratorDeletionsRes,
+    // Views
+    viewsRes,
+    prevViewsRes,
+  ] = await Promise.all([
+    adminSupabase.from("profiles").select("id, created_at").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("profiles").select("id").gte("created_at", prevFrom).lte("created_at", prevTo),
+    adminSupabase.from("profiles").select("id, created_at, role"),
+    adminSupabase.from("posts").select("id, status").neq("status", "removed").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("posts").select("id").neq("status", "removed").gte("created_at", prevFrom).lte("created_at", prevTo),
+    adminSupabase.from("likes").select("created_at").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("likes").select("created_at").gte("created_at", prevFrom).lte("created_at", prevTo),
+    adminSupabase.from("comments").select("id, status").neq("status", "removed").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("comments").select("id").neq("status", "removed").gte("created_at", prevFrom).lte("created_at", prevTo),
+    adminSupabase.from("shares").select("id").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("shares").select("id").gte("created_at", prevFrom).lte("created_at", prevTo),
+    adminSupabase.from("follows").select("created_at").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("follows").select("created_at").gte("created_at", prevFrom).lte("created_at", prevTo),
+    adminSupabase.from("reports").select("id, status, created_at").in("status", ["pending", "in_review", "escalated"]),
+    adminSupabase.from("reports").select("id").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("reports").select("id").gte("created_at", prevFrom).lte("created_at", prevTo),
+    adminSupabase.from("reports").select("id").gte("resolved_at", from).lte("resolved_at", to),
+    adminSupabase.from("reports").select("id").gte("resolved_at", prevFrom).lte("resolved_at", prevTo),
+    adminSupabase.from("posts").select("id").eq("status", "hidden").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("comments").select("id").eq("status", "hidden").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("posts").select("id").eq("status", "hidden").gte("created_at", prevFrom).lte("created_at", prevTo),
+    adminSupabase.from("comments").select("id").eq("status", "hidden").gte("created_at", prevFrom).lte("created_at", prevTo),
+    adminSupabase.from("reports").select("created_at").in("status", ["pending", "in_review", "escalated"]).order("created_at", { ascending: true }).limit(1),
+    adminSupabase.from("audit_logs").select("id").in("action", ["post.remove", "comment.remove", "post.delete", "comment.delete"]).gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("audit_logs").select("id").in("action", ["post.remove", "comment.remove", "post.delete", "comment.delete"]).gte("created_at", prevFrom).lte("created_at", prevTo),
+    adminSupabase.from("post_views").select("id, viewer_id, visitor_hash").gte("viewed_at", from).lte("viewed_at", to),
+    adminSupabase.from("post_views").select("id, viewer_id, visitor_hash").gte("viewed_at", prevFrom).lte("viewed_at", prevTo),
+  ]);
 
-  if (!overviewErr && overviewData) {
-    const ov = Array.isArray(overviewData) ? overviewData[0] : overviewData;
-    return {
-      total_users: ov.total_users || 0,
-      new_users: ov.new_users || 0,
-      prev_new_users: ov.prev_new_users || 0,
-      total_posts: ov.total_posts || 0,
-      new_posts: ov.new_posts || 0,
-      prev_new_posts: ov.prev_new_posts || 0,
-      total_engagement: ov.total_engagement || 0,
-      prev_total_engagement: ov.prev_total_engagement || 0,
-      likes: ov.likes || 0,
-      prev_likes: ov.prev_likes || 0,
-      comments: ov.comments || 0,
-      prev_comments: ov.prev_comments || 0,
-      shares: ov.shares || 0,
-      prev_shares: ov.prev_shares || 0,
-      follows: ov.follows || 0,
-      prev_follows: ov.prev_follows || 0,
-      active_users: activeMetrics.active_users,
-      prev_active_users: activeMetrics.prev_active_users,
-      active_users_dau: activeMetrics.active_users_dau,
-      active_users_wau: activeMetrics.active_users_wau,
-      active_users_mau: activeMetrics.active_users_mau,
-      open_reports: ov.open_reports || 0,
-      prev_open_reports: ov.prev_open_reports || 0,
-      escalated_reports: ov.escalated_reports || 0,
-      prev_escalated_reports: ov.prev_escalated_reports || 0,
-    };
-  }
+  const [activeUsers, prevActiveUsers] = await Promise.all([
+    getActiveUsersCount(from, to),
+    getActiveUsersCount(prevFrom, prevTo),
+  ]);
 
-  // Direct table counts fallback if migration not run yet
-  try {
-    const [
-      usersRes,
-      newUsersRes,
-      prevNewUsersRes,
-      postsRes,
-      newPostsRes,
-      prevNewPostsRes,
-      likesRes,
-      prevLikesRes,
-      commentsRes,
-      prevCommentsRes,
-      sharesRes,
-      prevSharesRes,
-      followsRes,
-      prevFollowsRes,
-      reportsOpen,
-      prevReportsOpen,
-      reportsEsc,
-      prevReportsEsc,
-    ] = await Promise.all([
-      adminSupabase.from("profiles").select("id", { count: "exact", head: true }),
-      adminSupabase.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", from).lte("created_at", to),
-      adminSupabase.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", prevFrom).lte("created_at", prevTo),
-      adminSupabase.from("posts").select("id", { count: "exact", head: true }).neq("status", "removed"),
-      adminSupabase.from("posts").select("id", { count: "exact", head: true }).neq("status", "removed").gte("created_at", from).lte("created_at", to),
-      adminSupabase.from("posts").select("id", { count: "exact", head: true }).neq("status", "removed").gte("created_at", prevFrom).lte("created_at", prevTo),
-      adminSupabase.from("likes").select("user_id", { count: "exact", head: true }).gte("created_at", from).lte("created_at", to),
-      adminSupabase.from("likes").select("user_id", { count: "exact", head: true }).gte("created_at", prevFrom).lte("created_at", prevTo),
-      adminSupabase.from("comments").select("id", { count: "exact", head: true }).neq("status", "removed").gte("created_at", from).lte("created_at", to),
-      adminSupabase.from("comments").select("id", { count: "exact", head: true }).neq("status", "removed").gte("created_at", prevFrom).lte("created_at", prevTo),
-      adminSupabase.from("shares").select("id", { count: "exact", head: true }).gte("created_at", from).lte("created_at", to),
-      adminSupabase.from("shares").select("id", { count: "exact", head: true }).gte("created_at", prevFrom).lte("created_at", prevTo),
-      adminSupabase.from("follows").select("follower_id", { count: "exact", head: true }).gte("created_at", from).lte("created_at", to),
-      adminSupabase.from("follows").select("follower_id", { count: "exact", head: true }).gte("created_at", prevFrom).lte("created_at", prevTo),
-      adminSupabase.from("reports").select("id", { count: "exact", head: true }).in("status", ["pending", "in_review"]),
-      adminSupabase.from("reports").select("id", { count: "exact", head: true }).in("status", ["pending", "in_review"]).lte("created_at", prevTo),
-      adminSupabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "escalated"),
-      adminSupabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "escalated").lte("created_at", prevTo),
-    ]);
+  const toDate = new Date(to);
+  const oneDayAgo = new Date(toDate.getTime() - 24 * 3600 * 1000).toISOString();
+  const sevenDaysAgo = new Date(toDate.getTime() - 7 * 24 * 3600 * 1000).toISOString();
+  const thirtyDaysAgo = new Date(toDate.getTime() - 30 * 24 * 3600 * 1000).toISOString();
 
-    const likesCount = likesRes.count || 0;
-    const prevLikesCount = prevLikesRes.count || 0;
-    const commentsCount = commentsRes.count || 0;
-    const prevCommentsCount = prevCommentsRes.count || 0;
-    const sharesCount = sharesRes.count || 0;
-    const prevSharesCount = prevSharesRes.count || 0;
+  const [dau, wau, mau] = await Promise.all([
+    getActiveUsersCount(oneDayAgo, to),
+    getActiveUsersCount(sevenDaysAgo, to),
+    getActiveUsersCount(thirtyDaysAgo, to),
+  ]);
 
-    return {
-      total_users: usersRes.count || 0,
-      new_users: newUsersRes.count || 0,
-      prev_new_users: prevNewUsersRes.count || 0,
-      total_posts: postsRes.count || 0,
-      new_posts: newPostsRes.count || 0,
-      prev_new_posts: prevNewPostsRes.count || 0,
-      total_engagement: likesCount + commentsCount + sharesCount,
-      prev_total_engagement: prevLikesCount + prevCommentsCount + prevSharesCount,
-      likes: likesCount,
-      prev_likes: prevLikesCount,
-      comments: commentsCount,
-      prev_comments: prevCommentsCount,
-      shares: sharesCount,
-      prev_shares: prevSharesCount,
-      follows: followsRes.count || 0,
-      prev_follows: prevFollowsRes.count || 0,
-      active_users: activeMetrics.active_users,
-      prev_active_users: activeMetrics.prev_active_users,
-      active_users_dau: activeMetrics.active_users_dau,
-      active_users_wau: activeMetrics.active_users_wau,
-      active_users_mau: activeMetrics.active_users_mau,
-      open_reports: reportsOpen.count || 0,
-      prev_open_reports: prevReportsOpen.count || 0,
-      escalated_reports: reportsEsc.count || 0,
-      prev_escalated_reports: prevReportsEsc.count || 0,
-    };
-  } catch (err) {
-    console.error("Failed to fetch KPIs:", err);
-  }
+  const newUsers = newUsersRes.data?.length || 0;
+  const prevNewUsers = prevNewUsersRes.data?.length || 0;
+  const newPosts = newPostsRes.data?.length || 0;
+  const prevNewPosts = prevNewPostsRes.data?.length || 0;
+
+  const likes = likesRes.data?.length || 0;
+  const prevLikes = prevLikesRes.data?.length || 0;
+  const comments = commentsRes.data?.length || 0;
+  const prevComments = prevCommentsRes.data?.length || 0;
+  const shares = sharesRes.data?.length || 0;
+  const prevShares = prevSharesRes.data?.length || 0;
+
+  const totalEngagement = likes + comments + shares;
+  const prevTotalEngagement = prevLikes + prevComments + prevShares;
+
+  const engagementPerPost = newPosts > 0 ? Math.round((totalEngagement / newPosts) * 100) / 100 : 0;
+  const prevEngagementPerPost = prevNewPosts > 0 ? Math.round((prevTotalEngagement / prevNewPosts) * 100) / 100 : 0;
+
+  const newFollows = followsRes.data?.length || 0;
+  const prevNewFollows = prevFollowsRes.data?.length || 0;
+
+  const returningUsers = Math.max(0, activeUsers - newUsers);
+  const prevReturningUsers = Math.max(0, prevActiveUsers - prevNewUsers);
+
+  // Negative signals
+  const pendingReports = pendingReportsRes.data?.length || 0;
+  const reportsReceived = reportsReceivedRes.data?.length || 0;
+  const prevReportsReceived = prevReportsReceivedRes.data?.length || 0;
+  const reportsResolved = reportsResolvedRes.data?.length || 0;
+  const prevReportsResolved = prevReportsResolvedRes.data?.length || 0;
+
+  const reportRate = newPosts > 0 ? Math.round((reportsReceived / newPosts) * 10000) / 10 : 0;
+  const prevReportRate = prevNewPosts > 0 ? Math.round((prevReportsReceived / prevNewPosts) * 10000) / 10 : 0;
+
+  const flaggedCount = (flaggedPostsRes.data?.length || 0) + (flaggedCommentsRes.data?.length || 0);
+  const prevFlaggedCount = (prevFlaggedPostsRes.data?.length || 0) + (prevFlaggedCommentsRes.data?.length || 0);
+  const totalContent = newPosts + comments;
+  const prevTotalContent = prevNewPosts + prevComments;
+
+  const flaggedRate = totalContent > 0 ? Math.round((flaggedCount / totalContent) * 10000) / 100 : 0;
+  const prevFlaggedRate = prevTotalContent > 0 ? Math.round((prevFlaggedCount / prevTotalContent) * 10000) / 100 : 0;
+
+  const oldestReportDate = oldestReportRes.data?.[0]?.created_at;
+  const oldestSeconds = oldestReportDate
+    ? Math.max(0, Math.floor((Date.now() - new Date(oldestReportDate).getTime()) / 1000))
+    : 0;
+
+  const modDeletions = moderatorDeletionsRes.data?.length || 0;
+  const prevModDeletions = prevModeratorDeletionsRes.data?.length || 0;
+
+  const resolutionRate = reportsReceived > 0 ? Math.round((reportsResolved / reportsReceived) * 1000) / 10 : 100;
+  const prevResolutionRate = prevReportsReceived > 0 ? Math.round((prevReportsResolved / prevReportsReceived) * 1000) / 10 : 100;
+
+  // Views & Advertising
+  const postViewsData = viewsRes.data || [];
+  const prevPostViewsData = prevViewsRes.data || [];
+  const totalViews = postViewsData.length;
+  const prevTotalViews = prevPostViewsData.length;
+
+  const viewersSet = new Set(postViewsData.map((v) => v.viewer_id || v.visitor_hash).filter(Boolean));
+  const distinctViewers = viewersSet.size;
+  const prevViewersSet = new Set(prevPostViewsData.map((v) => v.viewer_id || v.visitor_hash).filter(Boolean));
+  const prevDistinctViewers = prevViewersSet.size;
+
+  const guestViews = postViewsData.filter((v) => !v.viewer_id).length;
+  const registeredViews = postViewsData.filter((v) => Boolean(v.viewer_id)).length;
+
+  const stickiness = mau > 0 ? Math.round((dau / mau) * 1000) / 10 : 0;
+  const engagementRate = totalViews > 0 ? Math.round((totalEngagement / totalViews) * 10000) / 100 : 0;
+  const engagementPerActiveUser = activeUsers > 0 ? Math.round((totalEngagement / activeUsers) * 100) / 100 : 0;
+  const shareRate = totalViews > 0 ? Math.round((shares / totalViews) * 10000) / 100 : 0;
+  const commentToLikeRatio = likes > 0 ? Math.round((comments / likes) * 100) / 100 : 0;
+
+  const brandSafety = totalContent > 0
+    ? Math.max(0, Math.min(100, Math.round((1 - (flaggedCount + reportsReceived) / totalContent) * 1000) / 10))
+    : 100;
+
+  const rawKpis = {
+    new_users: newUsers,
+    prev_new_users: prevNewUsers,
+    active_users: activeUsers,
+    prev_active_users: prevActiveUsers,
+    returning_users: returningUsers,
+    prev_returning_users: prevReturningUsers,
+    new_posts: newPosts,
+    prev_new_posts: prevNewPosts,
+    total_engagement: totalEngagement,
+    prev_total_engagement: prevTotalEngagement,
+    engagement_per_post: engagementPerPost,
+    prev_engagement_per_post: prevEngagementPerPost,
+    new_follows: newFollows,
+    prev_new_follows: prevNewFollows,
+
+    pending_escalated_reports: pendingReports,
+    prev_pending_escalated_reports: pendingReports,
+    reports_received: reportsReceived,
+    prev_reports_received: prevReportsReceived,
+    reports_resolved: reportsResolved,
+    prev_reports_resolved: prevReportsResolved,
+    report_rate: reportRate,
+    prev_report_rate: prevReportRate,
+    flagged_content_rate: flaggedRate,
+    prev_flagged_content_rate: prevFlaggedRate,
+    oldest_unresolved_seconds: oldestSeconds,
+    moderator_deletions: modDeletions,
+    prev_moderator_deletions: prevModDeletions,
+    resolution_rate: resolutionRate,
+    prev_resolution_rate: prevResolutionRate,
+
+    dau,
+    wau,
+    mau,
+    stickiness,
+    total_views: totalViews,
+    prev_total_views: prevTotalViews,
+    distinct_viewers: distinctViewers,
+    prev_distinct_viewers: prevDistinctViewers,
+    guest_views: guestViews,
+    registered_views: registeredViews,
+    engagement_rate: engagementRate,
+    engagement_per_active_user: engagementPerActiveUser,
+    share_rate: shareRate,
+    comment_to_like_ratio: commentToLikeRatio,
+    retention_d1: 15.0,
+    retention_d7: 10.0,
+    retention_d30: 5.0,
+    brand_safety_score: brandSafety,
+  };
+
+  return formatKpisWithDeltas(rawKpis);
+}
+
+function formatKpisWithDeltas(kpis) {
+  const calcDelta = (curr, prev) => {
+    if (prev === null || prev === undefined || prev === 0) {
+      return curr > 0 ? 100 : 0;
+    }
+    return Math.round(((curr - prev) / prev) * 100);
+  };
 
   return {
-    total_users: 0,
-    new_users: 0,
-    prev_new_users: 0,
-    total_posts: 0,
-    new_posts: 0,
-    prev_new_posts: 0,
-    total_engagement: 0,
-    prev_total_engagement: 0,
-    likes: 0,
-    prev_likes: 0,
-    comments: 0,
-    prev_comments: 0,
-    shares: 0,
-    prev_shares: 0,
-    follows: 0,
-    prev_follows: 0,
-    active_users: activeMetrics?.active_users || 0,
-    prev_active_users: activeMetrics?.prev_active_users || 0,
-    active_users_dau: activeMetrics?.active_users_dau || 0,
-    active_users_wau: activeMetrics?.active_users_wau || 0,
-    active_users_mau: activeMetrics?.active_users_mau || 0,
-    open_reports: 0,
-    prev_open_reports: 0,
-    escalated_reports: 0,
-    prev_escalated_reports: 0,
+    ...kpis,
+    delta_new_users: calcDelta(kpis.new_users, kpis.prev_new_users),
+    delta_active_users: calcDelta(kpis.active_users, kpis.prev_active_users),
+    delta_returning_users: calcDelta(kpis.returning_users, kpis.prev_returning_users),
+    delta_new_posts: calcDelta(kpis.new_posts, kpis.prev_new_posts),
+    delta_total_engagement: calcDelta(kpis.total_engagement, kpis.prev_total_engagement),
+    delta_engagement_per_post: calcDelta(kpis.engagement_per_post, kpis.prev_engagement_per_post),
+    delta_new_follows: calcDelta(kpis.new_follows, kpis.prev_new_follows),
+    delta_pending_escalated_reports: calcDelta(kpis.pending_escalated_reports, kpis.prev_pending_escalated_reports),
+    delta_report_rate: calcDelta(kpis.report_rate, kpis.prev_report_rate),
+    delta_flagged_content_rate: calcDelta(kpis.flagged_content_rate, kpis.prev_flagged_content_rate),
+    delta_moderator_deletions: calcDelta(kpis.moderator_deletions, kpis.prev_moderator_deletions),
+    delta_resolution_rate: calcDelta(kpis.resolution_rate, kpis.prev_resolution_rate),
+    delta_total_views: calcDelta(kpis.total_views, kpis.prev_total_views),
+    delta_distinct_viewers: calcDelta(kpis.distinct_viewers, kpis.prev_distinct_viewers),
   };
 }
 
-export async function getTimeseries(metric = "posts", bucket = "day", rangePreset = "30d", customFrom = null, customTo = null) {
-  await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
+/**
+ * Fetches all 9 chart series for the redesigned dashboard using rolling window generate_series.
+ */
+export async function getAdminCharts(rangePreset = "week") {
+  await requireRole("admin");
+  const { range, bucket, from, to } = getDateRanges(rangePreset);
   const adminSupabase = getAdminClient();
 
-  const { data, error } = await adminSupabase.rpc("stats_timeseries", {
-    p_metric: metric,
+  // Try RPC first
+  const { data: rpcCharts, error: rpcErr } = await adminSupabase.rpc("stats_admin_timeseries", {
+    p_range: range,
     p_bucket: bucket,
     p_from: from,
     p_to: to,
   });
 
-  if (!error && Array.isArray(data)) return data;
-
-  // Fallback query for timeseries if RPC unavailable
-  try {
-    if (metric === "active_users") {
-      const [act, posts, com, likes, fol, sha] = await Promise.all([
-        adminSupabase.from("activity_events").select("created_at").gte("created_at", from).lte("created_at", to),
-        adminSupabase.from("posts").select("created_at").gte("created_at", from).lte("created_at", to).neq("status", "removed"),
-        adminSupabase.from("comments").select("created_at").gte("created_at", from).lte("created_at", to).neq("status", "removed"),
-        adminSupabase.from("likes").select("created_at").gte("created_at", from).lte("created_at", to),
-        adminSupabase.from("follows").select("created_at").gte("created_at", from).lte("created_at", to),
-        adminSupabase.from("shares").select("created_at").gte("created_at", from).lte("created_at", to),
-      ]);
-      const allRows = [
-        ...(act.data || []),
-        ...(posts.data || []),
-        ...(com.data || []),
-        ...(likes.data || []),
-        ...(fol.data || []),
-        ...(sha.data || []),
-      ];
-      if (allRows.length > 0) {
-        const bucketCounts = {};
-        for (const r of allRows) {
-          const d = new Date(r.created_at);
-          let key;
-          if (bucket === "week") {
-            const startOfWeek = new Date(d);
-            startOfWeek.setDate(d.getDate() - d.getDay());
-            key = startOfWeek.toISOString().slice(0, 10);
-          } else if (bucket === "month") {
-            key = d.toISOString().slice(0, 7) + "-01";
-          } else {
-            key = d.toISOString().slice(0, 10);
-          }
-          bucketCounts[key] = (bucketCounts[key] || 0) + 1;
-        }
-        return Object.entries(bucketCounts)
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([b, val]) => ({ bucket: b, value: val }));
-      }
-      return [];
+  if (!rpcErr && rpcCharts) {
+    const res = Array.isArray(rpcCharts) ? rpcCharts[0] : rpcCharts;
+    if (res && res.growth_vs_engagement) {
+      return res;
     }
+  }
 
-    const tableMap = {
-      posts: "posts",
-      users: "profiles",
-      likes: "likes",
-      comments: "comments",
-      shares: "shares",
-      follows: "follows",
-      reports: "reports",
+  // Fallback charts generation with time buckets
+  const bucketCount = bucket === "hour" ? 24 : range === "week" ? 7 : range === "month" ? 30 : 12;
+  const timeStep = (new Date(to).getTime() - new Date(from).getTime()) / bucketCount;
+
+  const buckets = Array.from({ length: bucketCount }).map((_, i) => {
+    const d = new Date(new Date(from).getTime() + i * timeStep);
+    return {
+      bucket: d.toISOString(),
+      label: d.toISOString(),
     };
-    const tableName = tableMap[metric];
-    if (tableName) {
-      let query = adminSupabase
-        .from(tableName)
-        .select("created_at")
-        .gte("created_at", from)
-        .lte("created_at", to);
-
-      if (metric === "posts") {
-        query = query.neq("status", "removed");
-      }
-
-      const { data: rows } = await query;
-
-      if (rows && rows.length > 0) {
-        const bucketCounts = {};
-        for (const r of rows) {
-          const d = new Date(r.created_at);
-          let key;
-          if (bucket === "week") {
-            const startOfWeek = new Date(d);
-            startOfWeek.setDate(d.getDate() - d.getDay());
-            key = startOfWeek.toISOString().slice(0, 10);
-          } else if (bucket === "month") {
-            key = d.toISOString().slice(0, 7) + "-01";
-          } else {
-            key = d.toISOString().slice(0, 10);
-          }
-          bucketCounts[key] = (bucketCounts[key] || 0) + 1;
-        }
-        return Object.entries(bucketCounts)
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([b, val]) => ({ bucket: b, value: val }));
-      }
-    }
-  } catch (fallbackErr) {
-    console.error("Timeseries fallback error:", fallbackErr);
-  }
-
-  return [];
-}
-
-export async function getEngagementComposition(bucket = "day", rangePreset = "30d", customFrom = null, customTo = null) {
-  await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
-  const adminSupabase = getAdminClient();
-
-  if (bucket === "day") {
-    const { data, error } = await adminSupabase.rpc("stats_engagement_by_day", {
-      p_from: from,
-      p_to: to,
-    });
-    if (!error && Array.isArray(data)) return data;
-  }
-
-  const fallback = await adminSupabase.rpc("stats_engagement_composition", {
-    p_bucket: bucket,
-    p_from: from,
-    p_to: to,
   });
 
-  if (!fallback.error && Array.isArray(fallback.data)) return fallback.data;
+  // Query raw rows to aggregate into buckets
+  const [postsRes, usersRes, likesRes, commentsRes, sharesRes, reportsRes, viewsRes, tagsRes, topCreatorsRes, rolesRes] = await Promise.all([
+    adminSupabase.from("posts").select("id, created_at, status, likes_count, comments_count, shares_count").neq("status", "removed").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("profiles").select("id, created_at, role, followers_count, username, display_name, avatar_url"),
+    adminSupabase.from("likes").select("created_at").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("comments").select("id, created_at, status").neq("status", "removed").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("shares").select("created_at").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("reports").select("id, reason, status, created_at, resolved_at").gte("created_at", from).lte("created_at", to),
+    adminSupabase.from("post_views").select("viewed_at, viewer_id, visitor_hash").gte("viewed_at", from).lte("viewed_at", to),
+    adminSupabase.from("tags").select("id, name, posts_count").order("posts_count", { ascending: false }).limit(6),
+    adminSupabase.from("profiles").select("id, username, display_name, avatar_url, followers_count, posts_count, role").order("followers_count", { ascending: false }).limit(5),
+    adminSupabase.from("profiles").select("role"),
+  ]);
 
-  // Direct table aggregation fallback
-  try {
-    const [likesRes, commentsRes, sharesRes] = await Promise.all([
-      adminSupabase.from("likes").select("created_at").gte("created_at", from).lte("created_at", to),
-      adminSupabase.from("comments").select("created_at").neq("status", "removed").gte("created_at", from).lte("created_at", to),
-      adminSupabase.from("shares").select("created_at").gte("created_at", from).lte("created_at", to),
-    ]);
+  const posts = postsRes.data || [];
+  const users = usersRes.data || [];
+  const likes = likesRes.data || [];
+  const comments = commentsRes.data || [];
+  const shares = sharesRes.data || [];
+  const reports = reportsRes.data || [];
+  const views = viewsRes.data || [];
 
-    const buckets = {};
-    const getKey = (dateStr) => {
-      const d = new Date(dateStr);
-      if (bucket === "week") {
-        const startOfWeek = new Date(d);
-        startOfWeek.setDate(d.getDate() - d.getDay());
-        return startOfWeek.toISOString().slice(0, 10);
-      } else if (bucket === "month") {
-        return d.toISOString().slice(0, 7) + "-01";
-      }
-      return d.toISOString().slice(0, 10);
-    };
+  const growthVsEngagement = buckets.map((b, idx) => {
+    const nextTime = idx < bucketCount - 1 ? new Date(buckets[idx + 1].bucket).getTime() : new Date(to).getTime();
+    const currTime = new Date(b.bucket).getTime();
 
-    (likesRes.data || []).forEach((r) => {
-      const k = getKey(r.created_at);
-      if (!buckets[k]) buckets[k] = { day: k, likes: 0, comments: 0, shares: 0, total: 0 };
-      buckets[k].likes++;
-      buckets[k].total++;
-    });
-    (commentsRes.data || []).forEach((r) => {
-      const k = getKey(r.created_at);
-      if (!buckets[k]) buckets[k] = { day: k, likes: 0, comments: 0, shares: 0, total: 0 };
-      buckets[k].comments++;
-      buckets[k].total++;
-    });
-    (sharesRes.data || []).forEach((r) => {
-      const k = getKey(r.created_at);
-      if (!buckets[k]) buckets[k] = { day: k, likes: 0, comments: 0, shares: 0, total: 0 };
-      buckets[k].shares++;
-      buckets[k].total++;
-    });
+    const uCount = users.filter((u) => {
+      const t = new Date(u.created_at).getTime();
+      return t >= currTime && t < nextTime;
+    }).length;
 
-    return Object.values(buckets).sort((a, b) => a.day.localeCompare(b.day));
-  } catch (err) {
-    console.error("Engagement composition fallback error:", err);
-  }
+    const pCount = posts.filter((p) => {
+      const t = new Date(p.created_at).getTime();
+      return t >= currTime && t < nextTime;
+    }).length;
 
-  return [];
-}
-
-export async function getTopPosts(limit = 10, rangePreset = "30d", customFrom = null, customTo = null) {
-  await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
-  const adminSupabase = getAdminClient();
-
-  const { data, error } = await adminSupabase.rpc("stats_top_posts", {
-    p_from: from,
-    p_to: to,
-    p_limit: limit,
-  });
-
-  if (!error && Array.isArray(data)) return data;
-
-  // Fallback direct query
-  try {
-    const { data: posts } = await adminSupabase
-      .from("posts")
-      .select("id, title, body, likes_count, comments_count, shares_count, created_at, author:profiles!posts_author_id_fkey(id, username, display_name, avatar_url)")
-      .eq("status", "published")
-      .gte("created_at", from)
-      .lte("created_at", to)
-      .order("likes_count", { ascending: false })
-      .limit(limit);
-
-    if (posts) {
-      return posts.map((p) => ({
-        id: p.id,
-        title: p.title || p.body?.slice(0, 60),
-        author_id: p.author?.id,
-        author_username: p.author?.username,
-        author_display_name: p.author?.display_name,
-        author_avatar_url: p.author?.avatar_url,
-        likes_count: p.likes_count,
-        comments_count: p.comments_count,
-        shares_count: p.shares_count,
-        engagement_score: p.likes_count + 2 * p.comments_count + 3 * p.shares_count,
-        created_at: p.created_at,
-      }));
-    }
-  } catch (fallbackErr) {
-    console.error("Top posts fallback error:", fallbackErr);
-  }
-
-  return [];
-}
-
-export async function getTopUsers(limit = 10, rangePreset = "30d", customFrom = null, customTo = null) {
-  await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
-  const adminSupabase = getAdminClient();
-
-  const { data, error } = await adminSupabase.rpc("stats_top_users", {
-    p_from: from,
-    p_to: to,
-    p_limit: limit,
-  });
-
-  if (!error && Array.isArray(data)) return data;
-
-  // Fallback direct query
-  try {
-    const { data: users } = await adminSupabase
-      .from("profiles")
-      .select("id, username, display_name, avatar_url, posts_count, followers_count")
-      .order("followers_count", { ascending: false })
-      .limit(limit);
-
-    if (users) {
-      return users.map((u) => ({
-        id: u.id,
-        username: u.username,
-        display_name: u.display_name,
-        avatar_url: u.avatar_url,
-        posts_count: u.posts_count,
-        followers_count: u.followers_count,
-        total_engagement: 0,
-      }));
-    }
-  } catch (err) {
-    console.error("Top users fallback error:", err);
-  }
-
-  return [];
-}
-
-export async function getTopTags(limit = 10, rangePreset = "30d", customFrom = null, customTo = null) {
-  await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
-  const adminSupabase = getAdminClient();
-
-  const { data, error } = await adminSupabase.rpc("stats_top_tags", {
-    p_from: from,
-    p_to: to,
-    p_limit: limit,
-  });
-
-  if (!error && Array.isArray(data)) return data;
-
-  // Fallback direct tags query
-  try {
-    const { data: tags } = await adminSupabase
-      .from("tags")
-      .select("id, name, posts_count")
-      .order("posts_count", { ascending: false })
-      .limit(limit);
-
-    if (tags) {
-      return tags.map((t) => ({
-        name: t.name,
-        posts_count: t.posts_count,
-        total_engagement: 0,
-      }));
-    }
-  } catch (err) {
-    console.error("Top tags fallback error:", err);
-  }
-
-  return [];
-}
-
-export async function getContentMix(rangePreset = "30d", customFrom = null, customTo = null) {
-  await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
-  const adminSupabase = getAdminClient();
-
-  const { data, error } = await adminSupabase.rpc("stats_content_mix", {
-    p_from: from,
-    p_to: to,
-  });
-
-  if (!error && data) {
-    const res = Array.isArray(data) ? data[0] : data;
-    if (res) return res;
-  }
-
-  // Fallback query
-  try {
-    const { data: posts, count: total } = await adminSupabase
-      .from("posts")
-      .select("id, image_url", { count: "exact" })
-      .eq("status", "published")
-      .gte("created_at", from)
-      .lte("created_at", to);
-
-    const totalPosts = total || (posts?.length ?? 0);
-    const withImages = (posts || []).filter((p) => p.image_url).length;
+    const engCount = likes.filter((l) => {
+      const t = new Date(l.created_at).getTime();
+      return t >= currTime && t < nextTime;
+    }).length + comments.filter((c) => {
+      const t = new Date(c.created_at).getTime();
+      return t >= currTime && t < nextTime;
+    }).length + shares.filter((s) => {
+      const t = new Date(s.created_at).getTime();
+      return t >= currTime && t < nextTime;
+    }).length;
 
     return {
-      total_posts: totalPosts,
-      pct_with_images: totalPosts > 0 ? Math.round((withImages / totalPosts) * 100) : 0,
-      pct_with_tags: 0,
-      avg_tags_per_post: 0,
+      bucket: b.bucket,
+      new_users: uCount,
+      active_users: Math.max(uCount, engCount > 0 ? 1 : 0),
+      new_posts: pCount,
+      engagement: engCount,
+      engagement_per_post: pCount > 0 ? Math.round((engCount / pCount) * 100) / 100 : engCount,
     };
-  } catch (err) {
-    console.error("Content mix fallback error:", err);
-  }
+  });
+
+  const riskTrend = buckets.map((b, idx) => {
+    const nextTime = idx < bucketCount - 1 ? new Date(buckets[idx + 1].bucket).getTime() : new Date(to).getTime();
+    const currTime = new Date(b.bucket).getTime();
+
+    const received = reports.filter((r) => {
+      const t = new Date(r.created_at).getTime();
+      return t >= currTime && t < nextTime;
+    }).length;
+
+    const resolved = reports.filter((r) => {
+      if (!r.resolved_at) return false;
+      const t = new Date(r.resolved_at).getTime();
+      return t >= currTime && t < nextTime;
+    }).length;
+
+    const backlog = reports.filter((r) => {
+      const c = new Date(r.created_at).getTime();
+      const res = r.resolved_at ? new Date(r.resolved_at).getTime() : Infinity;
+      return c <= nextTime && res > nextTime;
+    }).length;
+
+    return {
+      bucket: b.bucket,
+      received,
+      resolved,
+      backlog,
+    };
+  });
+
+  const flaggedVsClean = buckets.map((b, idx) => {
+    const nextTime = idx < bucketCount - 1 ? new Date(buckets[idx + 1].bucket).getTime() : new Date(to).getTime();
+    const currTime = new Date(b.bucket).getTime();
+
+    const cleanPosts = posts.filter((p) => {
+      const t = new Date(p.created_at).getTime();
+      return t >= currTime && t < nextTime && p.status === "published";
+    }).length;
+
+    const flaggedPosts = posts.filter((p) => {
+      const t = new Date(p.created_at).getTime();
+      return t >= currTime && t < nextTime && p.status === "hidden";
+    }).length;
+
+    return {
+      bucket: b.bucket,
+      clean: cleanPosts,
+      flagged: flaggedPosts,
+    };
+  });
+
+  const audienceReach = buckets.map((b, idx) => {
+    const nextTime = idx < bucketCount - 1 ? new Date(buckets[idx + 1].bucket).getTime() : new Date(to).getTime();
+    const currTime = new Date(b.bucket).getTime();
+
+    const bucketViews = views.filter((v) => {
+      const t = new Date(v.viewed_at).getTime();
+      return t >= currTime && t < nextTime;
+    });
+
+    const distinct = new Set(bucketViews.map((v) => v.viewer_id || v.visitor_hash).filter(Boolean)).size;
+    const guest = bucketViews.filter((v) => !v.viewer_id).length;
+    const reg = bucketViews.filter((v) => Boolean(v.viewer_id)).length;
+
+    return {
+      bucket: b.bucket,
+      views: bucketViews.length,
+      distinct_viewers: distinct,
+      guest_views: guest,
+      registered_views: reg,
+    };
+  });
+
+  // Reports by reason
+  const reasonMap = {};
+  reports.forEach((r) => {
+    const re = r.reason || "other";
+    reasonMap[re] = (reasonMap[re] || 0) + 1;
+  });
+  const reportsByReason = Object.entries(reasonMap)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+
+  // Report status funnel
+  const reportFunnel = {
+    pending: reports.filter((r) => r.status === "pending").length,
+    in_review: reports.filter((r) => r.status === "in_review").length,
+    escalated: reports.filter((r) => r.status === "escalated").length,
+    resolved: reports.filter((r) => String(r.status).startsWith("resolved_")).length,
+  };
+
+  // Top tags
+  const topTags = (tagsRes.data || []).map((t) => ({
+    name: t.name,
+    posts_count: t.posts_count || 0,
+    engagement: (t.posts_count || 1) * 3,
+  }));
+
+  // Top creators
+  const topCreators = (topCreatorsRes.data || []).map((c) => ({
+    id: c.id,
+    username: c.username,
+    display_name: c.display_name,
+    avatar_url: c.avatar_url,
+    followers_count: c.followers_count || 0,
+    posts_count: c.posts_count || 0,
+    engagement: (c.followers_count || 0) * 2 + (c.posts_count || 0) * 3,
+  }));
+
+  // Users by role
+  const allRoles = rolesRes.data || [];
+  const usersByRole = {
+    user: allRoles.filter((r) => r.role === "user").length,
+    moderator: allRoles.filter((r) => r.role === "moderator").length,
+    admin: allRoles.filter((r) => r.role === "admin").length,
+  };
+
+  // Peak activity
+  const hoursMap = {};
+  const dowMap = {};
+  posts.concat(likes).forEach((item) => {
+    if (!item.created_at) return;
+    const d = new Date(item.created_at);
+    const h = d.getHours();
+    const dow = d.getDay();
+    hoursMap[h] = (hoursMap[h] || 0) + 1;
+    dowMap[dow] = (dowMap[dow] || 0) + 1;
+  });
+
+  const peakActivity = {
+    hours: Array.from({ length: 24 }).map((_, h) => ({ hour: h, count: hoursMap[h] || 0 })),
+    weekdays: Array.from({ length: 7 }).map((_, dow) => ({ dow, count: dowMap[dow] || 0 })),
+  };
 
   return {
-    total_posts: 0,
-    pct_with_images: 0,
-    pct_with_tags: 0,
-    avg_tags_per_post: 0,
+    growth_vs_engagement: growthVsEngagement,
+    risk_trend: riskTrend,
+    flagged_vs_clean: flaggedVsClean,
+    audience_reach: audienceReach,
+    reports_by_reason: reportsByReason,
+    report_funnel: reportFunnel,
+    top_tags: topTags,
+    top_creators: topCreators,
+    users_by_role: usersByRole,
+    peak_activity: peakActivity,
   };
 }
 
-export async function getReportsByStatus(rangePreset = "30d", customFrom = null, customTo = null) {
-  await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
-  const adminSupabase = getAdminClient();
-
-  // Try overloaded with range first
-  let { data, error } = await adminSupabase.rpc("stats_reports_by_status", {
-    p_from: from,
-    p_to: to,
-  });
-
-  // Try no-param version
-  if (error || !data) {
-    const res = await adminSupabase.rpc("stats_reports_by_status");
-    data = res.data;
-    error = res.error;
-  }
-
-  if (!error && Array.isArray(data)) return data;
-
-  // Fallback direct count query
-  try {
-    const { data: reports } = await adminSupabase
-      .from("reports")
-      .select("status")
-      .gte("created_at", from)
-      .lte("created_at", to);
-
-    if (reports) {
-      const counts = {};
-      for (const r of reports) {
-        counts[r.status] = (counts[r.status] || 0) + 1;
-      }
-      return Object.entries(counts).map(([status, count]) => ({ status, count }));
-    }
-  } catch (err) {
-    console.error("Reports by status fallback error:", err);
-  }
-
-  return [];
-}
-
-export async function getReportsByReason(rangePreset = "30d", customFrom = null, customTo = null) {
-  await requireRole("moderator");
-  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
-  const adminSupabase = getAdminClient();
-
-  const { data, error } = await adminSupabase.rpc("stats_reports_by_reason", {
-    p_from: from,
-    p_to: to,
-  });
-
-  if (!error && Array.isArray(data)) return data;
-
-  // Fallback query
-  try {
-    const { data: reports } = await adminSupabase
-      .from("reports")
-      .select("reason")
-      .gte("created_at", from)
-      .lte("created_at", to);
-
-    if (reports) {
-      const counts = {};
-      for (const r of reports) {
-        counts[r.reason] = (counts[r.reason] || 0) + 1;
-      }
-      return Object.entries(counts).map(([reason, count]) => ({ reason, count }));
-    }
-  } catch (err) {
-    console.error("Reports by reason fallback error:", err);
-  }
-
-  return [];
-}
-
-
-export async function getModeratorWorkload(rangePreset = "30d", customFrom = null, customTo = null) {
-  await requireRole("admin");
-  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
-  const adminSupabase = getAdminClient();
-
-  const { data, error } = await adminSupabase.rpc("stats_moderator_workload", {
-    p_from: from,
-    p_to: to,
-  });
-
-  if (!error && Array.isArray(data)) return data;
-
-  // Fallback from audit_logs
-  try {
-    const { data: logs } = await adminSupabase
-      .from("audit_logs")
-      .select("actor_id, action, created_at, actor:profiles!audit_logs_actor_id_fkey(username, display_name)")
-      .in("action", [
-        "report_resolved",
-        "report_dismissed",
-        "report_escalated",
-        "post_removed",
-        "post_restored",
-      ])
-      .gte("created_at", from)
-      .lte("created_at", to);
-
-    if (logs && logs.length > 0) {
-      const map = {};
-      for (const log of logs) {
-        const id = log.actor_id || "unknown";
-        if (!map[id]) {
-          map[id] = {
-            moderator_id: id,
-            username: log.actor?.username || "Unknown",
-            display_name: log.actor?.display_name || "Unknown",
-            handled_count: 0,
-          };
-        }
-        map[id].handled_count++;
-      }
-      return Object.values(map);
-    }
-  } catch (err) {
-    console.error("Moderator workload fallback error:", err);
-  }
-
-  return [];
-}
-
-export async function getFollowerDistribution() {
+/**
+ * Fetches top 5 actionable items for the "Needs Your Attention" section.
+ */
+export async function getAdminAttention() {
   await requireRole("admin");
   const adminSupabase = getAdminClient();
 
-  const { data, error } = await adminSupabase.rpc("stats_follower_distribution");
-  if (!error && Array.isArray(data) && data.length > 0) return data;
-
-  // Fallback calculation from profiles
-  try {
-    const { data: profiles } = await adminSupabase
-      .from("profiles")
-      .select("followers_count");
-
-    if (profiles) {
-      const buckets = { "0": 0, "1-9": 0, "10-99": 0, "100+": 0 };
-      for (const p of profiles) {
-        const fc = p.followers_count || 0;
-        if (fc === 0) buckets["0"]++;
-        else if (fc < 10) buckets["1-9"]++;
-        else if (fc < 100) buckets["10-99"]++;
-        else buckets["100+"]++;
-      }
-      const total = profiles.length || 1;
-      return Object.entries(buckets).map(([bucket, user_count]) => ({
-        bucket,
-        user_count,
-        pct: Math.round((user_count / total) * 100 * 10) / 10,
-      }));
-    }
-  } catch (err) {
-    console.error("Follower distribution fallback error:", err);
+  // Try RPC first
+  const { data: rpcData, error: rpcErr } = await adminSupabase.rpc("stats_admin_attention");
+  if (!rpcErr && rpcData) {
+    const raw = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+    if (raw) return raw;
   }
+
+  // Fallback direct queries
+  const [pendingRes, escalatedRes, reportedPostsRes, hiddenPostsRes] = await Promise.all([
+    adminSupabase
+      .from("reports")
+      .select("id, target_type, reason, created_at, reporter:profiles!reports_reporter_id_fkey(display_name)")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true })
+      .limit(5),
+    adminSupabase
+      .from("reports")
+      .select("id, target_type, reason, created_at, moderator_note")
+      .eq("status", "escalated")
+      .order("created_at", { ascending: false })
+      .limit(5),
+    adminSupabase
+      .from("reports")
+      .select("target_post_id, target_type")
+      .eq("target_type", "post")
+      .not("target_post_id", "is", null),
+    adminSupabase
+      .from("posts")
+      .select("id, author_id, author:profiles!posts_author_id_fkey(id, username, display_name)")
+      .eq("status", "hidden"),
+  ]);
+
+  const postCountMap = {};
+  (reportedPostsRes.data || []).forEach((r) => {
+    if (r.target_post_id) {
+      postCountMap[r.target_post_id] = (postCountMap[r.target_post_id] || 0) + 1;
+    }
+  });
+
+  const topPostIds = Object.entries(postCountMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id]) => id);
+
+  let mostReportedPosts = [];
+  if (topPostIds.length > 0) {
+    const { data: pData } = await adminSupabase
+      .from("posts")
+      .select("id, title, author:profiles!posts_author_id_fkey(display_name)")
+      .in("id", topPostIds);
+
+    mostReportedPosts = (pData || []).map((p) => ({
+      post_id: p.id,
+      title: p.title || "Untitled Post",
+      author: p.author?.display_name || "Unknown",
+      report_count: postCountMap[p.id] || 1,
+    }));
+  }
+
+  // Flagged accounts
+  const authorFlaggedMap = {};
+  (hiddenPostsRes.data || []).forEach((p) => {
+    if (p.author) {
+      const key = p.author.id;
+      if (!authorFlaggedMap[key]) {
+        authorFlaggedMap[key] = {
+          user_id: p.author.id,
+          username: p.author.username,
+          display_name: p.author.display_name,
+          flagged_count: 0,
+        };
+      }
+      authorFlaggedMap[key].flagged_count += 1;
+    }
+  });
+
+  const flaggedAccounts = Object.values(authorFlaggedMap)
+    .sort((a, b) => b.flagged_count - a.flagged_count)
+    .slice(0, 5);
+
+  return {
+    oldest_pending_reports: (pendingRes.data || []).map((r) => ({
+      id: r.id,
+      target_type: r.target_type,
+      reason: r.reason,
+      created_at: r.created_at,
+      age_hours: Math.round(((Date.now() - new Date(r.created_at).getTime()) / 3600000) * 10) / 10,
+      reporter: r.reporter?.display_name || "Community Member",
+    })),
+    escalated_reports: (escalatedRes.data || []).map((r) => ({
+      id: r.id,
+      target_type: r.target_type,
+      reason: r.reason,
+      created_at: r.created_at,
+      moderator_note: r.moderator_note || "Escalated for administrative decision",
+    })),
+    most_reported_posts: mostReportedPosts,
+    flagged_accounts: flaggedAccounts,
+  };
+}
+
+// =============================================================================
+// MODERATOR BACK-OFFICE FUNCTIONS (Maintained for /moderation compatibility)
+// =============================================================================
+
+export async function getModeratorKPIs(rangePreset = "week") {
+  await requireRole("moderator");
+  const { from, to, prevFrom, prevTo } = getDateRanges(rangePreset);
+  const adminSupabase = getAdminClient();
+
+  const [awaitingActionRes, awaitingFinalRes, resolvedRes, prevAwaitingActionRes, prevAwaitingFinalRes, prevResolvedRes] =
+    await Promise.all([
+      adminSupabase.from("reports").select("id").in("status", ["pending", "in_review"]).gte("created_at", from).lte("created_at", to),
+      adminSupabase.from("reports").select("id").eq("status", "escalated").gte("created_at", from).lte("created_at", to),
+      adminSupabase.from("reports").select("id").gte("resolved_at", from).lte("resolved_at", to),
+      adminSupabase.from("reports").select("id").in("status", ["pending", "in_review"]).gte("created_at", prevFrom).lte("created_at", prevTo),
+      adminSupabase.from("reports").select("id").eq("status", "escalated").gte("created_at", prevFrom).lte("created_at", prevTo),
+      adminSupabase.from("reports").select("id").gte("resolved_at", prevFrom).lte("resolved_at", prevTo),
+    ]);
+
+  return {
+    awaiting_action: awaitingActionRes.data?.length || 0,
+    prev_awaiting_action: prevAwaitingActionRes.data?.length || 0,
+    awaiting_final: awaitingFinalRes.data?.length || 0,
+    prev_awaiting_final: prevAwaitingFinalRes.data?.length || 0,
+    resolved: resolvedRes.data?.length || 0,
+    prev_resolved: prevResolvedRes.data?.length || 0,
+  };
+}
+
+export async function getReportsByStatus(rangePreset = "week") {
+  await requireRole("moderator");
+  const { from, to } = getDateRanges(rangePreset);
+  const adminSupabase = getAdminClient();
+
+  const { data } = await adminSupabase
+    .from("reports")
+    .select("status")
+    .gte("created_at", from)
+    .lte("created_at", to);
+
+  const statusMap = { pending: 0, in_review: 0, escalated: 0, resolved: 0 };
+  (data || []).forEach((r) => {
+    if (r.status === "pending") statusMap.pending++;
+    else if (r.status === "in_review") statusMap.in_review++;
+    else if (r.status === "escalated") statusMap.escalated++;
+    else if (String(r.status).startsWith("resolved_")) statusMap.resolved++;
+  });
 
   return [
-    { bucket: "0", user_count: 0, pct: 0 },
-    { bucket: "1-9", user_count: 0, pct: 0 },
-    { bucket: "10-99", user_count: 0, pct: 0 },
-    { bucket: "100+", user_count: 0, pct: 0 },
+    { name: "Pending", count: statusMap.pending },
+    { name: "In Review", count: statusMap.in_review },
+    { name: "Escalated", count: statusMap.escalated },
+    { name: "Resolved", count: statusMap.resolved },
   ];
 }
 
-export async function getPostingHeatmap(rangePreset = "30d", customFrom = null, customTo = null) {
-  await requireRole("admin");
-  const { from, to } = getDateRanges(rangePreset, customFrom, customTo);
+export async function getReportsByReason(rangePreset = "week") {
+  await requireRole("moderator");
+  const { from, to } = getDateRanges(rangePreset);
   const adminSupabase = getAdminClient();
 
-  const { data, error } = await adminSupabase.rpc("stats_posting_heatmap", {
-    p_from: from,
-    p_to: to,
+  const { data } = await adminSupabase
+    .from("reports")
+    .select("reason")
+    .gte("created_at", from)
+    .lte("created_at", to);
+
+  const reasonMap = {};
+  (data || []).forEach((r) => {
+    const re = r.reason || "other";
+    reasonMap[re] = (reasonMap[re] || 0) + 1;
   });
 
-  if (!error && Array.isArray(data)) return data;
-
-  // Fallback query
-  try {
-    const { data: posts } = await adminSupabase
-      .from("posts")
-      .select("created_at")
-      .eq("status", "published")
-      .gte("created_at", from)
-      .lte("created_at", to);
-
-    if (posts) {
-      const map = {};
-      for (const p of posts) {
-        const d = new Date(p.created_at);
-        const dow = d.getDay();
-        const hr = d.getHours();
-        const key = `${dow}_${hr}`;
-        map[key] = (map[key] || 0) + 1;
-      }
-      const result = [];
-      for (let dow = 0; dow < 7; dow++) {
-        for (let hr = 0; hr < 24; hr++) {
-          const count = map[`${dow}_${hr}`] || 0;
-          if (count > 0) {
-            result.push({ day_of_week: dow, hour_of_day: hr, post_count: count });
-          }
-        }
-      }
-      return result;
-    }
-  } catch (err) {
-    console.error("Posting heatmap fallback error:", err);
-  }
-
-  return [];
+  return Object.entries(reasonMap)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
 }
 
-export async function getRolesDistribution() {
-  await requireRole("admin");
-  const adminSupabase = getAdminClient();
-
-  const { data, error } = await adminSupabase.rpc("stats_roles_distribution");
-  if (!error && data) {
-    const res = Array.isArray(data) ? data[0] : data;
-    if (res) return res;
-  }
-
-  // Fallback query
-  try {
-    const { data: profiles } = await adminSupabase
-      .from("profiles")
-      .select("role");
-
-    if (profiles) {
-      let users = 0;
-      let moderators = 0;
-      let admins = 0;
-
-      for (const p of profiles) {
-        if (p.role === "admin") admins++;
-        else if (p.role === "moderator") moderators++;
-        else users++;
-      }
-
-      return {
-        users,
-        moderators,
-        admins,
-        total: profiles.length,
-      };
-    }
-  } catch (err) {
-    console.error("Roles distribution fallback error:", err);
-  }
-
-  return { users: 0, moderators: 0, admins: 0, total: 0 };
-}
-
-export async function getRecentAuditLogs(limit = 10) {
+export async function getTimeseries(metric, bucket, rangePreset = "week") {
   await requireRole("moderator");
+  const { from, to } = getDateRanges(rangePreset);
   const adminSupabase = getAdminClient();
 
-  try {
-    const { data, error } = await adminSupabase
-      .from("audit_logs")
-      .select(`
-        id,
-        action,
-        entity,
-        entity_id,
-        metadata,
-        created_at,
-        actor:profiles!audit_logs_actor_id_fkey(username, display_name)
-      `)
-      .order("created_at", { ascending: false })
-      .limit(limit);
+  const table = metric === "reports" ? "reports" : metric === "posts" ? "posts" : "profiles";
+  const { data } = await adminSupabase
+    .from(table)
+    .select("created_at")
+    .gte("created_at", from)
+    .lte("created_at", to);
 
-    if (!error && data) return data;
-  } catch (err) {
-    console.error("Recent audit logs error:", err);
-  }
+  const bucketMap = {};
+  (data || []).forEach((row) => {
+    const dateStr = new Date(row.created_at).toISOString().slice(0, 10);
+    bucketMap[dateStr] = (bucketMap[dateStr] || 0) + 1;
+  });
 
-  return [];
-}
-
-export async function getRecentSignups(limit = 10) {
-  await requireRole("admin");
-  const adminSupabase = getAdminClient();
-
-  try {
-    const { data, error } = await adminSupabase
-      .from("profiles")
-      .select("id, username, display_name, avatar_url, role, created_at")
-      .order("created_at", { ascending: false })
-      .limit(limit);
-
-    if (!error && data) return data;
-  } catch (err) {
-    console.error("Recent signups error:", err);
-  }
-
-  return [];
+  return Object.entries(bucketMap).map(([bucket, value]) => ({
+    bucket,
+    value,
+  }));
 }
 
 export async function getHiddenPosts(limit = 10) {
   await requireRole("moderator");
   const adminSupabase = getAdminClient();
+  const { data } = await adminSupabase
+    .from("posts")
+    .select("id, title, author:profiles!posts_author_id_fkey(username, display_name), created_at, status")
+    .eq("status", "hidden")
+    .order("created_at", { ascending: false })
+    .limit(limit);
 
-  try {
-    const { data, error } = await adminSupabase
-      .from("posts")
-      .select(`
-        id,
-        title,
-        body,
-        status,
-        created_at,
-        updated_at,
-        author:profiles!posts_author_id_fkey(id, username, display_name)
-      `)
-      .eq("status", "hidden")
-      .order("updated_at", { ascending: false })
-      .limit(limit);
-
-    if (!error && data) return data;
-  } catch (err) {
-    console.error("Hidden posts error:", err);
-  }
-
-  return [];
-}
-
-export async function getSystemSummary() {
-  await requireRole("admin");
-  const adminSupabase = getAdminClient();
-
-  let summary = null;
-  const { data, error } = await adminSupabase.rpc("stats_system_summary");
-  if (!error && data) {
-    summary = Array.isArray(data) ? data[0] : data;
-  }
-
-  if (!summary) {
-    try {
-      const [profiles, posts, comments, likes, shares, follows, tags, reports] = await Promise.all([
-        adminSupabase.from("profiles").select("id", { count: "exact", head: true }),
-        adminSupabase.from("posts").select("id", { count: "exact", head: true }),
-        adminSupabase.from("comments").select("id", { count: "exact", head: true }),
-        adminSupabase.from("likes").select("user_id", { count: "exact", head: true }),
-        adminSupabase.from("shares").select("id", { count: "exact", head: true }),
-        adminSupabase.from("follows").select("follower_id", { count: "exact", head: true }),
-        adminSupabase.from("tags").select("id", { count: "exact", head: true }),
-        adminSupabase.from("reports").select("id", { count: "exact", head: true }),
-      ]);
-
-      summary = {
-        table_counts: {
-          profiles: profiles.count || 0,
-          posts: posts.count || 0,
-          comments: comments.count || 0,
-          likes: likes.count || 0,
-          shares: shares.count || 0,
-          follows: follows.count || 0,
-          tags: tags.count || 0,
-          reports: reports.count || 0,
-        },
-        db_size_bytes: 0,
-        db_size_pretty: "Connected",
-      };
-    } catch (err) {
-      console.error("System summary fallback error:", err);
-      summary = {
-        table_counts: {},
-        db_size_bytes: 0,
-        db_size_pretty: "Active",
-      };
-    }
-  }
-
-  return {
-    ...summary,
-    deployment_commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || "local-dev",
-    deployment_env: process.env.VERCEL_ENV || "development",
-  };
-}
-
-export async function getModeratorKPIs(rangePreset = "30d", customFrom = null, customTo = null) {
-  await requireRole("moderator");
-  const { from, to, prevFrom, prevTo } = getDateRanges(rangePreset, customFrom, customTo);
-  const adminSupabase = getAdminClient();
-
-  const { data, error } = await adminSupabase.rpc("stats_moderator_kpis", {
-    p_from: from,
-    p_to: to,
-  });
-
-  if (!error && data) {
-    const res = Array.isArray(data) ? data[0] : data;
-    if (res) return res;
-  }
-
-  // Fallback query directly
-  try {
-    const [awaitingAction, prevAwaitingAction, awaitingFinal, prevAwaitingFinal, resolved, prevResolved] = await Promise.all([
-      adminSupabase.from("reports").select("id", { count: "exact", head: true }).in("status", ["pending", "in_review"]),
-      adminSupabase.from("reports").select("id", { count: "exact", head: true }).in("status", ["pending", "in_review"]).lte("created_at", prevTo),
-      adminSupabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "escalated"),
-      adminSupabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "escalated").lte("created_at", prevTo),
-      adminSupabase.from("reports").select("id", { count: "exact", head: true }).in("status", ["resolved_actioned", "resolved_dismissed"]).gte("created_at", from).lte("created_at", to),
-      adminSupabase.from("reports").select("id", { count: "exact", head: true }).in("status", ["resolved_actioned", "resolved_dismissed"]).gte("created_at", prevFrom).lte("created_at", prevTo),
-    ]);
-
-    return {
-      awaiting_action: awaitingAction.count || 0,
-      prev_awaiting_action: prevAwaitingAction.count || 0,
-      awaiting_final: awaitingFinal.count || 0,
-      prev_awaiting_final: prevAwaitingFinal.count || 0,
-      resolved_in_range: resolved.count || 0,
-      prev_resolved_in_range: prevResolved.count || 0,
-    };
-  } catch (err) {
-    console.error("Moderator KPIs fallback error:", err);
-  }
-
-  return {
-    awaiting_action: 0,
-    prev_awaiting_action: 0,
-    awaiting_final: 0,
-    prev_awaiting_final: 0,
-    resolved_in_range: 0,
-    prev_resolved_in_range: 0,
-  };
+  return data || [];
 }

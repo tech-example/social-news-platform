@@ -62,9 +62,21 @@ export function EditProfileDialog({ open, onClose, profile, onProfileUpdated }) 
     setIsPending(true);
     setErrorMsg("");
 
+    const trimmedName = displayName.trim();
+    if (!trimmedName) {
+      setErrorMsg("Display name is required.");
+      setIsPending(false);
+      return;
+    }
+    if (trimmedName.length > LIMITS.PROFILE_DISPLAY_NAME_MAX) {
+      setErrorMsg(`Display name must be ${LIMITS.PROFILE_DISPLAY_NAME_MAX} characters or fewer.`);
+      setIsPending(false);
+      return;
+    }
+
     try {
       const formData = new FormData();
-      formData.set("displayName", displayName.trim());
+      formData.set("displayName", trimmedName);
       formData.set("bio", bio.trim());
       formData.set("avatarUrl", avatarUrl);
 

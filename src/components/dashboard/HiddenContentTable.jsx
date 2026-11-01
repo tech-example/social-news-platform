@@ -5,6 +5,7 @@ import { EyeOff, Eye, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { restorePostAction } from "@/server/actions/moderation";
 import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
+import { getDisplayName } from "@/lib/user";
 
 export function HiddenContentTable({ posts = [] }) {
   const [isPending, startTransition] = useTransition();
@@ -75,7 +76,7 @@ export function HiddenContentTable({ posts = [] }) {
                       </span>
                     </td>
                     <td className="py-3 px-3 text-[var(--ink-muted)]">
-                      @{p.author?.username || "unknown"}
+                      {getDisplayName(p.author)}
                     </td>
                     <td className="py-3 px-3 text-[var(--ink-muted)] tabular-nums" suppressHydrationWarning>
                       {formatRelative(p.updated_at || p.created_at)}
@@ -114,7 +115,7 @@ export function HiddenContentTable({ posts = [] }) {
                     {p.title || p.body?.slice(0, 50)}
                   </span>
                   <span className="text-[11px] text-[var(--ink-muted)]">
-                    By @{p.author?.username || "unknown"} · Hidden{" "}
+                    By {getDisplayName(p.author)} · Hidden{" "}
                     <span suppressHydrationWarning>{formatRelative(p.updated_at || p.created_at)}</span>
                   </span>
                 </div>

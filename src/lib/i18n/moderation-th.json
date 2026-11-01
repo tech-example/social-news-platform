@@ -83,7 +83,7 @@
     "detail_current_status": "สถานะปัจจุบัน",
     "detail_profile": "โปรไฟล์",
     "detail_status_changed_to": "เปลี่ยนสถานะเป็น {status}",
-    "detail_by_actor": "โดย @{username} ({role})",
+    "detail_by_actor": "โดย {username} ({role})",
     "badge_flagged": "ตรวจพบภาษาไม่เหมาะสม",
     "badge_pending": "รอดำเนินการ",
     "badge_in_review": "กำลังตรวจสอบ",

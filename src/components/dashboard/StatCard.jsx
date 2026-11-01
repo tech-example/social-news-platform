@@ -1,5 +1,5 @@
 import React from "react";
-import { TrendingUp, TrendingDown, Info } from "lucide-react";
+import { TrendingUp, TrendingDown, Info, HelpCircle } from "lucide-react";
 import { SKELETON_SIZES } from "@/lib/constants";
 
 export function StatCard({
@@ -10,24 +10,37 @@ export function StatCard({
   subtitle = null,
   icon: Icon = null,
   tooltip = null,
+  decisionHint = null,
+  invertDelta = false, // If true, an increase is bad (red) and decrease is good (green)
   sparkline = null, // array of numbers [v1, v2, ...]
   locale = "en",
 }) {
   const intlLocale = locale === "th" ? "th-TH" : "en-US";
   let deltaPercent = null;
-  let isPositive = false;
+  let isDiffPositive = false;
+  let isFavorable = true;
 
   if (previousValue !== null && previousValue !== undefined && previousValue > 0) {
-    const diff = value - previousValue;
+    const diff = Number(value) - Number(previousValue);
     deltaPercent = Math.round((diff / previousValue) * 100);
-    isPositive = deltaPercent >= 0;
-  } else if (previousValue === 0 && value > 0) {
+    isDiffPositive = deltaPercent >= 0;
+    isFavorable = invertDelta ? deltaPercent <= 0 : deltaPercent >= 0;
+  } else if (previousValue === 0 && Number(value) > 0) {
     deltaPercent = 100;
-    isPositive = true;
+    isDiffPositive = true;
+    isFavorable = !invertDelta;
+  } else if (previousValue === 0 && Number(value) === 0) {
+    deltaPercent = 0;
+    isDiffPositive = true;
+    isFavorable = true;
   }
 
   const formattedValue =
-    format === "number"
+    format === "percent"
+      ? `${Number(value || 0).toFixed(1)}%`
+      : format === "ratio"
+      ? Number(value || 0).toFixed(2)
+      : format === "compact"
       ? typeof value === "number"
         ? new Intl.NumberFormat(intlLocale, {
             notation: "compact",
@@ -64,11 +77,11 @@ export function StatCard({
           <span className="text-xs font-semibold text-[var(--ink-muted)] uppercase tracking-wider truncate">
             {title}
           </span>
-          {tooltip && (
+          {(tooltip || decisionHint) && (
             <span
               className="text-[var(--ink-muted)] hover:text-[var(--ink)] cursor-help shrink-0"
-              title={tooltip}
-              aria-label={tooltip}
+              title={decisionHint ? `${tooltip ? `${tooltip}\n\n` : ""}Decision hint: ${decisionHint}` : tooltip}
+              aria-label={decisionHint || tooltip}
             >
               <Info size={13} strokeWidth={2} aria-hidden="true" />
             </span>
@@ -86,25 +99,27 @@ export function StatCard({
       </div>
 
       <div className="mt-3 flex items-baseline justify-between gap-2">
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-baseline gap-2 flex-wrap">
           <span className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--ink)] tabular-nums">
             {formattedValue}
           </span>
 
           {deltaPercent !== null && (
             <span
+              title={`Delta vs previous window: ${deltaPercent >= 0 ? `+${deltaPercent}%` : `${deltaPercent}%`}`}
+              aria-label={`Delta: ${deltaPercent >= 0 ? `plus ${deltaPercent}%` : `${deltaPercent}%`}, ${isFavorable ? "favorable trend" : "unfavorable trend"}`}
               className={`inline-flex items-center gap-0.5 text-xs font-semibold tabular-nums px-1.5 py-0.5 rounded ${
-                isPositive
+                isFavorable
                   ? "text-[var(--success)] bg-[var(--surface-strong)]"
                   : "text-[var(--danger)] bg-[var(--surface-strong)]"
               }`}
             >
-              {isPositive ? (
+              {isDiffPositive ? (
                 <TrendingUp size={12} strokeWidth={2.25} aria-hidden="true" />
               ) : (
                 <TrendingDown size={12} strokeWidth={2.25} aria-hidden="true" />
               )}
-              <span>{isPositive ? `+${deltaPercent}%` : `${deltaPercent}%`}</span>
+              <span>{deltaPercent >= 0 ? `+${deltaPercent}%` : `${deltaPercent}%`}</span>
             </span>
           )}
         </div>
@@ -115,7 +130,7 @@ export function StatCard({
               <path
                 d={sparklinePath}
                 fill="none"
-                stroke="var(--accent)"
+                stroke={isFavorable ? "var(--accent)" : "var(--danger)"}
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -125,11 +140,18 @@ export function StatCard({
         )}
       </div>
 
-      {subtitle && (
-        <span className="mt-2 text-xs text-[var(--ink-muted)] truncate" title={subtitle}>
-          {subtitle}
-        </span>
-      )}
+      <div className="mt-2 flex flex-col gap-0.5">
+        {subtitle && (
+          <span className="text-xs text-[var(--ink-muted)] truncate" title={subtitle}>
+            {subtitle}
+          </span>
+        )}
+        {decisionHint && (
+          <span className="text-[11px] text-[var(--ink-muted)] italic truncate" title={decisionHint}>
+            {decisionHint}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -138,16 +160,14 @@ export function StatCardSkeleton() {
   return (
     <div
       style={{ minHeight: `${SKELETON_SIZES.STAT_CARD.ESTIMATED_HEIGHT}px` }}
-      className="p-4 sm:p-5 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs animate-pulse flex flex-col justify-between"
+      className="p-4 sm:p-5 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs animate-pulse space-y-4"
     >
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <div className="h-3 w-24 bg-[var(--surface-strong)] rounded" />
         <div className="h-6 w-6 bg-[var(--surface-strong)] rounded-lg" />
       </div>
-      <div className="my-2">
-        <div className="h-8 w-28 bg-[var(--surface-strong)] rounded" />
-      </div>
-      <div className="h-3 w-20 bg-[var(--surface-strong)] rounded" />
+      <div className="h-8 w-16 bg-[var(--surface-strong)] rounded" />
+      <div className="h-3 w-28 bg-[var(--surface)] rounded" />
     </div>
   );
 }

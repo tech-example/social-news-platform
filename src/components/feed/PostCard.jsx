@@ -13,6 +13,8 @@ import { ExternalLink, Hash, Loader2 } from "lucide-react";
 import { getCommentsAction } from "@/server/actions/interactions";
 import { useToast } from "@/components/ui/toast";
 import { FlaggedContent } from "@/components/feed/FlaggedContent";
+import { UserName, getDisplayName } from "@/components/ui/user-name";
+import { PostViewTracker } from "@/components/feed/PostViewTracker";
 
 export function PostCard({ post, currentUserId = null, isStaff = false, viewerHideFlagged = true }) {
   const router = useRouter();
@@ -151,12 +153,12 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
           <Link
             href={`/u/${c.author?.username || "anonymous"}`}
             className="shrink-0 pt-0.5 focus-visible:outline-2 focus-visible:outline-[var(--accent-bright)] rounded-full"
-            title={c.author?.display_name || c.author?.username}
+            title={getDisplayName(c.author)}
           >
             <Avatar
               src={c.author?.avatar_url}
-              alt={c.author?.display_name || c.author?.username || "User avatar"}
-              name={c.author?.display_name || c.author?.username}
+              alt={getDisplayName(c.author)}
+              name={getDisplayName(c.author)}
               size={avatarSize}
             />
           </Link>
@@ -165,7 +167,7 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
               href={`/u/${c.author?.username || "anonymous"}`}
               className="font-semibold text-[var(--ink)] hover:underline mr-1.5"
             >
-              {c.author?.username}
+              <UserName profile={c.author} />
             </Link>
             <FlaggedContent
               key={`comment-${c.id}`}
@@ -218,6 +220,7 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
 
   return (
     <article className="feed-card-contain border-b border-[var(--line)] bg-[var(--bg)] py-4 flex flex-col gap-3">
+      <PostViewTracker postId={currentPost.id} />
       {/* Header */}
       <div className="flex items-center justify-between px-4">
         <div className="flex items-center gap-3 min-w-0">
@@ -227,8 +230,8 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
           >
             <Avatar
               src={author.avatar_url}
-              alt={author.display_name || author.username}
-              name={author.display_name || author.username}
+              alt={getDisplayName(author)}
+              name={getDisplayName(author)}
               size={36}
             />
           </Link>
@@ -238,7 +241,7 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
                 href={`/u/${author.username}`}
                 className="font-semibold text-sm truncate hover:underline text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)] rounded"
               >
-                {author.username}
+                <UserName profile={author} />
               </Link>
               {currentUserId && !isAuthor && author.id && (
                 <>
@@ -325,7 +328,9 @@ export function PostCard({ post, currentUserId = null, isStaff = false, viewerHi
 
           <div className="text-sm leading-snug">
             {!currentPost.imageUrl && (
-              <span className="font-semibold mr-2 text-[var(--ink)]">{author.username}</span>
+              <span className="font-semibold mr-2 text-[var(--ink)]">
+                <UserName profile={author} />
+              </span>
             )}
             <span className={expanded ? "break-words" : "line-clamp-3 break-words text-[var(--ink)]"}>
               {renderBody(currentPost.body)}

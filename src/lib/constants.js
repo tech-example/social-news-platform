@@ -51,10 +51,12 @@ export const LIMITS = {
   COMMENT_BODY_MAX: 1000,
   SHARE_NOTE_MAX: 280,
   PROFILE_DISPLAY_NAME_MIN: 1,
-  PROFILE_DISPLAY_NAME_MAX: 60,
+  PROFILE_DISPLAY_NAME_MAX: 50,
+  DISPLAY_NAME_MAX: 50,
   PROFILE_USERNAME_MIN: 3,
   PROFILE_USERNAME_MAX: 30,
   PROFILE_BIO_MAX: 300,
+  BIO_MAX: 300,
   MAX_UPLOAD_IMAGE_BYTES: 5 * 1024 * 1024, // 5 MB for static images
   MAX_UPLOAD_GIF_BYTES: 10 * 1024 * 1024, // 10 MB headroom for animated GIF
   ALLOWED_IMAGE_TYPES: ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"],

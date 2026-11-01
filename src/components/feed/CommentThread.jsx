@@ -13,6 +13,8 @@ import { FlaggedContent } from "@/components/feed/FlaggedContent";
 import { ReportDialog } from "@/components/moderation/ReportDialog";
 import { FloatingMenu } from "@/components/ui/floating-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { getDisplayName } from "@/lib/user";
+import { UserName } from "@/components/ui/user-name";
 
 function CommentActions({ comment, currentUserId, isStaff, onDelete, onReport, onEdit }) {
   const [open, setOpen] = useState(false);
@@ -290,8 +292,8 @@ export function CommentThread({
             <Link href={`/u/${comment.author?.username}`} className="shrink-0 pt-0.5">
               <Avatar
                 src={comment.author?.avatar_url}
-                alt={comment.author?.display_name || comment.author?.username || "User"}
-                name={comment.author?.display_name || comment.author?.username}
+                alt={getDisplayName(comment.author)}
+                name={getDisplayName(comment.author)}
                 size={avatarSize}
               />
             </Link>
@@ -300,7 +302,7 @@ export function CommentThread({
                 href={`/u/${comment.author?.username}`}
                 className="font-semibold text-[var(--ink)] hover:underline mr-2"
               >
-                {comment.author?.username}
+                <UserName profile={comment.author} />
               </Link>
               {editingCommentId === comment.id ? (
                 <form onSubmit={(e) => handleSaveEdit(e, comment.id)} className="mt-1.5 flex items-center gap-2">
@@ -415,7 +417,7 @@ export function CommentThread({
             <div className="flex items-center justify-between bg-[var(--surface)] px-3 py-1.5 rounded-t text-xs text-[var(--ink-muted)]">
               <span className="flex items-center gap-1">
                 <CornerDownRight size={12} strokeWidth={1.75} aria-hidden="true" />
-                Replying to <span className="font-semibold text-[var(--ink)]">@{replyingTo.author?.username}</span>
+                Replying to <span className="font-semibold text-[var(--ink)]">{getDisplayName(replyingTo.author)}</span>
               </span>
               <button
                 type="button"
@@ -433,7 +435,7 @@ export function CommentThread({
               value={text}
               maxLength={LIMITS.COMMENT_BODY_MAX}
               onChange={(e) => setText(e.target.value)}
-              placeholder={replyingTo ? `Reply to @${replyingTo.author?.username}...` : "Add a comment..."}
+              placeholder={replyingTo ? `Reply to ${getDisplayName(replyingTo.author)}...` : "Add a comment..."}
               className="flex-1 px-3 py-2 text-sm border border-[var(--line)] rounded-lg bg-[var(--surface)] text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:bg-[var(--bg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-bright)]"
             />
             <Button

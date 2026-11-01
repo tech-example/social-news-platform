@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/server/auth";
 import { createUserClient } from "@/server/supabase";
 import { profileUpdateSchema } from "@/lib/validators";
+import { containsProfanity } from "@/lib/profanity";
 
 export async function updateProfileAction(prevState, formData) {
   const session = await requireRole("user");
@@ -14,6 +15,11 @@ export async function updateProfileAction(prevState, formData) {
   const parsed = profileUpdateSchema.safeParse({ displayName, bio, avatarUrl });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message || "Invalid input." };
+  }
+
+  const profanityCheck = containsProfanity(parsed.data.displayName);
+  if (profanityCheck.flagged) {
+    return { ok: false, error: "Display name contains inappropriate language." };
   }
 
   const supabase = await createUserClient();
@@ -57,4 +63,21 @@ export async function updateProfanityPreferenceAction(hideFlaggedContent) {
   revalidatePath("/");
   return { ok: true, hideFlaggedContent: parsed };
 }
+
+export async function getActorProfileAction(actorId) {
+  if (!actorId) return null;
+  try {
+    const supabase = await createUserClient();
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, username, display_name, avatar_url")
+      .eq("id", actorId)
+      .maybeSingle();
+    return data || null;
+  } catch (err) {
+    console.error("getActorProfileAction error:", err);
+    return null;
+  }
+}
+
 

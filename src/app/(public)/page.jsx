@@ -9,6 +9,8 @@ import { TagChip } from "@/components/feed/TagChip";
 import { FeedSkeleton, SidebarSkeleton } from "@/components/ui/skeletons";
 import { Avatar } from "@/components/ui/avatar";
 import { Hash } from "lucide-react";
+import { getDisplayName } from "@/lib/user";
+import { UserName } from "@/components/ui/user-name";
 
 export const revalidate = 0; // Dynamic feed
 
@@ -58,13 +60,14 @@ async function SidebarWidgets({ viewerId }) {
                 <Link href={`/u/${user.username}`} className="flex items-center gap-2.5 min-w-0">
                   <Avatar
                     src={user.avatar_url}
-                    name={user.display_name || user.username}
+                    name={getDisplayName(user)}
                     size={32}
                   />
                   <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-semibold text-[var(--ink)] truncate">
-                      {user.username}
-                    </span>
+                    <UserName
+                      profile={user}
+                      className="text-xs font-semibold text-[var(--ink)] truncate"
+                    />
                     <span className="text-[11px] text-[var(--ink-muted)] truncate">
                       {user.followers_count || 0} followers
                     </span>
@@ -162,16 +165,14 @@ export default async function HomeFeedPage({ searchParams }) {
             <Link href={`/u/${session.profile.username}`} className="flex items-center gap-3 min-w-0">
               <Avatar
                 src={session.profile.avatar_url}
-                name={session.profile.display_name || session.profile.username}
+                name={getDisplayName(session.profile)}
                 size={44}
               />
               <div className="flex flex-col min-w-0">
-                <span className="font-semibold text-sm text-[var(--ink)] truncate">
-                  {session.profile.username}
-                </span>
-                <span className="text-xs text-[var(--ink-muted)] truncate">
-                  {session.profile.display_name}
-                </span>
+                <UserName
+                  profile={session.profile}
+                  className="font-semibold text-sm text-[var(--ink)] truncate"
+                />
               </div>
             </Link>
             <Link
@@ -213,7 +214,7 @@ export default async function HomeFeedPage({ searchParams }) {
 
         {/* Footer info */}
         <div className="text-[11px] text-[var(--ink-muted)] space-y-1">
-          <p>SocialNews &copy; {new Date().getFullYear()}</p>
+          <p>SocialNews &copy; {new Date().getFullYear()} · <Link href="/privacy" className="hover:underline">Privacy</Link></p>
           <p>A social format web application for news and content.</p>
         </div>
       </aside>

@@ -59,7 +59,7 @@ export function FollowButton({
         type="button"
         onClick={handleToggle}
         disabled={isPending}
-        className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded transition-all cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--accent)] ${
+        className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md transition-all cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--accent)] ${
           following
             ? "text-[var(--ink-muted)] hover:text-[var(--ink)] bg-[var(--surface)] hover:bg-[var(--surface-strong)]"
             : "text-[var(--accent)] hover:text-[var(--accent-hover)] font-bold"
@@ -68,12 +68,12 @@ export function FollowButton({
       >
         {following ? (
           <>
-            <UserCheck size={12} strokeWidth={2} aria-hidden="true" />
+            <UserCheck size={13} strokeWidth={2} aria-hidden="true" />
             <span>Following</span>
           </>
         ) : (
           <>
-            <UserPlus size={12} strokeWidth={2} aria-hidden="true" />
+            <UserPlus size={13} strokeWidth={2} aria-hidden="true" />
             <span>Follow</span>
           </>
         )}
@@ -87,7 +87,7 @@ export function FollowButton({
         type="button"
         onClick={handleToggle}
         disabled={isPending}
-        className={`text-xs font-semibold cursor-pointer select-none transition-colors hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--accent)] ${
+        className={`text-xs font-semibold py-1 px-1 cursor-pointer select-none transition-colors hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--accent)] ${
           following
             ? "text-[var(--ink-muted)] hover:text-[var(--ink)]"
             : "text-[var(--accent)] hover:text-[var(--accent-hover)] font-bold"
@@ -106,10 +106,10 @@ export function FollowButton({
       disabled={isPending}
       className={`inline-flex items-center justify-center font-semibold rounded-lg transition-all active:scale-[0.96] cursor-pointer select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
         size === "sm"
-          ? "h-7 px-3 text-xs gap-1"
+          ? "min-h-[36px] px-3.5 text-xs gap-1.5"
           : size === "xs"
-          ? "h-6 px-2.5 text-[11px] gap-1"
-          : "h-8 px-4 text-xs gap-1.5"
+          ? "min-h-[32px] px-2.5 text-[11px] gap-1"
+          : "min-h-[40px] px-4 text-xs gap-1.5"
       } ${
         following
           ? "border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:bg-[var(--surface-strong)]"
@@ -119,12 +119,12 @@ export function FollowButton({
     >
       {following ? (
         <>
-          <UserCheck size={13} strokeWidth={2} aria-hidden="true" />
+          <UserCheck size={14} strokeWidth={2} aria-hidden="true" />
           <span>Following</span>
         </>
       ) : (
         <>
-          <UserPlus size={13} strokeWidth={2} aria-hidden="true" />
+          <UserPlus size={14} strokeWidth={2} aria-hidden="true" />
           <span>Follow</span>
         </>
       )}

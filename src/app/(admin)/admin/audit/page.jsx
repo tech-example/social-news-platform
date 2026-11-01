@@ -4,6 +4,7 @@ import { getAuditLogs } from "@/server/dal/audit";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ScrollText, ChevronLeft } from "lucide-react";
+import { getDisplayName } from "@/lib/user";
 import { getServerAdminT } from "@/lib/i18n/server";
 import { AdminLanguageSwitcher } from "@/components/dashboard/AdminLanguageSwitcher";
 
@@ -70,7 +71,7 @@ export default async function AuditLogPage({ searchParams }) {
                   <TableCell>
                     <div className="flex flex-col text-xs">
                       <strong className="text-[var(--ink)]">
-                        @{log.actor?.username || "system"}
+                        {getDisplayName(log.actor)}
                       </strong>
                       <span className="text-[11px] text-[var(--ink-muted)] capitalize">
                         {log.actor?.role === "admin"

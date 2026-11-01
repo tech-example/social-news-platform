@@ -14,6 +14,8 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { useToast } from "@/components/ui/toast";
 import { formatCompactNumber } from "@/lib/format";
 import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
+import { getDisplayName } from "@/lib/user";
+import { UserName } from "@/components/ui/user-name";
 import {
   CheckCircle2,
   Shield,
@@ -229,20 +231,17 @@ export function UserAdminClient({
                         <div className="flex items-center gap-3">
                           <Avatar
                             src={u.avatar_url}
-                            name={u.display_name || u.username}
+                            name={getDisplayName(u)}
                             size={36}
                           />
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 font-semibold text-xs text-[var(--ink)]">
                               <Link href={`/u/${u.username}`} className="hover:underline truncate">
-                                {u.display_name}
+                                <UserName profile={u} />
                               </Link>
                               {u.role === "admin" && (
                                 <Shield size={12} className="text-[var(--accent)] shrink-0" aria-label="Admin" />
                               )}
-                            </div>
-                            <div className="text-xs text-[var(--ink-muted)] truncate">
-                              @{u.username}
                             </div>
                           </div>
                         </div>
@@ -258,7 +257,7 @@ export function UserAdminClient({
                             value={u.role}
                             onChange={(e) => setRoleDialog({ open: true, user: u, targetRole: e.target.value })}
                             disabled={isPending}
-                            aria-label={`Change role for @${u.username}`}
+                            aria-label={`Change role for ${getDisplayName(u)}`}
                             className="text-xs font-medium px-2 py-1 rounded border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] cursor-pointer"
                           >
                             <option value="user">{t("users_admin.role_user", "User")}</option>
@@ -280,7 +279,7 @@ export function UserAdminClient({
                         {!isSelf && (
                           <div className="flex items-center justify-end gap-1.5">
                             <IconButton
-                              label={`Delete user @${u.username}`}
+                              label={`Delete user ${getDisplayName(u)}`}
                               onClick={() => setDeleteDialog({ open: true, user: u })}
                               disabled={isPending}
                               className="text-[var(--danger)]/80 hover:text-[var(--danger)] hover:bg-[var(--danger)]/10"
@@ -340,21 +339,16 @@ export function UserAdminClient({
           <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--surface)] border border-[var(--line)]">
             <Avatar
               src={roleDialog.user?.avatar_url}
-              name={roleDialog.user?.display_name || roleDialog.user?.username}
+              name={getDisplayName(roleDialog.user)}
               size={40}
             />
-            <div>
-              <div className="text-sm font-semibold text-[var(--ink)]">
-                {roleDialog.user?.display_name}
-              </div>
-              <div className="text-xs text-[var(--ink-muted)]">
-                @{roleDialog.user?.username}
-              </div>
+            <div className="min-w-0">
+              <UserName profile={roleDialog.user} className="text-sm font-semibold text-[var(--ink)] block truncate" />
             </div>
           </div>
 
           <p className="text-sm text-[var(--ink)]">
-            {t("users_admin.dialog_role_desc", { username: roleDialog.user?.username })}
+            {t("users_admin.dialog_role_desc", { name: getDisplayName(roleDialog.user), username: getDisplayName(roleDialog.user) })}
           </p>
 
           <DialogFooter>
@@ -382,7 +376,7 @@ export function UserAdminClient({
         open={deleteDialog.open}
         onClose={() => setDeleteDialog({ open: false, user: null })}
         title={t("users_admin.dialog_delete_title", "Delete User Account")}
-        description={t("users_admin.dialog_delete_desc", { username: deleteDialog.user?.username })}
+        description={t("users_admin.dialog_delete_desc", { name: getDisplayName(deleteDialog.user), username: getDisplayName(deleteDialog.user) })}
         confirmLabel={isPending ? t("users_admin.btn_deleting", "Deleting...") : t("users_admin.btn_confirm", "Delete")}
         cancelLabel={t("users_admin.btn_cancel", "Cancel")}
         destructive={true}

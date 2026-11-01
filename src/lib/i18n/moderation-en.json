@@ -83,7 +83,7 @@
     "detail_current_status": "Current Status",
     "detail_profile": "Profile",
     "detail_status_changed_to": "Status changed to {status}",
-    "detail_by_actor": "by @{username} ({role})",
+    "detail_by_actor": "by {username} ({role})",
     "badge_flagged": "Language Flagged",
     "badge_pending": "Pending",
     "badge_in_review": "In Review",

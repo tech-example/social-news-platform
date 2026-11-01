@@ -14,13 +14,18 @@ import { ChevronLeft, Hash } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format";
 import { FlaggedContent } from "@/components/feed/FlaggedContent";
 
+import { getDisplayName } from "@/lib/user";
+import { UserName } from "@/components/ui/user-name";
+import { PostViewTracker } from "@/components/feed/PostViewTracker";
+
 export async function generateMetadata({ params }) {
   const { postId } = await params;
   const post = await getPostById(postId);
   if (!post) return { title: "Post Not Found" };
 
+  const authorName = getDisplayName(post.author);
   return {
-    title: `${post.title || post.author?.username || "Post"} - SocialNews`,
+    title: `${post.title || authorName || "Post"} - SocialNews`,
     description: post.body?.slice(0, 150),
   };
 }
@@ -90,6 +95,7 @@ export default async function PostDetailPage({ params }) {
 
   return (
     <div className="max-w-[935px] mx-auto px-4 py-4 sm:py-6">
+      <PostViewTracker postId={post.id} />
       {/* Back button */}
       <div className="mb-4">
         <Link
@@ -155,16 +161,14 @@ export default async function PostDetailPage({ params }) {
               <Link href={`/u/${post.author?.username}`} className="flex items-center gap-3 min-w-0 group">
                 <Avatar
                   src={post.author?.avatar_url}
-                  name={post.author?.display_name || post.author?.username}
+                  name={getDisplayName(post.author)}
                   size={36}
                 />
                 <div className="flex flex-col min-w-0">
-                  <span className="font-semibold text-sm text-[var(--ink)] truncate group-hover:underline">
-                    {post.author?.username}
-                  </span>
-                  <span className="text-xs text-[var(--ink-muted)] truncate">
-                    {post.author?.display_name}
-                  </span>
+                  <UserName
+                    profile={post.author}
+                    className="font-semibold text-sm text-[var(--ink)] truncate group-hover:underline"
+                  />
                 </div>
               </Link>
 

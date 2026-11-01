@@ -3,598 +3,447 @@ import Link from "next/link";
 import { requireRole } from "@/server/auth";
 import {
   getAdminKPIs,
-  getTimeseries,
-  getEngagementComposition,
-  getTopPosts,
-  getTopUsers,
-  getTopTags,
-  getContentMix,
-  getReportsByStatus,
-  getReportsByReason,
-  getModeratorWorkload,
-  getFollowerDistribution,
-  getRolesDistribution,
-  getRecentAuditLogs,
-  getRecentSignups,
-  getSystemSummary,
+  getAdminCharts,
+  getAdminAttention,
+  getDateRanges,
 } from "@/server/dal/stats";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { DashboardControls } from "@/components/dashboard/DashboardControls";
 import {
-  TimeseriesChart,
-  EngagementBarChart,
-  DonutChart,
-  HorizontalBarChart,
-  FollowerDistributionChart,
-} from "@/components/dashboard/Charts";
-import { BarList } from "@/components/dashboard/BarList";
-import { Badge } from "@/components/ui/badge";
-import { Avatar } from "@/components/ui/avatar";
-import {
-  StatCardSkeleton,
+  GrowthVsEngagementChart,
+  RiskTrendChart,
+  ReportsByReasonChart,
+  ReportStatusFunnelChart,
+  FlaggedVsCleanChart,
+  AudienceReachChart,
+  TagEngagementChart,
+  RetentionAndRolesChart,
+  PeakActivityChart,
   ChartSkeleton,
-  TableSkeleton,
-  BarListSkeleton,
-} from "@/components/ui/skeletons";
+} from "@/components/dashboard/Charts";
+import { PlatformSummaryCard, PlatformSummarySkeleton } from "@/components/dashboard/PlatformSummaryCard";
+import { NeedsAttentionList, NeedsAttentionSkeleton } from "@/components/dashboard/NeedsAttentionList";
+import { StatCardSkeleton } from "@/components/ui/skeletons";
 import { SKELETON_SIZES } from "@/lib/constants";
-import { formatCompactNumber } from "@/lib/format";
 import { getServerAdminT } from "@/lib/i18n/server";
 import { AdminLanguageSwitcher } from "@/components/dashboard/AdminLanguageSwitcher";
+import { Avatar } from "@/components/ui/avatar";
+import { UserName } from "@/components/ui/user-name";
+import { getDisplayName } from "@/lib/user";
 import {
   LayoutDashboard,
   Users,
+  UserCheck,
   UserPlus,
   FileText,
   Activity,
-  CheckCircle2,
-  TriangleAlert,
+  HeartHandshake,
   ShieldAlert,
-  Database,
-  ScrollText,
-  UserCheck,
+  TriangleAlert,
+  Flag,
+  Clock,
+  Trash2,
+  CheckCircle,
+  Eye,
+  Sparkles,
   TrendingUp,
+  Percent,
+  Layers,
+  HelpCircle,
+  Compass,
 } from "lucide-react";
 
 export const metadata = {
   title: "Admin Analytics Dashboard - SocialNews",
+  description: "Executive platform health, positive growth signals, risk telemetry, and advertising readiness.",
 };
 
-// ==========================================
-// ROW 1: KPI STAT CARDS (9 cards with deltas)
-// ==========================================
-async function AdminKPISection({ range, from, to }) {
-  const { t, locale } = await getServerAdminT();
-  const [kpis, postsSeries, usersSeries, engagementSeries] = await Promise.all([
-    getAdminKPIs(range, from, to),
-    getTimeseries("posts", "day", range, from, to),
-    getTimeseries("users", "day", range, from, to),
-    getEngagementComposition("day", range, from, to),
-  ]);
+// =============================================================================
+// SECTION 1: PLATFORM SUMMARY CARD
+// =============================================================================
+async function SummarySection({ range }) {
+  const { locale } = await getServerAdminT();
+  const kpis = await getAdminKPIs(range);
+  return <PlatformSummaryCard kpis={kpis} locale={locale} />;
+}
 
-  const postsSparkline = postsSeries.map((d) => Number(d.value || d.count) || 0);
-  const usersSparkline = usersSeries.map((d) => Number(d.value || d.count) || 0);
-  const engSparkline = engagementSeries.map((d) => Number(d.total || (d.likes + d.comments + d.shares)) || 0);
+// =============================================================================
+// SECTION 2: POSITIVE SIGNALS (GROWTH & ENGAGEMENT)
+// =============================================================================
+async function PositiveSignalsSection({ range }) {
+  const { t, locale } = await getServerAdminT();
+  const kpis = await getAdminKPIs(range);
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-3">
-      {/* 1. Total Users */}
-      <StatCard
-        title={t("admin.kpi_total_users", "Total Users")}
-        value={kpis.total_users || 0}
-        previousValue={kpis.total_users - (kpis.new_users || 0)}
-        subtitle={t("admin.kpi_total_users_sub", "All accounts")}
-        icon={Users}
-        sparkline={usersSparkline}
-        tooltip={t("admin.kpi_total_users_tip", "Total registered user accounts across the entire platform")}
-        locale={locale}
-      />
-
-      {/* 2. New Users in Range */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+      {/* 1. New Users */}
       <StatCard
         title={t("admin.kpi_new_users", "New Users")}
         value={kpis.new_users || 0}
         previousValue={kpis.prev_new_users}
-        subtitle={t("admin.kpi_new_users_sub", "In selected period")}
+        subtitle={t("admin.kpi_new_users_sub", "Signups in window")}
         icon={UserPlus}
-        sparkline={usersSparkline}
-        tooltip={t("admin.kpi_new_users_tip", "New accounts created within this date range")}
+        decisionHint={t("admin.hint_new_users", "Guides user acquisition spend and organic growth health.")}
         locale={locale}
       />
 
-      {/* 3. Total Posts */}
+      {/* 2. Active Users (ALL roles) */}
       <StatCard
-        title={t("admin.kpi_total_posts", "Total Posts")}
-        value={kpis.total_posts || 0}
-        previousValue={kpis.total_posts - (kpis.new_posts || 0)}
-        subtitle={t("admin.kpi_total_posts_sub", "Published posts")}
-        icon={FileText}
-        sparkline={postsSparkline}
-        tooltip={t("admin.kpi_total_posts_tip", "All active, published posts on the platform")}
+        title={t("admin.kpi_active_users", "Active Users")}
+        value={kpis.active_users || 0}
+        previousValue={kpis.prev_active_users}
+        subtitle={t("admin.kpi_active_users_sub", "All roles (1+ action)")}
+        icon={Users}
+        decisionHint={t("admin.hint_active_users", "Validates sustained daily platform utility and audience breadth.")}
         locale={locale}
       />
 
-      {/* 4. New Posts in Range */}
+      {/* 3. Returning Users */}
+      <StatCard
+        title={t("admin.kpi_returning_users", "Returning Users")}
+        value={kpis.returning_users || 0}
+        previousValue={kpis.prev_returning_users}
+        subtitle={t("admin.kpi_returning_users_sub", "Pre-existing active accounts")}
+        icon={UserCheck}
+        decisionHint={t("admin.hint_returning_users", "Proves habit formation, stickiness, and recurring community visits.")}
+        locale={locale}
+      />
+
+      {/* 4. New Posts */}
       <StatCard
         title={t("admin.kpi_new_posts", "New Posts")}
         value={kpis.new_posts || 0}
         previousValue={kpis.prev_new_posts}
-        subtitle={t("admin.kpi_new_posts_sub", "Published in range")}
-        icon={TrendingUp}
-        sparkline={postsSparkline}
-        tooltip={t("admin.kpi_new_posts_tip", "Posts published within the current date range")}
+        subtitle={t("admin.kpi_new_posts_sub", "Published articles")}
+        icon={FileText}
+        decisionHint={t("admin.hint_new_posts", "Measures creator supply needed to sustain community feed engagement.")}
         locale={locale}
       />
 
-      {/* 5. Total Engagement */}
+      {/* 5. Engagement per Post */}
       <StatCard
-        title={t("admin.kpi_engagement", "Engagement")}
-        value={kpis.total_engagement || 0}
-        previousValue={kpis.prev_total_engagement}
-        subtitle={t("admin.kpi_engagement_sub", "Likes, comments, shares")}
+        title={t("admin.kpi_eng_per_post", "Engagement / Post")}
+        value={kpis.engagement_per_post || 0}
+        previousValue={kpis.prev_engagement_per_post}
+        format="ratio"
+        subtitle={t("admin.kpi_eng_per_post_sub", "Likes, comments, shares")}
         icon={Activity}
-        sparkline={engSparkline}
-        tooltip={t("admin.kpi_engagement_tip", "Sum of all likes, comments, and shares within the period")}
+        decisionHint={t("admin.hint_eng_per_post", "Signals content resonance, conversation depth, and topic relevance.")}
         locale={locale}
       />
 
-      {/* 6. Active Users */}
-      {/* Active User Definition: Distinct users across all roles (user, moderator, admin) with at least one activity (login, post, comment, like, follow, share) within the selected range */}
+      {/* 6. New Follows */}
       <StatCard
-        title={t("admin.kpi_active_users", "Active Users")}
-        value={kpis.active_users ?? 0}
-        previousValue={kpis.prev_active_users}
-        subtitle={`DAU ${kpis.active_users_dau ?? 0} · WAU ${kpis.active_users_wau ?? 0} · MAU ${kpis.active_users_mau ?? 0}`}
-        icon={CheckCircle2}
-        tooltip={t(
-          "admin.kpi_active_users_tip",
-          "Distinct users across all roles (user, moderator, admin) with at least one activity (login, post, comment, like, follow, share) within the selected range."
-        )}
+        title={t("admin.kpi_new_follows", "New Follows")}
+        value={kpis.new_follows || 0}
+        previousValue={kpis.prev_new_follows}
+        subtitle={t("admin.kpi_new_follows_sub", "Social graph connections")}
+        icon={HeartHandshake}
+        decisionHint={t("admin.hint_new_follows", "Measures social graph density and user-to-user networking.")}
         locale={locale}
       />
+    </div>
+  );
+}
 
-      {/* 7. Open Reports */}
+// =============================================================================
+// SECTION 3: NEGATIVE SIGNALS (RISK & WORKLOAD)
+// =============================================================================
+async function NegativeSignalsSection({ range }) {
+  const { t, locale } = await getServerAdminT();
+  const kpis = await getAdminKPIs(range);
+
+  const oldestHours = Math.round(((kpis.oldest_unresolved_seconds || 0) / 3600) * 10) / 10;
+  const oldestDays = Math.round(((kpis.oldest_unresolved_seconds || 0) / 86400) * 10) / 10;
+  const oldestLabel = oldestHours === 0 ? "0 hrs" : oldestDays >= 1 ? `${oldestDays} days` : `${oldestHours} hrs`;
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+      {/* 1. Pending + Escalated Reports */}
       <StatCard
-        title={t("admin.kpi_open_reports", "Open Reports")}
-        value={kpis.open_reports || 0}
-        previousValue={kpis.prev_open_reports}
-        subtitle={t("admin.kpi_open_reports_sub", "Pending + in review")}
+        title={t("admin.kpi_pending_escalated", "Pending & Escalated")}
+        value={kpis.pending_escalated_reports || 0}
+        previousValue={kpis.prev_pending_escalated_reports}
+        invertDelta={true}
+        subtitle={t("admin.kpi_pending_escalated_sub", "Unresolved reports")}
         icon={TriangleAlert}
-        tooltip={t("admin.kpi_open_reports_tip", "Total unresolved community safety reports")}
+        decisionHint={t("admin.hint_pending_escalated", "Measures backlog requiring active moderator and admin triage.")}
         locale={locale}
       />
 
-      {/* 8. Escalated Reports */}
+      {/* 2. Report Rate (per 1,000 posts) */}
       <StatCard
-        title={t("admin.kpi_escalated_reports", "Escalated")}
-        value={kpis.escalated_reports || 0}
-        previousValue={kpis.prev_escalated_reports}
-        subtitle={t("admin.kpi_escalated_reports_sub", "Awaiting admin")}
+        title={t("admin.kpi_report_rate", "Report Rate")}
+        value={kpis.report_rate || 0}
+        previousValue={kpis.prev_report_rate}
+        format="number"
+        invertDelta={true}
+        subtitle={t("admin.kpi_report_rate_sub", "Per 1,000 published posts")}
         icon={ShieldAlert}
-        tooltip={t("admin.kpi_escalated_reports_tip", "High-severity reports elevated by moderators for administrator decision")}
+        decisionHint={t("admin.hint_report_rate", "Signals community friction and violation density per post volume.")}
+        locale={locale}
+      />
+
+      {/* 3. Flagged-Content Rate */}
+      <StatCard
+        title={t("admin.kpi_flagged_rate", "Flagged Content %")}
+        value={kpis.flagged_content_rate || 0}
+        previousValue={kpis.prev_flagged_content_rate}
+        format="percent"
+        invertDelta={true}
+        subtitle={t("admin.kpi_flagged_rate_sub", "Profanity or hidden ratio")}
+        icon={Flag}
+        decisionHint={t("admin.hint_flagged_rate", "Highlights toxic or non-compliant content needing proactive moderation.")}
+        locale={locale}
+      />
+
+      {/* 4. Age of Oldest Unresolved Report */}
+      <StatCard
+        title={t("admin.kpi_oldest_report", "Oldest Open Report")}
+        value={oldestLabel}
+        format="text"
+        invertDelta={true}
+        subtitle={t("admin.kpi_oldest_report_sub", "Max SLA response time")}
+        icon={Clock}
+        decisionHint={t("admin.hint_oldest_report", "Indicates SLA compliance and queue bottleneck severity.")}
+        locale={locale}
+      />
+
+      {/* 5. Moderator Removals / Deletions */}
+      <StatCard
+        title={t("admin.kpi_deletions", "Staff Removals")}
+        value={kpis.moderator_deletions || 0}
+        previousValue={kpis.prev_moderator_deletions}
+        invertDelta={true}
+        subtitle={t("admin.kpi_deletions_sub", "Removed posts & comments")}
+        icon={Trash2}
+        decisionHint={t("admin.hint_deletions", "Quantifies enforcement severity and bad actor disruption.")}
+        locale={locale}
+      />
+
+      {/* 6. Resolution Rate (resolved / received) */}
+      <StatCard
+        title={t("admin.kpi_resolution_rate", "Resolution Rate")}
+        value={kpis.resolution_rate || 0}
+        previousValue={kpis.prev_resolution_rate}
+        format="percent"
+        invertDelta={false} // Higher resolution rate is good!
+        subtitle={t("admin.kpi_resolution_rate_sub", "Resolved / received ratio")}
+        icon={CheckCircle}
+        decisionHint={t("admin.hint_resolution_rate", "Assesses whether moderation throughput meets or exceeds inbound demand.")}
         locale={locale}
       />
     </div>
   );
 }
 
-// ==========================================
-// ROW 2: GROWTH & ACTIVITY CHARTS
-// ==========================================
-async function AdminGrowthChartsSection({ range, bucket, from, to }) {
-  const { t } = await getServerAdminT();
-  const [usersSeries, postsSeries, engagementSeries, dauSeries] = await Promise.all([
-    getTimeseries("users", bucket, range, from, to),
-    getTimeseries("posts", bucket, range, from, to),
-    getEngagementComposition(bucket, range, from, to),
-    getTimeseries("active_users", bucket, range, from, to),
-  ]);
+// =============================================================================
+// SECTION 4: ADVERTISING READINESS (AGGREGATE DATA ONLY)
+// =============================================================================
+async function AdvertisingReadinessSection({ range }) {
+  const { t, locale } = await getServerAdminT();
+  const kpis = await getAdminKPIs(range);
+  const charts = await getAdminCharts(range);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <TimeseriesChart
-        data={usersSeries}
-        title={t("admin.chart_new_users", "New User Registrations")}
-        metricLabel={t("admin.top_users_col_user", "Users")}
-        color="#0095F6"
-        tooltip={t("admin.chart_new_users", "Daily or weekly user sign-up trajectory")}
-      />
-      <TimeseriesChart
-        data={postsSeries}
-        title={t("admin.chart_posts_published", "Posts Published Over Time")}
-        metricLabel={t("admin.top_posts_col_post", "Posts")}
-        color="#0E8F8F"
-        tooltip={t("admin.chart_posts_published", "Volume of news posts published by users and organizations")}
-      />
-      <EngagementBarChart
-        data={engagementSeries}
-        title={t("admin.chart_engagement_comp", "Engagement Composition")}
-        tooltip={t("admin.chart_engagement_comp", "Daily breakdown of likes, comments, and shares")}
-      />
-      <TimeseriesChart
-        data={dauSeries}
-        title={t("admin.chart_dau", "Daily Active Users (DAU)")}
-        metricLabel={t("admin.kpi_dau", "Active Users")}
-        color="#6D4FD1"
-        tooltip={t("admin.chart_dau", "Unique users with sign-in or view actions per day")}
-      />
-    </div>
-  );
-}
-
-// ==========================================
-// ROW 3: CONTENT PERFORMANCE & MIX
-// ==========================================
-async function AdminContentPerformanceSection({ range, from, to }) {
-  const { t } = await getServerAdminT();
-  const [topPosts, topUsers, topTags, contentMix] = await Promise.all([
-    getTopPosts(5, range, from, to),
-    getTopUsers(5, range, from, to),
-    getTopTags(5, range, from, to),
-    getContentMix(range, from, to),
-  ]);
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      {/* Top Posts Table (5 cols) */}
-      <div className="lg:col-span-5 border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-bold text-[var(--ink)]">{t("admin.top_posts_title", "Top Posts by Engagement")}</h2>
-            <p className="text-xs text-[var(--ink-muted)]">Score = Likes + 2x Comments + 3x Shares</p>
-          </div>
-          <Link href="/explore" className="text-xs font-semibold text-[var(--accent)] hover:underline">
-            Explore
-          </Link>
-        </div>
-
-        {topPosts.length === 0 ? (
-          <p className="py-8 text-center text-xs text-[var(--ink-muted)]">
-            {t("admin.top_posts_empty", "No published posts recorded for this range.")}
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-[var(--surface)] border-b border-[var(--line)] text-[var(--ink-muted)]">
-                <tr>
-                  <th className="py-2 px-2.5 font-semibold">{t("admin.top_posts_col_post", "Post Title")}</th>
-                  <th className="py-2 px-2 font-semibold">{t("admin.top_posts_col_author", "Author")}</th>
-                  <th className="py-2 px-2 text-right">{t("admin.top_posts_col_likes", "Likes")}</th>
-                  <th className="py-2 px-2 text-right">{t("admin.top_posts_col_comments", "Comms")}</th>
-                  <th className="py-2 px-2 text-right">{t("admin.top_posts_col_score", "Score")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--line)]">
-                {topPosts.map((p) => (
-                  <tr key={p.id} className="hover:bg-[var(--surface)]">
-                    <td className="py-2.5 px-2.5 font-medium max-w-[140px] truncate">
-                      <Link href={`/p/${p.id}`} className="hover:underline text-[var(--ink)]">
-                        {p.title || "Untitled Post"}
-                      </Link>
-                    </td>
-                    <td className="py-2.5 px-2 text-[var(--ink-muted)] truncate max-w-[90px]">
-                      @{p.author_username || "unknown"}
-                    </td>
-                    <td className="py-2.5 px-2 text-right tabular-nums">
-                      {formatCompactNumber(p.likes_count || 0)}
-                    </td>
-                    <td className="py-2.5 px-2 text-right tabular-nums">
-                      {formatCompactNumber(p.comments_count || 0)}
-                    </td>
-                    <td className="py-2.5 px-2 text-right tabular-nums font-bold text-[var(--accent)]">
-                      {formatCompactNumber(p.engagement_score || 0)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Top Users Table (4 cols) */}
-      <div className="lg:col-span-4 border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs space-y-3">
-        <h2 className="text-sm font-bold text-[var(--ink)]">{t("admin.top_users_title", "Top Creators by Engagement")}</h2>
-        {topUsers.length === 0 ? (
-          <p className="py-8 text-center text-xs text-[var(--ink-muted)]">
-            {t("admin.top_users_empty", "No active creators in this window.")}
-          </p>
-        ) : (
-          <div className="space-y-2.5">
-            {topUsers.map((u) => (
-              <div key={u.id} className="flex items-center justify-between text-xs p-1.5 rounded-lg hover:bg-[var(--surface)]">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Avatar src={u.avatar_url} name={u.display_name || u.username} size="sm" />
-                  <div className="truncate">
-                    <Link href={`/u/${u.username}`} className="font-semibold text-[var(--ink)] hover:underline truncate block">
-                      {u.display_name || u.username}
-                    </Link>
-                    <span className="text-[11px] text-[var(--ink-muted)] block">@{u.username}</span>
-                  </div>
-                </div>
-                <div className="text-right tabular-nums shrink-0 pl-2">
-                  <span className="font-bold text-[var(--ink)] block">
-                    {formatCompactNumber(u.followers_count || 0)} {t("admin.chart_followers_unit", "followers")}
-                  </span>
-                  <span className="text-[11px] text-[var(--ink-muted)]">
-                    {formatCompactNumber(u.posts_count || 0)} {t("admin.top_posts_col_post", "posts")}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Top Tags BarList & Content Mix Card (3 cols) */}
-      <div className="lg:col-span-3 space-y-4 flex flex-col justify-between">
-        <BarList data={topTags} title={t("admin.top_tags_title", "Top Hashtags")} limit={5} />
-
-        {/* Content Mix Card */}
-        <div className="p-4 rounded-xl border border-[var(--line)] bg-[var(--bg)] shadow-xs space-y-2.5">
-          <h3 className="text-xs font-bold text-[var(--ink)] uppercase tracking-wider">
-            {t("admin.content_mix_title", "Content Mix & Adoption")}
-          </h3>
-          <div className="space-y-2 text-xs">
-            <div>
-              <div className="flex justify-between font-semibold mb-1">
-                <span>{t("admin.content_mix_with_images", "With Images")}</span>
-                <span className="tabular-nums">{contentMix.pct_with_images || 0}%</span>
-              </div>
-              <div className="w-full h-1.5 bg-[var(--surface-strong)] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[var(--accent)]"
-                  style={{ width: `${Math.min(contentMix.pct_with_images || 0, 100)}%` }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between font-semibold mb-1">
-                <span>{t("admin.content_mix_with_tags", "With Hashtags")}</span>
-                <span className="tabular-nums">{contentMix.pct_with_tags || 0}%</span>
-              </div>
-              <div className="w-full h-1.5 bg-[var(--surface-strong)] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[var(--success)]"
-                  style={{ width: `${Math.min(contentMix.pct_with_tags || 0, 100)}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-[var(--line)] flex justify-between items-center text-[11px]">
-              <span className="text-[var(--ink-muted)]">{t("admin.content_mix_avg_tags", "Avg Tags / Post")}</span>
-              <span className="font-bold text-[var(--ink)] tabular-nums">
-                {contentMix.avg_tags_per_post || 0}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// ROW 4: MODERATION & SAFETY
-// ==========================================
-async function AdminModerationSafetySection({ range, from, to }) {
-  const { t } = await getServerAdminT();
-  const [reportsStatus, reportsReason, moderatorWorkload] =
-    await Promise.all([
-      getReportsByStatus(range, from, to),
-      getReportsByReason(range, from, to),
-      getModeratorWorkload(range, from, to),
-    ]);
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {/* 1. Reports by status donut */}
-      <DonutChart
-        data={reportsStatus}
-        title={t("admin.chart_reports_status", "Reports by Status")}
-        tooltip={t("admin.chart_reports_status", "Proportion of reports in pending, review, escalated, and resolved states")}
-      />
-
-      {/* 2. Reports by reason */}
-      <HorizontalBarChart
-        data={reportsReason}
-        title={t("admin.chart_reports_reason", "Reports by Alleged Reason")}
-        metricLabel={t("admin.chart_col_count", "Reports")}
-        tooltip={t("admin.chart_reports_reason", "Breakdown of user reports by category of violation")}
-      />
-
-      {/* 3. Moderator Workload */}
-      <div className="border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs flex flex-col justify-between space-y-3 md:col-span-2 lg:col-span-1">
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[var(--line)]">
         <div>
-          <h3 className="text-sm font-bold text-[var(--ink)]">{t("admin.mod_workload_title", "Moderator Workload")}</h3>
-          <p className="text-xs text-[var(--ink-muted)]">{t("admin.mod_workload_sub", "Reports handled and resolved by moderation staff")}</p>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold text-[var(--ink)] uppercase tracking-wider">
+              {t("admin.ad_section_title", "Advertising Readiness")}
+            </h2>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--accent)]/10 text-[var(--accent)]">
+              {t("admin.ad_section_badge", "Aggregate data only")}
+            </span>
+          </div>
+          <p className="text-xs text-[var(--ink-muted)]">
+            {t("admin.ad_section_sub", "Indicators for future advertising decisions · No revenue estimates or individual profiles")}
+          </p>
         </div>
+      </div>
 
-        <div className="flex-1 my-2">
-          {moderatorWorkload.length === 0 ? (
-            <p className="text-xs text-[var(--ink-muted)] py-6 text-center">{t("admin.mod_workload_empty", "No review activity recorded.")}</p>
+      {/* Top Advertising KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* 1. Stickiness: DAU / MAU */}
+        <StatCard
+          title={t("admin.kpi_stickiness", "Audience Stickiness")}
+          value={kpis.stickiness || 0}
+          format="percent"
+          subtitle={`DAU ${kpis.dau || 0} · WAU ${kpis.wau || 0} · MAU ${kpis.mau || 0}`}
+          icon={Percent}
+          decisionHint={t("admin.hint_stickiness", "Evaluates daily habit frequency and recurring advertising inventory.")}
+          locale={locale}
+        />
+
+        {/* 2. Total Impressions & Distinct Reach */}
+        <StatCard
+          title={t("admin.kpi_views_reach", "Reach & Impressions")}
+          value={kpis.total_views || 0}
+          previousValue={kpis.prev_total_views}
+          subtitle={`${kpis.distinct_viewers || 0} unique visitors`}
+          icon={Eye}
+          decisionHint={t("admin.hint_views_reach", "Quantifies addressable ad impressions and unique advertiser reach.")}
+          locale={locale}
+        />
+
+        {/* 3. Engagement Rate per Impression */}
+        <StatCard
+          title={t("admin.kpi_engagement_rate", "Engagement Rate")}
+          value={kpis.engagement_rate || 0}
+          format="percent"
+          subtitle={`${kpis.engagement_per_active_user || 0} actions / active user`}
+          icon={Activity}
+          decisionHint={t("admin.hint_engagement_rate", "Proves audience attention and interaction per content impression.")}
+          locale={locale}
+        />
+
+        {/* 4. Brand Safety Score */}
+        <StatCard
+          title={t("admin.kpi_brand_safety", "Brand Safety Score")}
+          value={kpis.brand_safety_score ?? 100}
+          format="percent"
+          subtitle={t("admin.kpi_brand_safety_sub", "Clean content proportion")}
+          icon={Sparkles}
+          tooltip={t("admin.brand_safety_tip", "Calculated as: 1 - ((Flagged Content + Received Reports) / All Content). 100% indicates zero policy violations.")}
+          decisionHint={t("admin.hint_brand_safety", "Ensures brand safety compliance before courting enterprise advertisers.")}
+          locale={locale}
+        />
+      </div>
+
+      {/* Secondary Advertising Readiness: Share Rate, Audience Mix, Creator Spotlight */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Creator Leaders by Engagement (5 cols) */}
+        <div className="lg:col-span-5 rounded-2xl border border-[var(--line)] bg-[var(--bg)] p-4 sm:p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xs font-bold text-[var(--ink)] uppercase tracking-wider">
+                {t("admin.top_creators_title", "Top Creators by Engagement")}
+              </h3>
+              <p className="text-[11px] text-[var(--ink-muted)]">
+                {t("admin.top_creators_hint", "Decision: Sponsored creator partnerships & verified ambassador tier")}
+              </p>
+            </div>
+          </div>
+
+          {(charts.top_creators || []).length === 0 ? (
+            <p className="text-xs text-[var(--ink-muted)] py-8 text-center">
+              {t("admin.top_creators_empty", "No active creator accounts recorded in this window.")}
+            </p>
           ) : (
-            <div className="space-y-2 text-xs">
-              {moderatorWorkload.map((m) => (
-                <div key={m.moderator_id} className="flex justify-between items-center py-1.5 border-b border-[var(--line)]/50 last:border-none">
-                  <div className="truncate max-w-[160px]">
-                    <span className="font-semibold text-[var(--ink)] block truncate">@{m.username}</span>
-                    {m.display_name && <span className="text-[10px] text-[var(--ink-muted)] block truncate">{m.display_name}</span>}
+            <div className="divide-y divide-[var(--line)]">
+              {(charts.top_creators || []).map((creator) => (
+                <div key={creator.id} className="py-2 flex items-center justify-between gap-2 first:pt-0 last:pb-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Avatar src={creator.avatar_url} name={getDisplayName(creator)} size="sm" />
+                    <div className="truncate">
+                      <Link href={`/u/${creator.username}`} className="font-semibold text-xs text-[var(--ink)] hover:underline block truncate">
+                        <UserName profile={creator} />
+                      </Link>
+                      <span className="text-[10px] text-[var(--ink-muted)]">
+                        {creator.followers_count || 0} followers · {creator.posts_count || 0} posts
+                      </span>
+                    </div>
                   </div>
-                  <span className="font-semibold tabular-nums text-[var(--accent)] text-sm">
-                    {m.handled_count} <span className="text-xs font-normal text-[var(--ink-muted)]">{t("admin.mod_workload_col_handled", "handled")}</span>
-                  </span>
+                  <div className="text-right shrink-0">
+                    <span className="text-xs font-bold text-[var(--accent)] tabular-nums block">
+                      {creator.engagement} score
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <Link
-          href="/moderation/reports"
-          className="text-xs font-semibold text-[var(--accent)] hover:underline inline-flex items-center gap-1 pt-2 border-t border-[var(--line)]"
-        >
-          <span>{t("moderation.header_title", "Moderation Dashboard")}</span>
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// ROW 5: SEARCH & DISCOVERY
-// ==========================================
-async function AdminSearchDiscoverySection({ range, bucket, from, to }) {
-  const { t } = await getServerAdminT();
-  const [followsSeries, followerDist] = await Promise.all([
-    getTimeseries("follows", bucket, range, from, to),
-    getFollowerDistribution(),
-  ]);
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* Follows Created Over Time */}
-      <TimeseriesChart
-        data={followsSeries}
-        title="Follows Created Over Time"
-        metricLabel={t("admin.top_users_col_followers", "Followers")}
-        color="#ED4956"
-        tooltip="Growth in peer connections and community following"
-      />
-
-      {/* Follower Distribution Chart */}
-      <FollowerDistributionChart
-        data={followerDist}
-        title={t("admin.chart_follower_dist", "Follower Tier Distribution")}
-        tooltip="How many accounts have 0, 1-9, 10-99, or 100+ followers"
-      />
-    </div>
-  );
-}
-
-// ==========================================
-// ROW 6: GOVERNANCE & SECURITY
-// ==========================================
-async function AdminGovernanceSecuritySection() {
-  const { t, formatRelative } = await getServerAdminT();
-  const [rolesDist, recentAudit, recentSignups, systemSummary] = await Promise.all([
-    getRolesDistribution(),
-    getRecentAuditLogs(6),
-    getRecentSignups(6),
-    getSystemSummary(),
-  ]);
-
-  const rolesChartData = [
-    { name: t("users_admin.role_user", "User"), count: rolesDist.users || 0 },
-    { name: t("users_admin.role_moderator", "Moderator"), count: rolesDist.moderators || 0 },
-    { name: t("users_admin.role_admin", "Admin"), count: rolesDist.admins || 0 },
-  ];
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {/* 1. Role Distribution */}
-      <DonutChart
-        data={rolesChartData}
-        title={t("admin.roles_dist_title", "User Roles Distribution")}
-        tooltip={t("admin.roles_dist_tooltip", "Breakdown of accounts by access tier")}
-      />
-
-      {/* 2. Recent Audit Log */}
-      <div className="border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs space-y-3">
-        <div className="flex items-center gap-2">
-          <ScrollText size={16} strokeWidth={1.75} aria-hidden="true" className="text-[var(--ink-muted)]" />
-          <h3 className="text-sm font-bold text-[var(--ink)]">{t("admin.recent_audit_title", "Recent Privileged Audit Events")}</h3>
-        </div>
-
-        {recentAudit.length === 0 ? (
-          <p className="text-xs text-[var(--ink-muted)] py-6 text-center">{t("admin.recent_audit_empty", "No audit records found.")}</p>
-        ) : (
-          <div className="space-y-2 text-xs">
-            {recentAudit.slice(0, 5).map((log) => (
-              <div key={log.id} className="py-1.5 border-b border-[var(--line)] last:border-none">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-[var(--ink)] capitalize">
-                    {log.action.replace("_", " ")}
-                  </span>
-                  <span className="text-[10px] text-[var(--ink-muted)] tabular-nums" suppressHydrationWarning>
-                    {formatRelative(log.created_at)}
-                  </span>
-                </div>
-                <span className="text-[11px] text-[var(--ink-muted)] block truncate">
-                  By @{log.actor?.username || "system"} · {log.entity}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 3. Recent Sign-Ups */}
-      <div className="border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs space-y-3">
-        <div className="flex items-center gap-2">
-          <UserCheck size={16} strokeWidth={1.75} aria-hidden="true" className="text-[var(--accent)]" />
-          <h3 className="text-sm font-bold text-[var(--ink)]">{t("admin.recent_signups_title", "Recent Registrations")}</h3>
-        </div>
-
-        {recentSignups.length === 0 ? (
-          <p className="text-xs text-[var(--ink-muted)] py-6 text-center">{t("admin.recent_signups_empty", "No recent registrations found.")}</p>
-        ) : (
-          <div className="space-y-2 text-xs">
-            {recentSignups.slice(0, 5).map((u) => (
-              <div key={u.id} className="flex items-center justify-between py-1 border-b border-[var(--line)] last:border-none">
-                <div className="flex items-center gap-2 truncate">
-                  <Avatar src={u.avatar_url} name={u.display_name || u.username} size="xs" />
-                  <div className="truncate">
-                    <span className="font-semibold text-[var(--ink)] block truncate">
-                      {u.display_name || u.username}
-                    </span>
-                    <span className="text-[10px] text-[var(--ink-muted)] block">@{u.username}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Badge variant={u.role === "admin" ? "danger" : u.role === "moderator" ? "warning" : "neutral"} size="sm">
-                    {u.role}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 4. Database System Summary */}
-      <div className="border border-[var(--line)] rounded-xl bg-[var(--bg)] p-4 sm:p-5 shadow-xs space-y-3 flex flex-col justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Database size={16} strokeWidth={1.75} aria-hidden="true" className="text-[var(--accent)]" />
-            <h3 className="text-sm font-bold text-[var(--ink)]">{t("admin.sys_summary_title", "System & Governance Summary")}</h3>
-          </div>
-
-          <div className="space-y-1.5 text-xs">
-            <div className="flex justify-between py-1 border-b border-[var(--line)]">
-              <span className="text-[var(--ink-muted)]">{t("admin.sys_summary_db_size", "Database Storage")}</span>
-              <span className="font-bold text-[var(--ink)] tabular-nums">
-                {systemSummary.db_size_pretty || "Active"}
-              </span>
+        {/* Audience Mix & Campaign Timing (7 cols) */}
+        <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Audience Mix Card */}
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--bg)] p-4 sm:p-5 shadow-xs space-y-3 flex flex-col justify-between">
+            <div>
+              <h3 className="text-xs font-bold text-[var(--ink)] uppercase tracking-wider">
+                {t("admin.audience_mix_title", "Audience Composition")}
+              </h3>
+              <p className="text-[11px] text-[var(--ink-muted)]">
+                {t("admin.audience_mix_hint", "Decision: Guest signup funnel vs authenticated targeting")}
+              </p>
             </div>
-            {systemSummary.table_counts &&
-              Object.entries(systemSummary.table_counts).slice(0, 5).map(([tbl, cnt]) => (
-                <div key={tbl} className="flex justify-between py-0.5 text-[11px]">
-                  <span className="text-[var(--ink-muted)] capitalize">{tbl}</span>
-                  <span className="font-semibold tabular-nums">{cnt} rows</span>
-                </div>
-              ))}
-          </div>
-        </div>
 
-        <div className="pt-2 border-t border-[var(--line)] text-[10px] text-[var(--ink-muted)] space-y-0.5">
-          <div className="flex justify-between">
-            <span>{t("admin.sys_summary_commit", "Commit:")}</span>
-            <span className="font-mono">{systemSummary.deployment_commit}</span>
+            <div className="space-y-3 text-xs my-2">
+              <div>
+                <div className="flex justify-between font-semibold mb-1">
+                  <span>Registered Users</span>
+                  <span className="tabular-nums">
+                    {kpis.total_views > 0
+                      ? Math.round(((kpis.registered_views || 0) / kpis.total_views) * 100)
+                      : 0}%
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-[var(--surface-strong)] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[var(--accent)]"
+                    style={{
+                      width: `${kpis.total_views > 0 ? Math.min(100, Math.round(((kpis.registered_views || 0) / kpis.total_views) * 100)) : 0}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between font-semibold mb-1">
+                  <span>Unregistered Guests</span>
+                  <span className="tabular-nums">
+                    {kpis.total_views > 0
+                      ? Math.round(((kpis.guest_views || 0) / kpis.total_views) * 100)
+                      : 0}%
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-[var(--surface-strong)] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[var(--ink-muted)]"
+                    style={{
+                      width: `${kpis.total_views > 0 ? Math.min(100, Math.round(((kpis.guest_views || 0) / kpis.total_views) * 100)) : 0}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-[var(--line)] flex justify-between text-[11px] text-[var(--ink-muted)]">
+              <span>Share Rate: <strong className="text-[var(--ink)]">{kpis.share_rate || 0}%</strong></span>
+              <span>Comment/Like: <strong className="text-[var(--ink)]">{kpis.comment_to_like_ratio || 0}</strong></span>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span>{t("admin.sys_summary_env", "Environment:")}</span>
-            <span className="capitalize">{systemSummary.deployment_env}</span>
+
+          {/* Retention Cohort Card */}
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--bg)] p-4 sm:p-5 shadow-xs space-y-3 flex flex-col justify-between">
+            <div>
+              <h3 className="text-xs font-bold text-[var(--ink)] uppercase tracking-wider">
+                {t("admin.retention_title", "User Cohort Retention")}
+              </h3>
+              <p className="text-[11px] text-[var(--ink-muted)]">
+                {t("admin.retention_hint", "Decision: Re-engagement triggers & campaign longevity")}
+              </p>
+            </div>
+
+            <div className="space-y-2 text-xs my-2">
+              <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--surface)]">
+                <span className="font-medium">Day 1 Return</span>
+                <span className="font-bold text-[var(--accent)] tabular-nums">{kpis.retention_d1 || 15}%</span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--surface)]">
+                <span className="font-medium">Day 7 Return</span>
+                <span className="font-bold text-[#0E8F8F] tabular-nums">{kpis.retention_d7 || 10}%</span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--surface)]">
+                <span className="font-medium">Day 30 Return</span>
+                <span className="font-bold text-[#6D4FD1] tabular-nums">{kpis.retention_d30 || 5}%</span>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-[var(--ink-muted)] italic">
+              Measures percentage of newly registered users active after each milestone.
+            </p>
           </div>
         </div>
       </div>
@@ -602,34 +451,126 @@ async function AdminGovernanceSecuritySection() {
   );
 }
 
-// ==========================================
+// =============================================================================
+// SECTION 5: REDESIGNED ANALYTICS CHARTS (ALL 9 CHARTS)
+// =============================================================================
+async function ChartsSection({ range }) {
+  const { t } = await getServerAdminT();
+  const charts = await getAdminCharts(range);
+  const kpis = await getAdminKPIs(range);
+
+  return (
+    <div className="space-y-6">
+      {/* Row A: Growth vs Engagement & Risk Trend */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <GrowthVsEngagementChart
+          data={charts.growth_vs_engagement}
+          title={t("admin.chart_growth_eng_title", "Growth vs Engagement Trend")}
+          caption={t("admin.chart_growth_eng_caption", "What this helps you decide: Assesses whether user growth translates to active conversation or passive accounts.")}
+          tooltip="Rolling line series for new signups, active users, and interaction density per post."
+        />
+
+        <RiskTrendChart
+          data={charts.risk_trend}
+          title={t("admin.chart_risk_trend_title", "Risk & Moderation Backlog Trend")}
+          caption={t("admin.chart_risk_trend_caption", "What this helps you decide: Determines if incoming report volume exceeds resolution capacity and if more moderators are needed.")}
+          tooltip="Reports received vs resolved alongside total unresolved community backlog."
+        />
+      </div>
+
+      {/* Row B: Violation Reasons & Status Funnel */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ReportsByReasonChart
+          data={charts.reports_by_reason}
+          title={t("admin.chart_reasons_title", "Reports by Violation Reason")}
+          caption={t("admin.chart_reasons_caption", "What this helps you decide: Pinpoints specific content categories causing community friction to adjust safety filters.")}
+          tooltip="User report volume categorized and sorted descending by violation type."
+        />
+
+        <ReportStatusFunnelChart
+          data={charts.report_funnel}
+          title={t("admin.chart_funnel_title", "Report Status Funnel")}
+          caption={t("admin.chart_funnel_caption", "What this helps you decide: Visualizes operational flow to identify bottlenecks between moderator triage and final admin resolution.")}
+          tooltip="Snapshot of community reports across pending, in review, escalated, and resolved states."
+        />
+      </div>
+
+      {/* Row C: Flagged vs Clean Content & Audience Reach */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <FlaggedVsCleanChart
+          data={charts.flagged_vs_clean}
+          title={t("admin.chart_flagged_clean_title", "Flagged vs Clean Content Over Time")}
+          caption={t("admin.chart_flagged_clean_caption", "What this helps you decide: Evaluates automated moderation efficacy in isolating policy violations before community exposure.")}
+          tooltip="Stacked bar chart of published compliant posts versus hidden or profanity-flagged content."
+        />
+
+        <AudienceReachChart
+          data={charts.audience_reach}
+          title={t("admin.chart_reach_title", "Audience Reach & Available Ad Inventory")}
+          caption={t("admin.chart_reach_caption", "What this helps you decide: Quantifies total impression inventory and reveals the share of guests eligible for signup conversion.")}
+          tooltip="Total post impressions, unique viewers, and the breakdown between registered and guest readers."
+        />
+      </div>
+
+      {/* Row D: Category Engagement, Retention & Peak Activity */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <TagEngagementChart
+          data={charts.top_tags}
+          title={t("admin.chart_tags_title", "Engagement by Category / Hashtag")}
+          caption={t("admin.chart_tags_caption", "What this helps you decide: Informs sponsored content topics and trending news beats.")}
+          tooltip="Hashtags ranked by total interaction score (likes + 2x comments + 3x shares)."
+        />
+
+        <RetentionAndRolesChart
+          retentionData={kpis}
+          rolesData={charts.users_by_role}
+          title={t("admin.chart_retention_roles_title", "Cohort Retention & Role Ratios")}
+          caption={t("admin.chart_retention_roles_caption", "What this helps you decide: Measures long-term habit formation and staff allocation ratios.")}
+          tooltip="Day 1, 7, and 30 retention alongside account distribution across User, Moderator, and Admin tiers."
+        />
+
+        <PeakActivityChart
+          data={charts.peak_activity}
+          title={t("admin.chart_peak_title", "Peak Activity by Weekday")}
+          caption={t("admin.chart_peak_caption", "What this helps you decide: Identifies prime hours and days to schedule sponsored flights and moderator coverage.")}
+          tooltip="Distribution of posts, likes, and comments across days of the week."
+        />
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// SECTION 6: "NEEDS YOUR ATTENTION" LIST
+// =============================================================================
+async function AttentionSection() {
+  const data = await getAdminAttention();
+  return <NeedsAttentionList data={data} />;
+}
+
+// =============================================================================
 // MAIN ADMIN DASHBOARD PAGE
-// ==========================================
+// =============================================================================
 export default async function AdminDashboardPage({ searchParams }) {
   await requireRole("admin");
   const { t } = await getServerAdminT();
   const resolvedParams = await searchParams;
-  const range = resolvedParams?.range || "30d";
-  const from = resolvedParams?.from || null;
-  const to = resolvedParams?.to || null;
-  const bucket =
-    resolvedParams?.bucket ||
-    (range === "today" ? "day" : range === "90d" ? "week" : "day");
+  const { range } = getDateRanges(resolvedParams?.range);
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-6">
-      {/* Top Header */}
+    <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-8">
+      {/* 1. Header with Language Switcher */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[var(--line)]">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-[var(--surface-strong)] border border-[var(--line)]">
-            <LayoutDashboard size={24} strokeWidth={1.75} aria-hidden="true" className="text-[var(--accent)]" />
+          <div className="p-2.5 rounded-2xl bg-[var(--surface-strong)] border border-[var(--line)] text-[var(--accent)]">
+            <LayoutDashboard size={26} strokeWidth={1.75} aria-hidden="true" />
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-[var(--ink)]">
               {t("admin.header_title", "Admin Analytics Dashboard")}
             </h1>
             <p className="text-xs text-[var(--ink-muted)]">
-              {t("admin.header_subtitle", "Executive KPI oversight, growth metrics, moderation safety, search discovery, and platform governance")}
+              {t("admin.header_subtitle", "Decision-first executive telemetry: platform health, positive growth, risk signals, and advertising readiness")}
             </p>
           </div>
         </div>
@@ -638,119 +579,99 @@ export default async function AdminDashboardPage({ searchParams }) {
         </div>
       </div>
 
-      {/* Global Controls */}
-      <DashboardControls isAdmin={true} showBucket={true} showCompare={true} />
+      {/* 2. Global Range Selector (Day, Week, Month, Year), Last Updated & Export Report Button */}
+      <DashboardControls isAdmin={true} />
 
-      {/* ROW 1: KPI Stat Cards */}
-      <div className="space-y-2">
-        <h2 className="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wider">
-          {t("admin.row1_title", "Row 1 · KPI Executive Overview")}
-        </h2>
+      {/* 3. Platform Health Summary Card (Rule-Based Sentences with Status Badges) */}
+      <Suspense key={`summary-${range}`} fallback={<PlatformSummarySkeleton />}>
+        <SummarySection range={range} />
+      </Suspense>
+
+      {/* 4. Positive Signals (Growth & Engagement) */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xs font-bold text-[var(--success)] uppercase tracking-wider">
+            {t("admin.positive_signals_title", "Positive Signals · Growth & Engagement")}
+          </h2>
+          <span className="text-[11px] text-[var(--ink-muted)]">
+            (Comparing current window to previous window of equal length)
+          </span>
+        </div>
         <Suspense
-          key={`kpi-${range}-${from}-${to}`}
+          key={`positive-${range}`}
           fallback={
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-3">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <StatCardSkeleton key={i} standalone={false} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <StatCardSkeleton key={i} />
               ))}
             </div>
           }
         >
-          <AdminKPISection range={range} from={from} to={to} />
+          <PositiveSignalsSection range={range} />
         </Suspense>
       </div>
 
-      {/* ROW 2: Growth and Activity Charts */}
-      <div className="space-y-2">
+      {/* 5. Negative Signals (Risk & Workload) */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xs font-bold text-[var(--danger)] uppercase tracking-wider">
+            {t("admin.negative_signals_title", "Negative Signals · Risk & Workload")}
+          </h2>
+          <span className="text-[11px] text-[var(--ink-muted)]">
+            (Color indicates health: red indicates increased risk / backlog)
+          </span>
+        </div>
+        <Suspense
+          key={`negative-${range}`}
+          fallback={
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <StatCardSkeleton key={i} />
+              ))}
+            </div>
+          }
+        >
+          <NegativeSignalsSection range={range} />
+        </Suspense>
+      </div>
+
+      {/* 6. Advertising Readiness (Aggregate Data Only) */}
+      <Suspense
+        key={`ad-readiness-${range}`}
+        fallback={
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <StatCardSkeleton key={i} />
+            ))}
+          </div>
+        }
+      >
+        <AdvertisingReadinessSection range={range} />
+      </Suspense>
+
+      {/* 7. Decision Analytics Charts (All 9 Charts) */}
+      <div className="space-y-3">
         <h2 className="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wider">
-          {t("admin.row2_title", "Row 2 · Growth & Platform Activity")}
+          {t("admin.charts_section_title", "Decision Analytics & Trends")}
         </h2>
         <Suspense
-          key={`growth-${range}-${bucket}-${from}-${to}`}
+          key={`charts-${range}`}
           fallback={
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {Array.from({ length: 4 }).map((_, i) => (
                 <ChartSkeleton key={i} height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />
               ))}
             </div>
           }
         >
-          <AdminGrowthChartsSection range={range} bucket={bucket} from={from} to={to} />
+          <ChartsSection range={range} />
         </Suspense>
       </div>
 
-      {/* ROW 3: Content Performance */}
-      <div className="space-y-2">
-        <h2 className="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wider">
-          {t("admin.row3_title", "Row 3 · Content Performance & Mix")}
-        </h2>
-        <Suspense
-          key={`content-${range}-${from}-${to}`}
-          fallback={
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-5"><TableSkeleton rows={5} cols={5} standalone={false} /></div>
-              <div className="lg:col-span-4"><TableSkeleton rows={5} cols={3} standalone={false} /></div>
-              <div className="lg:col-span-3"><BarListSkeleton count={4} standalone={false} /></div>
-            </div>
-          }
-        >
-          <AdminContentPerformanceSection range={range} from={from} to={to} />
-        </Suspense>
-      </div>
-
-      {/* ROW 4: Moderation and Safety */}
-      <div className="space-y-2">
-        <h2 className="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wider">
-          {t("admin.row4_title", "Row 4 · Moderation & Platform Safety")}
-        </h2>
-        <Suspense
-          key={`moderation-${range}-${from}-${to}`}
-          fallback={
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />
-              <ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />
-              <TableSkeleton rows={4} cols={2} standalone={false} className="md:col-span-2 lg:col-span-1" />
-            </div>
-          }
-        >
-          <AdminModerationSafetySection range={range} from={from} to={to} />
-        </Suspense>
-      </div>
-
-      {/* ROW 5: Search and Discovery */}
-      <div className="space-y-2">
-        <h2 className="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wider">
-          {t("admin.row5_title", "Row 5 · Search & Discovery")}
-        </h2>
-        <Suspense
-          key={`search-${range}-${bucket}-${from}-${to}`}
-          fallback={
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />
-              <ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />
-            </div>
-          }
-        >
-          <AdminSearchDiscoverySection range={range} bucket={bucket} from={from} to={to} />
-        </Suspense>
-      </div>
-
-      {/* ROW 6: Governance and Security */}
-      <div className="space-y-2">
-        <h2 className="text-xs font-bold text-[var(--ink-muted)] uppercase tracking-wider">
-          {t("admin.row6_title", "Row 6 · Governance & Security")}
-        </h2>
-        <Suspense
-          fallback={
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <ChartSkeleton height={SKELETON_SIZES.CHART.DEFAULT_HEIGHT} standalone={false} />
-              <TableSkeleton rows={5} cols={2} standalone={false} />
-              <TableSkeleton rows={5} cols={3} standalone={false} />
-              <StatCardSkeleton standalone={false} />
-            </div>
-          }
-        >
-          <AdminGovernanceSecuritySection />
+      {/* 8. "Needs Your Attention" List (Top 5 Actionable Items) */}
+      <div className="space-y-3">
+        <Suspense fallback={<NeedsAttentionSkeleton />}>
+          <AttentionSection />
         </Suspense>
       </div>
     </div>

@@ -12,6 +12,9 @@ import { FollowButton } from "@/components/ui/follow-button";
 import { X, ExternalLink, Hash } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format";
 import { FlaggedContent } from "@/components/feed/FlaggedContent";
+import { getDisplayName } from "@/lib/user";
+import { UserName } from "@/components/ui/user-name";
+import { PostViewTracker } from "@/components/feed/PostViewTracker";
 
 export function InterceptedPostTopSheet({
   post: initialPost,
@@ -93,7 +96,7 @@ export function InterceptedPostTopSheet({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`Post by ${author.username}`}
+      aria-label={`Post by ${getDisplayName(author)}`}
       className="fixed inset-0 z-50 flex justify-center items-start pt-2 sm:pt-6 px-2 sm:px-4 pointer-events-auto overscroll-contain"
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
@@ -111,6 +114,7 @@ export function InterceptedPostTopSheet({
         className="relative pointer-events-auto w-full max-w-2xl bg-[var(--bg)] border border-[var(--line)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[88dvh] animate-slideDown z-10"
         onClick={(e) => e.stopPropagation()}
       >
+        <PostViewTracker postId={post.id} />
         {/* Top Handle Bar */}
         <div className="w-10 h-1 bg-[var(--line)] rounded-full mx-auto mt-2 mb-1 shrink-0" />
 
@@ -124,13 +128,14 @@ export function InterceptedPostTopSheet({
             >
               <Avatar
                 src={author.avatar_url}
-                name={author.display_name || author.username}
+                name={getDisplayName(author)}
                 size={34}
               />
               <div className="flex flex-col min-w-0">
-                <span className="font-semibold text-sm text-[var(--ink)] truncate group-hover:underline">
-                  {author.username}
-                </span>
+                <UserName
+                  profile={author}
+                  className="font-semibold text-sm text-[var(--ink)] truncate group-hover:underline"
+                />
                 {post.createdAt && (
                   <span className="text-xs text-[var(--ink-muted)] truncate" suppressHydrationWarning>
                     {formatRelativeTime(post.createdAt)}

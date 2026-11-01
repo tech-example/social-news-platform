@@ -5,6 +5,7 @@ import { ArrowUpDown, Clock, TriangleAlert, ArrowRight, ShieldAlert } from "luci
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
+import { getDisplayName } from "@/lib/user";
 
 export function ModerationQueueTable({ reports = [], now: propNow }) {
   const [sortOrder, setSortOrder] = useState("newest"); // "newest" | "oldest"
@@ -153,7 +154,7 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
                         </span>
                       </td>
                       <td className="py-3 px-3 text-[var(--ink-muted)]">
-                        @{r.reporter?.username || "anonymous"}
+                        {getDisplayName(r.reporter)}
                       </td>
                       <td className="py-3 px-3">
                         <Badge variant={getStatusVariant(r.status)} size="sm">
@@ -222,7 +223,7 @@ export function ModerationQueueTable({ reports = [], now: propNow }) {
                       {t("moderation.reports_col_reason", "Reason")}:{" "}
                       <strong className="text-[var(--danger)] capitalize">{r.reason}</strong>
                     </span>
-                    <span>@{r.reporter?.username || "anonymous"}</span>
+                    <span>{getDisplayName(r.reporter)}</span>
                   </div>
 
                   <div className="flex items-center justify-between pt-1 border-t border-[var(--line)]">

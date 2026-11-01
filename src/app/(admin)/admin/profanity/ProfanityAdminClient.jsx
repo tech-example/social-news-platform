@@ -15,6 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { getDisplayName } from "@/lib/user";
+import { UserName } from "@/components/ui/user-name";
 import { useToast } from "@/components/ui/toast";
 import { useAdminLocale } from "@/lib/i18n/AdminLocaleProvider";
 import { FlaggedContent } from "@/components/feed/FlaggedContent";
@@ -291,15 +293,15 @@ export function ProfanityAdminClient({
                           <div className="flex items-center gap-2 min-w-0">
                             <Avatar
                               src={item.author?.avatar_url}
-                              name={item.author?.display_name || item.author?.username}
+                              name={getDisplayName(item.author)}
                               size={22}
                             />
                             <Link
                               href={`/u/${item.author?.username || "anonymous"}`}
                               className="font-medium text-xs text-[var(--ink)] hover:underline truncate max-w-[120px]"
-                              title={item.author?.display_name || item.author?.username}
+                              title={getDisplayName(item.author)}
                             >
-                              @{item.author?.username || "anonymous"}
+                              <UserName profile={item.author} />
                             </Link>
                           </div>
                         </TableCell>

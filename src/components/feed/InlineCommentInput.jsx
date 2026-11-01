@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { createCommentAction } from "@/server/actions/interactions";
 import { useToast } from "@/components/ui/toast";
+import { getDisplayName } from "@/lib/user";
 
 export function InlineCommentInput({
   postId,
@@ -68,13 +69,13 @@ export function InlineCommentInput({
       });
   };
 
-  const replyUsername = replyingTo?.author?.username || replyingTo?.username || "";
+  const replyName = replyingTo ? getDisplayName(replyingTo.author || replyingTo) : "";
 
   return (
     <div className="mt-2">
       {replyingTo && (
         <div className="flex items-center justify-between text-xs text-[var(--accent)] bg-[var(--accent-soft)] px-2.5 py-1 rounded-md mb-1.5 border border-[var(--accent)]/20">
-          <span>Replying to <strong>@{replyUsername}</strong></span>
+          <span>Replying to <strong>{replyName}</strong></span>
           <button
             type="button"
             onClick={onCancelReply}
@@ -93,7 +94,7 @@ export function InlineCommentInput({
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={replyingTo ? `Reply to @${replyUsername}...` : "Add a comment..."}
+          placeholder={replyingTo ? `Reply to ${replyName}...` : "Add a comment..."}
           maxLength={500}
           className="flex-1 px-3 py-1.5 text-sm border-0 bg-transparent text-[var(--ink)] placeholder:text-[var(--ink-muted)] focus:outline-none"
         />
